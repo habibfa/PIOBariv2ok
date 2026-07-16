@@ -7,6 +7,7 @@ import { Search, Navigation, MapPin, Loader2 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { getFacilitiesFromDb, saveFacilitiesToDb, Facility } from './services/facilitiesService';
 
 // Fix for default Leaflet icon not showing in React correctly due to bundler
 // We're using standard icons from leaflet CDN as a fallback, or base64 inline them.
@@ -71,19 +72,7 @@ const iconPuskesmas = new L.DivIcon({
 });
 const iconUser = customIcon('violet');
 
-interface Facility {
-  id: number;
-  name: string;
-  type: 'Hospital' | 'Pharmacy' | 'Clinic' | 'Puskesmas';
-  address: string;
-  lat: number;
-  lng: number;
-  contact?: string;
-  kelas?: string;
-  jenis?: string;
-  city?: string;
-  locked?: boolean;
-}
+
 
 const mockFacilities: Facility[] = [
   {
@@ -509,21 +498,36 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   const center: [number, number] = [-2.9761, 104.7754];
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("Semua");
-  const [facilities, setFacilities] = useState<Facility[]>(() => {
-    const saved = localStorage.getItem("mapFacilitiesData");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return mockFacilities.map(f => ({ ...f, locked: false }));
-      }
-    }
-    return mockFacilities.map(f => ({ ...f, locked: false }));
-  });
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem("mapFacilitiesData", JSON.stringify(facilities));
-  }, [facilities]);
+    const loadData = async () => {
+      try {
+        const data = await getFacilitiesFromDb();
+        if (data.length > 0) {
+          setFacilities(data.map(f => ({ ...f, locked: false })).sort((a, b) => a.id - b.id));
+        } else {
+          setFacilities(mockFacilities.map(f => ({ ...f, locked: false })));
+        }
+      } catch (e) {
+        console.error("Failed to load from DB, using mock data", e);
+        setFacilities(mockFacilities.map(f => ({ ...f, locked: false })));
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const saveToDb = async (data: Facility[]) => {
+    try {
+      await saveFacilitiesToDb(data);
+    } catch (e) {
+      console.error("Failed to save to DB", e);
+      alert("Gagal menyimpan data ke database");
+    }
+  };
 
   const handleUpdateData = async () => {
     if (!csvFile) {
@@ -559,17 +563,19 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
     }
   };
 
-  const validateAndSetData = (parsed: any[]) => {
+  const validateAndSetData = async (parsed: any[]) => {
     if (parsed.length > 0 && parsed[0].id !== undefined && parsed[0].name !== undefined) {
+      const newData = parsed.map(item => ({...item, locked: false}));
+      let combined: Facility[] = [];
       setFacilities(prev => {
-        const newData = parsed.map(item => ({...item, locked: false}));
         const prevFiltered = prev.filter(p => !newData.some(n => n.id === p.id));
-        const combined = [...prevFiltered, ...newData];
-        return combined.sort((a, b) => a.id - b.id);
+        combined = [...prevFiltered, ...newData].sort((a, b) => a.id - b.id);
+        return combined;
       });
       setIsUpdateModalOpen(false);
       setCsvError("");
       setCsvFile(null);
+      await saveToDb(newData); // Only saving the new/updated ones or all? Actually saveFacilitiesToDb uses batch.set which upserts.
     } else {
       setCsvError("Format file tidak valid. Pastikan baris pertama berisi header yang tepat.");
     }

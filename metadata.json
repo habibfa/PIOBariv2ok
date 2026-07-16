@@ -1,5 +1,5 @@
 {
-  "name": "Clinical Dosage & Drug Calculator",
+  "name": "Pusat Informasi Obat RSUD Palembang BARI",
   "description": "Generic clinical dosage calculator featuring real-time validations, preset drug formulations, and high-thinking AI clinical reasoning support.",
   "requestFramePermissions": [
     "geolocation"
