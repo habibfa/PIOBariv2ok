@@ -2,12 +2,12 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-apiKey: "AIzaSyCwVrB8MDRNWmmmNWhuhC257DOevSeIeuA",
-  authDomain: "piobariv2.firebaseapp.com",
-  projectId: "piobariv2",
-  storageBucket: "piobariv2.firebasestorage.app",
-  messagingSenderId: "769758486370",
-  appId: "1:769758486370:web:8c825b4fe42834b7f8563b"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 export const app = initializeApp(firebaseConfig);
