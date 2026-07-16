@@ -1,0 +1,8 @@
+{
+  "name": "Clinical Dosage & Drug Calculator",
+  "description": "Generic clinical dosage calculator featuring real-time validations, preset drug formulations, and high-thinking AI clinical reasoning support.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
