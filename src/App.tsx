@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { Upload, Save } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 import { DRUG_PRESETS as INITIAL_DRUG_PRESETS } from "./presets";
-import { checkInteractions, checkFoodInteractions, FoodInteraction } from "./interactions";
+import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction } from "./interactions";
 import { calculateDosage, calculateMostellerBsa, calculateCockcroftGault } from "./mathUtils";
 import ClinicalAlerts from "./components/ClinicalAlerts";
 import PharmacistConsultation from "./PharmacistConsultation";
@@ -716,6 +716,94 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Informasi_Obat");
     XLSX.writeFile(wb, "Template_Informasi_Obat.xlsx");
+  };
+
+    const [interactionDatabase, setInteractionDatabase] = useState<DrugInteraction[]>(() => {
+    const saved = localStorage.getItem("interactionDatabase");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return INITIAL_INTERACTION_DATABASE;
+      }
+    }
+    return INITIAL_INTERACTION_DATABASE;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("interactionDatabase", JSON.stringify(interactionDatabase));
+  }, [interactionDatabase]);
+
+  const [isUpdateDdiModalOpen, setIsUpdateDdiModalOpen] = useState(false);
+  const [ddiCsvFile, setDdiCsvFile] = useState<File | null>(null);
+  const [ddiCsvError, setDdiCsvError] = useState("");
+
+  const handleUpdateDdiData = async () => {
+    if (!ddiCsvFile) {
+      setDdiCsvError("Silakan pilih file CSV/Excel terlebih dahulu.");
+      return;
+    }
+    const fileExt = ddiCsvFile.name.split('.').pop()?.toLowerCase();
+    if (fileExt === 'csv' || fileExt === 'tsv') {
+      Papa.parse(ddiCsvFile, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          validateAndSetDdiData(results.data as any[]);
+        },
+        error: (error) => {
+          setDdiCsvError("Gagal membaca file CSV: " + error.message);
+        }
+      });
+    } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+      try {
+        const data = await ddiCsvFile.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const parsed = XLSX.utils.sheet_to_json(worksheet);
+        validateAndSetDdiData(parsed as any[]);
+      } catch (err) {
+        setDdiCsvError("Gagal membaca file Excel: " + (err as Error).message);
+      }
+    } else {
+      setDdiCsvError("Format file tidak didukung. Gunakan CSV atau Excel (.xlsx)");
+    }
+  };
+
+  const validateAndSetDdiData = (parsed: any[]) => {
+    if (parsed.length > 0 && parsed[0].drugAId !== undefined && parsed[0].drugBId !== undefined) {
+      setInteractionDatabase(prev => {
+        const newData = parsed as DrugInteraction[];
+        const newMap = new Map(newData.map(item => [`${item.drugAId}-${item.drugBId}`, item]));
+        const prevFiltered = prev.filter(p => !newMap.has(`${p.drugAId}-${p.drugBId}`) && !newMap.has(`${p.drugBId}-${p.drugAId}`));
+        return [...prevFiltered, ...newData];
+      });
+      setIsUpdateDdiModalOpen(false);
+      setDdiCsvError("");
+      setDdiCsvFile(null);
+    } else {
+      setDdiCsvError("Format file tidak valid. Pastikan ada kolom drugAId dan drugBId.");
+    }
+  };
+
+  const handleDownloadDdiTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet(INITIAL_INTERACTION_DATABASE);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Skrining_Interaksi");
+    XLSX.writeFile(wb, "Template_Skrining_Interaksi.xlsx");
+  };
+
+  const checkInteractions = (presetAId: string, presetBId: string): DrugInteraction[] => {
+    if (!presetAId || !presetBId || presetAId === "custom" || presetBId === "custom") {
+      return [];
+    }
+    return interactionDatabase.filter(interaction => {
+      const matchDirect = interaction.drugAId === presetAId && interaction.drugBId === presetBId;
+      const matchReverse = interaction.drugAId === presetBId && interaction.drugBId === presetAId;
+      return matchDirect || matchReverse;
+    });
   };
 
   const [drugPresets, setDrugPresets] = useState(() => {
@@ -2114,6 +2202,18 @@ export default function App() {
         {/* DDI MULTI-DRUG SCREENING TAB */}
         {/* LEFT COLUMN: Drug Selection / Basket */}
         <section className="lg:col-span-4 space-y-6">
+          {isAdmin && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+              <h2 className="text-sm font-bold text-slate-800 mb-2">Administrasi Data Interaksi</h2>
+              <button
+                onClick={() => setIsUpdateDdiModalOpen(true)}
+                className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+              >
+                <Upload className="w-4 h-4" />
+                Update Data Skrining
+              </button>
+            </div>
+          )}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -2843,14 +2943,14 @@ export default function App() {
       <>
         {/* MAP FACILITIES TAB */}
         <section className="lg:col-span-12 w-full">
-          <MapFacilities />
+          <MapFacilities isAdmin={isAdmin} />
         </section>
       </>
     ) : activeTab === "iv" ? (
       <>
         {/* IV COMPATIBILITY TAB */}
         <section className="lg:col-span-12 w-full">
-          <IvCompatibilityChecker />
+          <IvCompatibilityChecker isAdmin={isAdmin} />
         </section>
       </>
     ) : activeTab === "diseases" ? (
@@ -4074,6 +4174,73 @@ export default function App() {
               </button>
               <button
                 onClick={handleUpdateDrugData}
+                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Simpan Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isUpdateDdiModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Update Data Skrining Interaksi</h3>
+              <button 
+                onClick={() => setIsUpdateDdiModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-4 mb-4">
+                <p className="text-sm text-slate-600">
+                  Unggah data Skrining Interaksi dalam format CSV atau Excel (.xlsx). Pastikan file memiliki baris pertama sebagai header yang tepat (id, drugAId, drugBId, dll).
+                </p>
+                <button
+                  onClick={handleDownloadDdiTemplate}
+                  className="self-start inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Template Excel
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Pilih File</label>
+                <input
+                  type="file"
+                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setDdiCsvFile(file);
+                      setDdiCsvError("");
+                    }
+                  }}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                />
+              </div>
+
+              {ddiCsvError && (
+                <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl">
+                  {ddiCsvError}
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => setIsUpdateDdiModalOpen(false)}
+                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleUpdateDdiData}
                 className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />

@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+import { Upload, Save, X, Download } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Search, Navigation, MapPin, Loader2 } from 'lucide-react';
 import L from 'leaflet';
@@ -493,12 +496,92 @@ const mockFacilities: Facility[] = [
   }
 ];
 
-export const MapFacilities: React.FC = () => {
+interface MapFacilitiesProps {
+  isAdmin?: boolean;
+}
+
+export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false }) => {
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvError, setCsvError] = useState("");
+
   // Koordinat pusat Palembang
   const center: [number, number] = [-2.9761, 104.7754];
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("Semua");
-  const [facilities, setFacilities] = useState<Facility[]>(mockFacilities.map(f => ({ ...f, locked: false })));
+  const [facilities, setFacilities] = useState<Facility[]>(() => {
+    const saved = localStorage.getItem("mapFacilitiesData");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return mockFacilities.map(f => ({ ...f, locked: false }));
+      }
+    }
+    return mockFacilities.map(f => ({ ...f, locked: false }));
+  });
+
+  useEffect(() => {
+    localStorage.setItem("mapFacilitiesData", JSON.stringify(facilities));
+  }, [facilities]);
+
+  const handleUpdateData = async () => {
+    if (!csvFile) {
+      setCsvError("Silakan pilih file CSV/Excel terlebih dahulu.");
+      return;
+    }
+    const fileExt = csvFile.name.split('.').pop()?.toLowerCase();
+    if (fileExt === 'csv' || fileExt === 'tsv') {
+      Papa.parse(csvFile, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: true,
+        complete: (results) => {
+          validateAndSetData(results.data);
+        },
+        error: (error) => {
+          setCsvError("Gagal membaca file CSV: " + error.message);
+        }
+      });
+    } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+      try {
+        const data = await csvFile.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const parsed = XLSX.utils.sheet_to_json(worksheet);
+        validateAndSetData(parsed);
+      } catch (err) {
+        setCsvError("Gagal membaca file Excel: " + err.message);
+      }
+    } else {
+      setCsvError("Format file tidak didukung. Gunakan CSV atau Excel (.xlsx)");
+    }
+  };
+
+  const validateAndSetData = (parsed: any[]) => {
+    if (parsed.length > 0 && parsed[0].id !== undefined && parsed[0].name !== undefined) {
+      setFacilities(prev => {
+        const newData = parsed.map(item => ({...item, locked: false}));
+        const prevFiltered = prev.filter(p => !newData.some(n => n.id === p.id));
+        const combined = [...prevFiltered, ...newData];
+        return combined.sort((a, b) => a.id - b.id);
+      });
+      setIsUpdateModalOpen(false);
+      setCsvError("");
+      setCsvFile(null);
+    } else {
+      setCsvError("Format file tidak valid. Pastikan baris pertama berisi header yang tepat.");
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet(mockFacilities);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Peta_Faskes");
+    XLSX.writeFile(wb, "Template_Peta_Faskes.xlsx");
+  };
+
   
   const cities = ["Semua", ...Array.from(new Set(facilities.map(f => f.city).filter(Boolean)))];
   
@@ -641,10 +724,21 @@ export const MapFacilities: React.FC = () => {
     <div className="flex flex-col h-[80vh] min-h-[600px] w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between">
         <div className="flex-1 min-w-[250px]">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            Peta Sebaran Faskes
-            <span className="text-xs font-semibold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{filteredFacilities.length} Faskes</span>
-          </h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              Peta Sebaran Faskes
+              <span className="text-xs font-semibold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{filteredFacilities.length} Faskes</span>
+            </h2>
+            {isAdmin && (
+              <button
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="inline-flex justify-center items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
+              >
+                <Upload className="w-4 h-4" />
+                Update Data
+              </button>
+            )}
+          </div>
           <div className="relative mt-2 max-w-lg flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -928,6 +1022,72 @@ export const MapFacilities: React.FC = () => {
         </MapContainer>
         </div>
       </div>
+      {isUpdateModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Update Data Peta Faskes</h3>
+              <button 
+                onClick={() => setIsUpdateModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 flex-1 overflow-y-auto">
+              <div className="flex flex-col gap-4 mb-4">
+                <p className="text-sm text-slate-600">
+                  Unggah data Peta Faskes dalam format CSV atau Excel (.xlsx). Pastikan file memiliki baris pertama sebagai header yang tepat.
+                </p>
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="self-start inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Template Excel
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-slate-700">Pilih File</label>
+                <input
+                  type="file"
+                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setCsvFile(file);
+                      setCsvError("");
+                    }
+                  }}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                />
+              </div>
+
+              {csvError && (
+                <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl">
+                  {csvError}
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => setIsUpdateModalOpen(false)}
+                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleUpdateData}
+                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Simpan Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

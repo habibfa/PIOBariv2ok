@@ -594,20 +594,6 @@ export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
 ];
 
 /**
- * Checks for interactions between drug A and drug B.
- * Returns an array of interactions found.
- */
-export function checkInteractions(presetAId: string, presetBId: string): DrugInteraction[] {
-  if (!presetAId || !presetBId || presetAId === "custom" || presetBId === "custom") {
-    return [];
-  }
-
-  return INTERACTION_DATABASE.filter(interaction => {
-    const matchDirect = interaction.drugAId === presetAId && interaction.drugBId === presetBId;
-    const matchReverse = interaction.drugAId === presetBId && interaction.drugBId === presetAId;
-    return matchDirect || matchReverse;
-  });
-}
 
 /**
  * Checks for food-drug interactions for a list of drug IDs.
