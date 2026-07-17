@@ -118,6 +118,62 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     imageUrl: "/dian.jpg",
     specialty: "Farmasi Klinis Rawat Inap"
   },
+  {
+    id: "p8",
+    name: "apt. Muhammad Awaluddin, S.Farm",
+    nip: "198407272006041006",
+    str: "OL00000478386606",
+    strValidity: "Seumur hidup",
+    sipa: "446/IPA/0187/DPMPTSP-PPK/2024",
+    sipaValidity: "23 Juli 2029",
+    phone: "6282372729927",
+    room: "Instalasi Bedah Sentral (IBS)",
+    schedule: "Senin - Jumat, 08:00 - 14:00",
+    imageUrl: "/awal.jpg",
+    specialty: "Instalasi Bedah Sentral (IBS)"
+  },
+  {
+    id: "p9",
+    name: "apt. Sri Hartati, S.Farm",
+    nip: "199308162019022003",
+    str: "XP00000934296315",
+    strValidity: "Seumur hidup",
+    sipa: "446/IPA/0263/DPMPTSP-PPK/2021",
+    sipaValidity: "16 Agustus 2026",
+    phone: "6281287376506",
+    room: "Anak 3",
+    schedule: "Senin - Jumat, 08:00 - 14:00",
+    imageUrl: "/sri.jpg",
+    specialty: "Farmasi Klinis Rawat Inap"
+  },
+  {
+    id: "p10",
+    name: "apt. Siti Adilah, S.Farm",
+    nip: "199005222019022001",
+    str: "OT00001130620320",
+    strValidity: "Seumur hidup",
+    sipa: "446/IPA/0085/DPMPTSP-PPK/2025",
+    sipaValidity: "5 Mei 2030",
+    phone: "6282183844485",
+    room: "Paru dan PICU",
+    schedule: "Senin - Jumat, 08:00 - 14:00",
+    imageUrl: "/dila.jpg",
+    specialty: "Farmasi Klinis Rawat Inap"
+  },
+  {
+    id: "p11",
+    name: "apt. Mery Dwi Susanti, S.Farm",
+    nip: "198405252023212003",
+    str: "GI00001966373573",
+    strValidity: "Seumur hidup",
+    sipa: "446/IPA/0183/DPMPTSP-PPK/2021",
+    sipaValidity: "25 Mei 2026",
+    phone: "6281930288078",
+    room: "VVIP,VIP, dan Kelas 1",
+    schedule: "Senin - Jumat, 08:00 - 14:00",
+    imageUrl: "/merry.jpg",
+    specialty: "Farmasi Klinis Rawat Inap"
+  },
 ];
 
 interface PharmacistConsultationProps {
@@ -141,12 +197,12 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
         const newInitial = INITIAL_PHARMACISTS.filter(
           (initial) => !updated.some((p) => p.id === initial.id)
         );
-        return [...updated, ...newInitial];
+        return [...updated, ...newInitial].sort((a, b) => a.name.localeCompare(b.name));
       } catch (e) {
-        return INITIAL_PHARMACISTS;
+        return [...INITIAL_PHARMACISTS].sort((a, b) => a.name.localeCompare(b.name));
       }
     }
-    return INITIAL_PHARMACISTS;
+    return [...INITIAL_PHARMACISTS].sort((a, b) => a.name.localeCompare(b.name));
   });
 
   useEffect(() => {
