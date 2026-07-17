@@ -103,7 +103,21 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     schedule: "Senin - Jumat, 08:00 - 14:00",
     imageUrl: "/suci.jpg",
     specialty: "Farmasi Klinis Rawat Inap"
-  }
+  },
+  {
+    id: "p7",
+    name: "apt. Dian Pratiwi, S.Farm",
+    nip: "198803292024212015",
+    str: "JI00001093288072",
+    strValidity: "Seumur hidup",
+    sipa: "446/IPA/0059/DPMPTSP-PPK/2023",
+    sipaValidity: "29 Maret 2026",
+    phone: "6281373413627",
+    room: "Kelas 2",
+    schedule: "Senin - Jumat, 08:00 - 14:00",
+    imageUrl: "/dian.jpg",
+    specialty: "Farmasi Klinis Rawat Inap"
+  },
 ];
 
 interface PharmacistConsultationProps {
@@ -115,7 +129,11 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
     const saved = localStorage.getItem("pharmacistsData");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as Pharmacist[];
+        const newInitial = INITIAL_PHARMACISTS.filter(
+          (initial) => !parsed.some((p) => p.id === initial.id)
+        );
+        return [...parsed, ...newInitial];
       } catch (e) {
         return INITIAL_PHARMACISTS;
       }
