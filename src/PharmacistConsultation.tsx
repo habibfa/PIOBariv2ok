@@ -130,10 +130,18 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as Pharmacist[];
+        const updated = parsed.map(p => {
+          const initial = INITIAL_PHARMACISTS.find(i => i.id === p.id);
+          // If initial data has changed (e.g. image, name), we overwrite to ensure updates are reflected
+          if (initial && (p.name !== initial.name || p.imageUrl !== initial.imageUrl || p.str !== initial.str || p.sipa !== initial.sipa || p.specialty !== initial.specialty)) {
+             return { ...p, ...initial };
+          }
+          return p;
+        });
         const newInitial = INITIAL_PHARMACISTS.filter(
-          (initial) => !parsed.some((p) => p.id === initial.id)
+          (initial) => !updated.some((p) => p.id === initial.id)
         );
-        return [...parsed, ...newInitial];
+        return [...updated, ...newInitial];
       } catch (e) {
         return INITIAL_PHARMACISTS;
       }
