@@ -521,12 +521,23 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                   </div>
                 </div>
 
-                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex gap-3 text-emerald-800">
-                  <Info className="w-5 h-5 shrink-0 text-emerald-600" />
-                  <div className="text-xs space-y-1.5">
-                    <p><strong>Disclaimer:</strong> Data kompatibilitas ini adalah panduan umum Y-site administration. Faktor seperti konsentrasi obat, pH pelarut, suhu, dan waktu kontak dapat memengaruhi hasil di lapangan.</p>
-                    <p>Jika ragu, selalu gunakan jalur IV terpisah atau bilas (flush) jalur dengan saline secara memadai di antara pemberian obat.</p>
+                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex flex-col gap-3 text-emerald-800">
+                  <div className="flex gap-3">
+                    <Info className="w-5 h-5 shrink-0 text-emerald-600" />
+                    <div className="text-xs space-y-1.5">
+                      <p><strong>Disclaimer:</strong> Data kompatibilitas ini adalah panduan umum Y-site administration. Faktor seperti konsentrasi obat, pH pelarut, suhu, dan waktu kontak dapat memengaruhi hasil di lapangan.</p>
+                      <p>Jika ragu, selalu gunakan jalur IV terpisah atau bilas (flush) jalur dengan saline secara memadai di antara pemberian obat.</p>
+                      <p><strong>Sumber:</strong> Pedoman Pencampuran Obat Suntik dan Penanganan Sediaan Sitostatika, Depkes RI 2009.</p>
+                    </div>
                   </div>
+                  <a 
+                    href="/pedoman_pencampuran.pdf" 
+                    download="Pedoman_Pencampuran_Obat_Suntik_2009.pdf"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors self-start mt-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Sumber Pedoman (PDF)
+                  </a>
                 </div>
 
               </div>

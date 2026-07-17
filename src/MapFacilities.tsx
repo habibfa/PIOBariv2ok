@@ -964,7 +964,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
             />
           )}
           
-          {filteredFacilities.map(facility => (
+          {filteredFacilities.filter(f => f && f.lat !== undefined && f.lng !== undefined && f.id !== undefined).map(facility => (
             <Marker 
               key={facility.id} 
               position={[facility.lat, facility.lng]}
