@@ -485,12 +485,305 @@ const INITIAL_FORNAS_DATA: FornasDrug[] = [
     fpktl: "√",
     oen: "-",
     catatan: "-"
+  },
+  {
+    id: "f37",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIANGINA",
+    namaObat: "Amlodipin*",
+    bentukSediaan: "tab 5 mg",
+    restriksi: "Untuk angina dengan bradiaritmia.",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f38",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIHIPERTENSI",
+    namaObat: "Amlodipin*",
+    bentukSediaan: "tab 5 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f39",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIHIPERTENSI",
+    namaObat: "Amlodipin*",
+    bentukSediaan: "tab 10 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f40",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Amoksisilin",
+    bentukSediaan: "tab 250 mg",
+    restriksi: "-",
+    peresepanMaksimal: "10 hari",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f41",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Amoksisilin",
+    bentukSediaan: "tab 500 mg",
+    restriksi: "-",
+    peresepanMaksimal: "10 hari",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f42",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Amoksisilin",
+    bentukSediaan: "drops 100 mg/ml",
+    restriksi: "-",
+    peresepanMaksimal: "1 btl/kasus",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f43",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Amoksisilin",
+    bentukSediaan: "sir kering 125 mg/5 ml",
+    restriksi: "-",
+    peresepanMaksimal: "1 btl/kasus",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f44",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Amoksisilin",
+    bentukSediaan: "sir kering 250 mg/5 ml",
+    restriksi: "-",
+    peresepanMaksimal: "1 btl/kasus",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f45",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Ampisilin",
+    bentukSediaan: "inj 250 mg (i.m/i.v.)",
+    restriksi: "-",
+    peresepanMaksimal: "10 hari",
+    fpktp: "√, PP",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f46",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Ampisilin",
+    bentukSediaan: "inj 1.000 mg (i.v.)",
+    restriksi: "-",
+    peresepanMaksimal: "10 hari",
+    fpktp: "√, PP",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f47",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Basal: Insulin Detemir",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "Dalam kondisi tertentu, Dokter di FPKTP dapat melakukan penyesuaian dosis (titrasi) insulin basal hingga 20 IU/hari.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f48",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Basal: Insulin Glargine",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "Dalam kondisi tertentu, Dokter di FPKTP dapat melakukan penyesuaian dosis (titrasi) insulin basal hingga 20 IU/hari.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f49",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Basal: Insulin Glargine",
+    bentukSediaan: "inj 300 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "Dalam kondisi tertentu, Dokter di FPKTP dapat melakukan penyesuaian dosis (titrasi) insulin basal hingga 20 IU/hari.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f50",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Campuran: Co-Formulation 70% Insulin Degludec (Ultra-Long Acting Insulin) Dan 30% Insulin Aspart",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f51",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Campuran: Kombinasi 50% Insulin Protamine Lispro Dan 50% Insulin Lispro",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f52",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Campuran: Kombinasi 70% Insulin Protamine Aspart Dan 30% Insulin Aspart",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f53",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Campuran: Kombinasi 75% Insulin Protamine Lispro Dan 25% Insulin Lispro",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "a) Pasien diabetes melitus tipe 2 yang sudah diberikan kombinasi metformin dan obat diabetes oral lainnya dengan dosis optimal masing-masing obat telah diberikan minimal dalam 3 bulan namun kadar glukosa darahnya belum terkendali (HbA1C > 7,5% atau gula darah rerata > 169 mg/dL). b) Pasien diabetes melitus tipe 2 dengan kadar HbA1C nya > 9% disertai dengan gejala-gejala dekompensasi metabolik. c) Pemberian insulin pada (a) dan (b) dapat dilanjutkan untuk pasien diabetes melitus tipe 2, jika insulin dibutuhkan untuk mempertahankan pengendalian glukosa darah.",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f54",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Prandial: Insulin Aspart",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f55",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Prandial: Insulin Glulisin",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f56",
+    kelasTerapi: "ANTIDIABETES",
+    subKelasTerapi: "Antidiabetes Parenteral",
+    namaObat: "Analog Insulin Prandial: Insulin Lispro",
+    bentukSediaan: "inj 100 IU/mL (kemasan vial, disposable cartridge, penfill cartridge)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f57",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "TERAPI ENDOKRIN",
+    namaObat: "Anastrozol [CA]",
+    bentukSediaan: "tab 1 mg",
+    restriksi: "a) Dapat digunakan untuk kanker payudara post menopause dengan pemeriksaan reseptor estrogen/progesteron positif. b)Dapat digunakan pada premenopause atau perimenopause yang dijadikan post menopause dengan pemberian goserelin asetat.",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
   }
 ];
 
 interface FornasDrugsProps {
   isAdmin?: boolean;
 }
+
+
+const ExpandableText = ({ text, maxLength = 100 }: { text: string; maxLength?: number }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  if (!text || text === "-") return <span>-</span>;
+  if (text.length <= maxLength) return <span>{text}</span>;
+
+  return (
+    <div>
+      <span>{isExpanded ? text : `${text.substring(0, maxLength)}...`}</span>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="text-emerald-600 font-medium ml-1 hover:underline focus:outline-none"
+      >
+        {isExpanded ? "Tutup" : "Selengkapnya"}
+      </button>
+    </div>
+  );
+};
+
 
 export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
   const [fornasData, setFornasData] = useState<FornasDrug[]>(() => {
@@ -591,10 +884,10 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [showKeterangan, setShowKeterangan] = useState(false);
 
-  const toggleGroup = (namaObat: string) => {
+  const toggleGroup = (key: string) => {
     setExpandedGroups(prev => ({
       ...prev,
-      [namaObat]: !prev[namaObat]
+      [key]: !prev[key]
     }));
   };
 
@@ -623,7 +916,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
 
     const groups: Record<string, FornasDrug[]> = {};
     filtered.forEach(drug => {
-      const key = drug.namaObat;
+      const key = `${drug.kelasTerapi}|${drug.namaObat}`;
       if (!groups[key]) {
         groups[key] = [];
       }
@@ -817,10 +1110,11 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 groupedData.map((group) => {
                   const drug = group[0];
                   const hasMultiple = group.length > 1;
-                  const isExpanded = expandedGroups[drug.namaObat];
+                  const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
+                  const isExpanded = expandedGroups[groupKey];
                   
                   return (
-                  <React.Fragment key={drug.namaObat}>
+                  <React.Fragment key={groupKey}>
                     <tr className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 align-top">
                         <div className="font-semibold text-slate-800">{drug.kelasTerapi}</div>
@@ -830,7 +1124,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         <div className="flex items-center gap-2">
                           {hasMultiple && (
                             <button 
-                              onClick={() => toggleGroup(drug.namaObat)}
+                              onClick={() => toggleGroup(groupKey)}
                               className="p-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors shrink-0"
                             >
                               {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
@@ -847,7 +1141,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         )}
                       </td>
                       <td className="px-4 py-3 align-top text-xs leading-relaxed">
-                        {hasMultiple && !isExpanded ? "-" : drug.restriksi}
+                        {hasMultiple && !isExpanded ? "-" : <ExpandableText text={drug.restriksi} />}
                       </td>
                       <td className="px-4 py-3 align-top text-xs">
                         {hasMultiple && !isExpanded ? "-" : drug.peresepanMaksimal}
@@ -862,7 +1156,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         {hasMultiple && !isExpanded ? "-" : (drug.oen && drug.oen !== "-" ? <span className="text-emerald-600 font-bold">{drug.oen}</span> : <span className="text-slate-300">-</span>)}
                       </td>
                       <td className="px-4 py-3 align-top text-xs leading-relaxed text-slate-600">
-                        {hasMultiple && !isExpanded ? "-" : (drug.catatan !== "-" ? drug.catatan : "")}
+                        {hasMultiple && !isExpanded ? "-" : (drug.catatan !== "-" ? <ExpandableText text={drug.catatan} /> : "")}
                       </td>
                     </tr>
                     {hasMultiple && isExpanded && group.slice(1).map((subDrug) => (
@@ -872,7 +1166,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         </td>
                         <td className="px-4 py-3 align-top">{subDrug.bentukSediaan}</td>
                         <td className="px-4 py-3 align-top text-xs leading-relaxed">
-                          {subDrug.restriksi}
+                          <ExpandableText text={subDrug.restriksi} />
                         </td>
                         <td className="px-4 py-3 align-top text-xs">
                           {subDrug.peresepanMaksimal}
@@ -887,7 +1181,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                           {subDrug.oen && subDrug.oen !== "-" ? <span className="text-emerald-600 font-bold">{subDrug.oen}</span> : <span className="text-slate-300">-</span>}
                         </td>
                         <td className="px-4 py-3 align-top text-xs leading-relaxed text-slate-600">
-                          {subDrug.catatan !== "-" ? subDrug.catatan : ""}
+                          {subDrug.catatan !== "-" ? <ExpandableText text={subDrug.catatan} /> : ""}
                         </td>
                       </tr>
                     ))}
@@ -911,14 +1205,15 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
             groupedData.map((group) => {
               const drug = group[0];
               const hasMultiple = group.length > 1;
-              const isExpanded = expandedGroups[drug.namaObat];
+              const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
+                  const isExpanded = expandedGroups[groupKey];
               
               return (
-              <div key={`mob-${drug.namaObat}`} className="p-4 space-y-3">
+              <div key={`mob-${groupKey}`} className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   {hasMultiple && (
                     <button 
-                      onClick={() => toggleGroup(drug.namaObat)}
+                      onClick={() => toggleGroup(groupKey)}
                       className="p-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors shrink-0"
                     >
                       {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
@@ -950,7 +1245,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                     {drug.restriksi !== "-" && (
                       <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">
                         <span className="font-semibold block mb-1">Restriksi:</span>
-                        {drug.restriksi}
+                        <ExpandableText text={drug.restriksi} />
                       </div>
                     )}
                     {drug.peresepanMaksimal !== "-" && (
@@ -962,7 +1257,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                     {drug.catatan !== "-" && (
                       <div className="text-xs text-slate-600 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100/50 leading-relaxed">
                         <span className="font-semibold block mb-1">Catatan:</span> 
-                        {drug.catatan}
+                        <ExpandableText text={drug.catatan} />
                       </div>
                     )}
                   </>
@@ -993,7 +1288,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                       {subDrug.restriksi !== "-" && (
                         <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">
                           <span className="font-semibold block mb-1">Restriksi:</span>
-                          {subDrug.restriksi}
+                          <ExpandableText text={subDrug.restriksi} />
                         </div>
                       )}
                       {subDrug.peresepanMaksimal !== "-" && (
@@ -1005,7 +1300,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                       {subDrug.catatan !== "-" && (
                         <div className="text-xs text-slate-600 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100/50 leading-relaxed">
                           <span className="font-semibold block mb-1">Catatan:</span> 
-                          {subDrug.catatan}
+                          <ExpandableText text={subDrug.catatan} />
                         </div>
                       )}
                     </div>
