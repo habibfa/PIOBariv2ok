@@ -17,7 +17,177 @@ interface FornasDrug {
   catatan: string;
 }
 
-const INITIAL_FORNAS_DATA: FornasDrug[] = [];
+const INITIAL_FORNAS_DATA: FornasDrug[] = [
+  {
+    id: "f1",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Abakavir",
+    bentukSediaan: "tab 300 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "Disediakan oleh Program Kemenkes."
+  },
+  {
+    id: "f2",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIARITMIA",
+    namaObat: "Adenosin",
+    bentukSediaan: "inj 3mg/ml",
+    restriksi: "Digunakan untuk mengatasi SVT (dibuktikan dengan EKG). Digunakan untuk uji pembebanan jantung.",
+    peresepanMaksimal: "Maks 5 ampul",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f3",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "ANTINEOPLASTIK",
+    namaObat: "Afatinib [CA]",
+    bentukSediaan: "tab sal selaput 20 mg",
+    restriksi: "Untuk NSCLC jenis non squamous yang locally advanced atau metastatik dengan EGFR exon 19 delesi atau mutasi subsitusi exon 21 (L858R atau L861Q), substitusi exon 18 (G719X), atau substitusi mutasi exon 20 (S7681), pada pasien yang belum pernah mendapatkan TKI sebelumnya. Dosis terapi adalah 40 mg, diberikan 1x1 sehari. Tidak digunakan sebagai lini kedua. Jika terjadi progresi pada salah satu (gefitinib, erlotinib, atau afatinib), maka tidak dapat diganti dengan obat-obat tersebut. Dosis 20 mg bukan dosis terapeutik tetapi digunakan apabila muncul efek samping. Dosis dikembalikan ke 40 mg untuk mendapat efikasi yang diharapkan.",
+    peresepanMaksimal: "Obat dihentikan jika respons terhadap obat kurang dari 50%, setelah 3 siklus.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f4",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "ANTINEOPLASTIK",
+    namaObat: "Afatinib [CA]",
+    bentukSediaan: "tab sal selaput 30 mg",
+    restriksi: "Dosis 30 mg bukan dosis terapeutik tetapi digunakan apabila muncul efek samping. Dosis dikembalikan ke 40 mg untuk mendapat efikasi yang diharapkan.",
+    peresepanMaksimal: "Obat dihentikan jika respons terhadap obat kurang dari 50%, setelah 3 siklus.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f5",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "ANTINEOPLASTIK",
+    namaObat: "Afatinib [CA]",
+    bentukSediaan: "tab sal selaput 40 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan. Obat dihentikan jika respons terhadap obat kurang dari 50%, setelah 3 siklus.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f6",
+    kelasTerapi: "LARUTAN ELEKTROLIT, NUTRISI, dan LAIN LAIN",
+    subKelasTerapi: "LAIN LAIN",
+    namaObat: "Air steril untuk injeksi",
+    bentukSediaan: "cairan inj",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f7",
+    kelasTerapi: "LARUTAN ELEKTROLIT, NUTRISI, dan LAIN LAIN",
+    subKelasTerapi: "LAIN LAIN",
+    namaObat: "Air untuk irigasi",
+    bentukSediaan: "inf",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f8",
+    kelasTerapi: "HORMON, OBAT ENDOKRIN LAIN dan KONTRASEPSI",
+    subKelasTerapi: "ANTIDIABETES",
+    namaObat: "Akarbose",
+    bentukSediaan: "tab 50 mg",
+    restriksi: "-",
+    peresepanMaksimal: "90 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f9",
+    kelasTerapi: "HORMON, OBAT ENDOKRIN LAIN dan KONTRASEPSI",
+    subKelasTerapi: "ANTIDIABETES",
+    namaObat: "Akarbose",
+    bentukSediaan: "tab 100 mg",
+    restriksi: "-",
+    peresepanMaksimal: "90 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f10",
+    kelasTerapi: "OBAT dan BAHAN untuk GIGI",
+    subKelasTerapi: "PREPARAT LAINNYA",
+    namaObat: "Akuades",
+    bentukSediaan: "cairan 500 mL",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f11",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTELMINTIK",
+    namaObat: "Albendazol",
+    bentukSediaan: "tab 400 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "Pada wanita hamil hanya digunakan bila manfaat jelas lebih besar daripada risiko, sebaiknya digunakan pada trimester 2 dan trimester 3."
+  },
+  {
+    id: "f12",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTELMINTIK",
+    namaObat: "Albendazol",
+    bentukSediaan: "susp 200 mg/5 mL",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f13",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTELMINTIK",
+    namaObat: "Albendazol",
+    bentukSediaan: "susp 400 mg/10 mL",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  }
+];
 
 interface FornasDrugsProps {
   isAdmin?: boolean;
