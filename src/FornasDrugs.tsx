@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, FileSpreadsheet, Plus, Minus, Trash2 } from 'lucide-react';
+import { BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, FileSpreadsheet, Plus, Minus, Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -186,6 +186,305 @@ const INITIAL_FORNAS_DATA: FornasDrug[] = [
     fpktl: "√",
     oen: "-",
     catatan: "-"
+  },
+  {
+    id: "f14",
+    kelasTerapi: "PRODUK DARAH dan PENGGANTI PLASMA",
+    subKelasTerapi: "PENGGANTI PLASMA dan PLASMA EKSPANDER",
+    namaObat: "Albumin Serum Normal (Human Albumin)",
+    bentukSediaan: "inj 5%",
+    restriksi: "Untuk luka bakar tingkat 2 (luas permukaan terbakar lebih dari 30%) dan kadar albumin < 2,5 g/dL atau Untuk plasmaferesis.",
+    peresepanMaksimal: "Diberikan selama 24 jam. Perhitungkan kebutuhan albumin berdasarkan BB.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f15",
+    kelasTerapi: "PRODUK DARAH dan PENGGANTI PLASMA",
+    subKelasTerapi: "PENGGANTI PLASMA dan PLASMA EKSPANDER",
+    namaObat: "Albumin Serum Normal (Human Albumin)",
+    bentukSediaan: "inj 20%",
+    restriksi: "Dapat digunakan pada salah satu atau lebih kondisi berikut: a.) Kadar albumin < 2,5 g/dL. b.)Kadar albumin < 2,5 g/dL pada sindrom nefrotik yang disertai edema anasarka dan/atau renjatan. Diberikan apabila terdapat kondisi presyok atau syok, dan/atau untuk kasus asites masif dengan penekanan organ pernapasan atau perut.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f16",
+    kelasTerapi: "PRODUK DARAH dan PENGGANTI PLASMA",
+    subKelasTerapi: "PENGGANTI PLASMA dan PLASMA EKSPANDER",
+    namaObat: "Albumin Serum Normal (Human Albumin)",
+    bentukSediaan: "inj 25%",
+    restriksi: "Dapat digunakan pada salah satu atau lebih kondisi berikut: a.) Kadar albumin < 2,5 g/dL. b.)Kadar albumin < 2,5 g/dL pada sindrom nefrotik yang disertai edema anasarka dan/atau renjatan. Diberikan apabila terdapat kondisi presyok atau syok, dan/atau untuk kasus asites masif dengan penekanan organ pernapasan atau perut.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f17",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "ANTINEOPLASTIK",
+    namaObat: "Alektinib [CA]",
+    bentukSediaan: "kaps 150 mg",
+    restriksi: "Hanya untuk kanker paru dengan ALK positif yang locally advanced atau metastatik NSCLC pada pasien yang belum pernah mendapatkan obat golongan penghambat (inhibitor) mutasi gen ALK positif sebelumnya. Diresepkan oleh dokter yang memiliki kompetensi di bidang ilmu hematologi dan onkologi medik, atau onkologi lain, atau penyakit dalam, atau penyakit paru.",
+    peresepanMaksimal: "240 kaps/bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f18",
+    kelasTerapi: "OBAT yang MEMENGARUHI STRUKTUR dan MINERALISASI TULANG",
+    subKelasTerapi: "-",
+    namaObat: "Alendronat",
+    bentukSediaan: "tab 70 mg",
+    restriksi: "a)Pasien dengan osteoporosis,hasil pemeriksaan BMD DXA, T score < -2,5 (bukan BMD ultrasound); atau b)Riwayat fraktur osteoporosis.",
+    peresepanMaksimal: "4 tab/bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f19",
+    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NON STEROID, ANTIPIRAI",
+    subKelasTerapi: "ANTIPIRAI",
+    namaObat: "Alopurinol",
+    bentukSediaan: "tab 100 mg*",
+    restriksi: "Tidak diberikan pada saat nyeri akut",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f20",
+    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NON STEROID, ANTIPIRAI",
+    subKelasTerapi: "ANTIPIRAI",
+    namaObat: "Alopurinol",
+    bentukSediaan: "tab 300 mg",
+    restriksi: "Tidak diberikan pada saat nyeri akut",
+    peresepanMaksimal: "60 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f21",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIANSIETAS",
+    namaObat: "Alprazolam",
+    bentukSediaan: "tab 0,25 mg",
+    restriksi: "a) Diresepkan oleh dokter yang memiliki kompetensi di bidang ilmu kedokteran jiwa atau penyakit dalam. b) Hanya untuk kasus: - Panic attack - Panic disorder",
+    peresepanMaksimal: "Maks 2 minggu/kasus, 30 tab/bulan.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f22",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIANSIETAS",
+    namaObat: "Alprazolam",
+    bentukSediaan: "tab 0,5 mg",
+    restriksi: "a) Diresepkan oleh dokter yang memiliki kompetensi di bidang ilmu kedokteran jiwa atau penyakit dalam. b) Hanya untuk kasus: - Panic attack - Panic disorder",
+    peresepanMaksimal: "Maks 2 minggu/kasus, 30 tab/bulan.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f23",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIANSIETAS",
+    namaObat: "Alprazolam",
+    bentukSediaan: "tab 1 mg",
+    restriksi: "a) Diresepkan oleh dokter yang memiliki kompetensi di bidang ilmu kedokteran jiwa atau penyakit dalam. b) Hanya untuk kasus: - Panic attack - Panic disorder",
+    peresepanMaksimal: "Maks 2 minggu/kasus, 30 tab/bulan.",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f24",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "TROMBOLITIK",
+    namaObat: "Alteplase",
+    bentukSediaan: "serb inj 50 mg",
+    restriksi: "a) Untuk infark miokard akut dengan onset < 12 jam. b) Untuk stroke non hemoragik dengan onset < 4,5 jam. c) Dapat diberikan di FPKTL yang memiliki fasilitas ICCU/ICU/unit stroke. d) Kontraindikasi: tidak digunakan untuk stroke iskemik dengan riwayat perdarahan intrakranial dan cedera kepala berat dalam waktu 3 bulan terakhir, operasi mayor dalam waktu 3 bulan terakhir, riwayat gangguan koagulasi, hipertensi yang tidak terkendali.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f25",
+    kelasTerapi: "OBAT untuk MATA",
+    subKelasTerapi: "ANTIMIKROBA",
+    namaObat: "Amfoterisin B",
+    bentukSediaan: "salep mata 1%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f26",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIFUNGI",
+    namaObat: "Amfoterisin B",
+    bentukSediaan: "inj 5 mg/mL (i.v.)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f27",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIFUNGI",
+    namaObat: "Amfoterisin B",
+    bentukSediaan: "inj 50 mg",
+    restriksi: "a) Disediakan oleh Program Kemenkes. b) Digunakan oleh ODHIV yang mengalami Infeksi oportunistik jenis meningitis karena cryptococcus. c) Digunakan untuk kondisi sub akut cryptococcus. d) Pengobatan selama 14 hari.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f28",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIINFEKSI KHUSUS",
+    namaObat: "Amikasin [P]",
+    bentukSediaan: "inj 500 mg",
+    restriksi: "Digunakan untuk paduan pengobatan pasien TB resistan obat (TB-RO).",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f29",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Amikasin",
+    bentukSediaan: "inj 250 mg/mL",
+    restriksi: "Hanya digunakan untuk infeksi oleh bakteri gram negatif yang resistan terhadap gentamisin.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f30",
+    kelasTerapi: "OBAT untuk SALURAN NAPAS",
+    subKelasTerapi: "ANTIASMA",
+    namaObat: "Aminofilin",
+    bentukSediaan: "tab 150 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f31",
+    kelasTerapi: "OBAT untuk SALURAN NAPAS",
+    subKelasTerapi: "ANTIASMA",
+    namaObat: "Aminofilin",
+    bentukSediaan: "tab 200 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f32",
+    kelasTerapi: "OBAT untuk SALURAN NAPAS",
+    subKelasTerapi: "ANTIASMA",
+    namaObat: "Aminofilin",
+    bentukSediaan: "inj 24 mg/ml",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√, PP",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f33",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIARITMIA",
+    namaObat: "Amiodaron",
+    bentukSediaan: "tab 200 mg*",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f34",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIARITMIA",
+    namaObat: "Amiodaron",
+    bentukSediaan: "inj 50 mg/ml",
+    restriksi: "Untuk kasus rawat inap.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f35",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIDEPRESI",
+    namaObat: "Amitriptilin",
+    bentukSediaan: "tab 25 mg",
+    restriksi: "-",
+    peresepanMaksimal: "60 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f36",
+    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NON STEROID, ANTIPIRAI",
+    subKelasTerapi: "NYERI NEUROPATIK",
+    namaObat: "Amitriptilin",
+    bentukSediaan: "tab 25 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan.",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
   }
 ];
 
@@ -223,6 +522,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [nameFilter, setNameFilter] = useState("");
+  const [selectedAlphabet, setSelectedAlphabet] = useState("all");
   const [selectedFaskes, setSelectedFaskes] = useState("All");
 
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -289,6 +589,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
   };
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [showKeterangan, setShowKeterangan] = useState(false);
 
   const toggleGroup = (namaObat: string) => {
     setExpandedGroups(prev => ({
@@ -312,7 +613,12 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
         matchesFaskes = Boolean(drug.fpktl && drug.fpktl !== "-" && drug.fpktl !== "");
       }
 
-      return matchesSearch && matchesFaskes && matchesName;
+      let matchesAlphabet = true;
+      if (selectedAlphabet !== "all") {
+        matchesAlphabet = drug.namaObat.charAt(0).toUpperCase() === selectedAlphabet;
+      }
+
+      return matchesSearch && matchesFaskes && matchesName && matchesAlphabet;
     });
 
     const groups: Record<string, FornasDrug[]> = {};
@@ -325,7 +631,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     });
 
     return Object.values(groups).sort((a, b) => a[0].namaObat.localeCompare(b[0].namaObat));
-  }, [searchTerm, nameFilter, selectedFaskes, fornasData]);
+  }, [searchTerm, nameFilter, selectedAlphabet, selectedFaskes, fornasData]);
 
   return (
     <div className="flex-1 p-4 lg:p-6 overflow-y-auto custom-scrollbar bg-slate-50 flex flex-col h-full">
@@ -373,38 +679,118 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
           </div>
         </div>
         
-        <div className="flex flex-col lg:flex-row gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari kelas terapi..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-            />
+        {/* Keterangan */}
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl overflow-hidden shadow-sm">
+          <button 
+            onClick={() => setShowKeterangan(!showKeterangan)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors hover:bg-emerald-100/50"
+          >
+            <div className="flex items-center gap-2">
+              <Info className="w-5 h-5 text-emerald-600" />
+              <span className="font-bold text-emerald-900">Keterangan / Petunjuk Penggunaan Fornas</span>
+            </div>
+            {showKeterangan ? <ChevronUp className="w-5 h-5 text-emerald-600" /> : <ChevronDown className="w-5 h-5 text-emerald-600" />}
+          </button>
+          {showKeterangan && (
+            <div className="px-4 pb-4 pt-1 text-sm text-emerald-800 space-y-2 leading-relaxed">
+              <p><strong>a.</strong> Sistematika penggolongan nama obat didasarkan pada kelas terapi, subkelas terapi, sub-subkelas terapi, nama generik obat, sediaan/kekuatan, restriksi, tingkat fasilitas pelayanan kesehatan dan peresepan maksimal.</p>
+              <p><strong>b.</strong> Penulisan nama obat disusun berdasarkan abjad nama obat dan dituliskan sesuai Farmakope Indonesia edisi terakhir. Jika tidak ada dalam Farmakope Indonesia, maka digunakan International Non-proprietary Names (INN)/nama generik yang diterbitkan WHO. Obat yang sudah lazim digunakan dan tidak mempunyai nama INN (generik) ditulis dengan nama lazimnya. Obat kombinasi yang tidak mempunyai nama INN (generik) diberi nama yang disepakati sebagai nama generik untuk kombinasi dan dituliskan masing-masing komponen zat berkhasiatnya disertai kekuatan masing-masing komponen. Untuk beberapa hal yang dianggap perlu nama sinonim, dituliskan di antara tanda kurung.</p>
+              <p><strong>c.</strong> Satu jenis obat dapat tercantum dalam beberapa kelas terapi, subkelas atau sub-subkelas terapi sesuai indikasi medis. Satu jenis obat dapat terdiri dari beberapa bentuk sediaan dan satu bentuk sediaan dapat terdiri dari beberapa jenis kekuatan.</p>
+              <p><strong>d.</strong> Tanda simbol [P] menunjukkan bahwa obat tersebut pengadaannya disediakan oleh Program Kementerian Kesehatan atau Program Badan Kependudukan dan Keluarga Berencana dengan ketentuan sebagai berikut:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>1) Apabila tercantum di belakang nama zat aktif, maka ketentuan ini berlaku untuk semua kekuatan dan bentuk sediaan zat aktif tersebut.</li>
+                <li>2) Apabila tercantum di belakang masing-masing kekuatan atau bentuk sediaan zat aktif tertentu, maka ketentuan ini berlaku hanya untuk kekuatan atau bentuk sediaan zat aktif tersebut.</li>
+              </ul>
+              <p><strong>e.</strong> Tanda simbol [Ca] yang tercantum di belakang nama zat aktif menunjukkan bahwa obat antineoplastik.</p>
+              <p><strong>f.</strong> Tanda centang (√) pada kolom FPKTP menunjukkan obat yang dipakai di FPKTP untuk pelayanan kesehatan primer.</p>
+              <p><strong>g.</strong> Tanda centang (√) dan tulisan "PP" pada kolom FPKTP menunjukkan obat yang dipakai di Puskesmas Perawatan.</p>
+              <p><strong>h.</strong> Tanda centang (√) pada kolom FPKTL menunjukkan obat yang dipakai di FPKTL untuk pelayanan kesehatan spesialistik atau sub spesialistik.</p>
+              <p><strong>i.</strong> Tanda bintang (*) menunjukkan bahwa obat tersebut dapat disediakan dan diberikan oleh FPKTP atau apotek yang bekerjasama dengan BPJS Kesehatan untuk program rujuk balik dengan ketentuan sebagai berikut:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>1) Apabila tercantum di belakang nama zat aktif, maka ketentuan ini berlaku untuk semua kekuatan dan bentuk sediaan zat aktif tersebut.</li>
+                <li>2) Apabila tercantum di belakang masing-masing kekuatan atau bentuk sediaan zat aktif tertentu, maka ketentuan ini berlaku hanya untuk kekuatan atau bentuk sediaan zat aktif tersebut.</li>
+              </ul>
+              <p><strong>j.</strong> Tanda centang bintang (√*) menunjukkan bahwa initial treatment dilakukan di FPKTL, yang kemudian selanjutnya obat tersebut dapat disediakan dan diberikan oleh FPKTP atau apotek yang bekerjasama dengan Badan Penyelenggara Jaminan Sosial Kesehatan untuk program rujuk balik.</p>
+              <p><strong>k.</strong> Penulisan restriksi dilakukan dengan ketentuan sebagai berikut:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>1) Apabila tercantum di bawah kelas terapi/sub kelas terapi, maka ketentuan ini berlaku untuk semua item obat yang termasuk di dalam kelas terapi/sub kelas terapi tersebut.</li>
+                <li>2) Apabila tercantum di bawah nama zat aktif, maka ketentuan ini berlaku untuk semua kekuatan dan bentuk sediaan zat aktif tersebut.</li>
+                <li>3) Apabila tercantum di bawah masing-masing kekuatan atau bentuk sediaan zat aktif tertentu, maka ketentuan ini berlaku hanya untuk kekuatan atau bentuk sediaan zat aktif tersebut.</li>
+              </ul>
+              <p><strong>l.</strong> Peresepan maksimal dituliskan di samping masing-masing kekuatan dan/atau bentuk sediaan zat aktif.</p>
+              <p><strong>m.</strong> Tanda centang (√) dalam kolom OEN menunjukkan obat yang termasuk dalam obat esensial.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari kelas terapi..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+              />
+            </div>
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari nama obat..."
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <select
+                value={selectedFaskes}
+                onChange={(e) => setSelectedFaskes(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+              >
+                <option value="All">Semua Faskes</option>
+                <option value="FPKTP">FPKTP</option>
+                <option value="FPKTL">FPKTL</option>
+              </select>
+            </div>
           </div>
-          <div className="flex-1 relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari nama obat..."
-              value={nameFilter}
-              onChange={(e) => setNameFilter(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-500" />
-            <select
-              value={selectedFaskes}
-              onChange={(e) => setSelectedFaskes(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
-            >
-              <option value="All">Semua Faskes</option>
-              <option value="FPKTP">FPKTP</option>
-              <option value="FPKTL">FPKTL</option>
-            </select>
+          
+          {/* Alphabet Filter */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Berdasarkan Alfabet Nama Obat</label>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setSelectedAlphabet("all")}
+                className={`px-2.5 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+                  selectedAlphabet === "all" ? "bg-emerald-100 text-emerald-700" : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                Semua
+              </button>
+              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => {
+                const hasDrugs = fornasData.some(p => p.namaObat.charAt(0).toUpperCase() === letter);
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => hasDrugs && setSelectedAlphabet(letter)}
+                    disabled={!hasDrugs}
+                    className={`w-7 h-7 flex items-center justify-center text-[11px] font-bold rounded-lg transition-all ${
+                      selectedAlphabet === letter
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : hasDrugs
+                        ? "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer"
+                        : "bg-transparent text-slate-300 cursor-not-allowed border border-slate-100/50"
+                    }`}
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
