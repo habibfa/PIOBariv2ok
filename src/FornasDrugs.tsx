@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, FileSpreadsheet, Plus, Minus } from 'lucide-react';
+import { BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, FileSpreadsheet, Plus, Minus, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -17,320 +17,7 @@ interface FornasDrug {
   catatan: string;
 }
 
-const INITIAL_FORNAS_DATA: FornasDrug[] = [
-  {
-    id: "f1",
-    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NONSTEROID, ANTIPIRAI",
-    subKelasTerapi: "Analgesik Narkotik",
-    namaObat: "Fentanil",
-    bentukSediaan: "inj 0,05 mg/mL (i.m./i.v.)",
-    restriksi: "Hanya untuk nyeri berat yang tidak teratasi dengan analgesik non narkotik dan nyeri pada tindakan pembedahan.",
-    peresepanMaksimal: "5 amp/kasus.",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f2",
-    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NONSTEROID, ANTIPIRAI",
-    subKelasTerapi: "Analgesik Non Narkotik",
-    namaObat: "Parasetamol",
-    bentukSediaan: "tab 500 mg",
-    restriksi: "-",
-    peresepanMaksimal: "30 tab/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f2_2",
-    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NONSTEROID, ANTIPIRAI",
-    subKelasTerapi: "Analgesik Non Narkotik",
-    namaObat: "Parasetamol",
-    bentukSediaan: "syr 120 mg/5 mL",
-    restriksi: "-",
-    peresepanMaksimal: "1 btl/kasus.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f3",
-    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NONSTEROID, ANTIPIRAI",
-    subKelasTerapi: "Antiinflamasi Nonsteroid",
-    namaObat: "Meloksikam",
-    bentukSediaan: "tab 15 mg",
-    restriksi: "-",
-    peresepanMaksimal: "30 tab/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f4",
-    kelasTerapi: "ANTIALERGI dan OBAT untuk ANAFILAKSIS",
-    subKelasTerapi: "Antialergi",
-    namaObat: "Loratadin",
-    bentukSediaan: "tab 10 mg",
-    restriksi: "-",
-    peresepanMaksimal: "30 tab/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f5",
-    kelasTerapi: "ANTIEPILEPSI - ANTIKONVULSI",
-    subKelasTerapi: "Antiepilepsi",
-    namaObat: "Fenitoin",
-    bentukSediaan: "kaps 100 mg",
-    restriksi: "-",
-    peresepanMaksimal: "90 kaps/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f6",
-    kelasTerapi: "ANTIMIKROBA",
-    subKelasTerapi: "Antibakteri Beta Laktam",
-    namaObat: "Amoksisilin",
-    bentukSediaan: "kaps 500 mg",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f7",
-    kelasTerapi: "ANTIMIKROBA",
-    subKelasTerapi: "Antibakteri Lain",
-    namaObat: "Siprofloksasin",
-    bentukSediaan: "tab 500 mg",
-    restriksi: "-",
-    peresepanMaksimal: "10 tab/kasus.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f8",
-    kelasTerapi: "OBAT KARDIOVASKULER",
-    subKelasTerapi: "Antihipertensi",
-    namaObat: "Amlodipin",
-    bentukSediaan: "tab 10 mg",
-    restriksi: "-",
-    peresepanMaksimal: "30 tab/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f9",
-    kelasTerapi: "OBAT KARDIOVASKULER",
-    subKelasTerapi: "Antihipertensi",
-    namaObat: "Bisoprolol",
-    bentukSediaan: "tab 5 mg",
-    restriksi: "-",
-    peresepanMaksimal: "30 tab/bulan.",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f10",
-    kelasTerapi: "OBAT UNTUK SALURAN PENCERNAAN",
-    subKelasTerapi: "Antasida dan Ulkus Peptikum",
-    namaObat: "Omeprazol",
-    bentukSediaan: "kaps 20 mg",
-    restriksi: "Untuk terapi tukak peptik dan refluks gastroesofageal.",
-    peresepanMaksimal: "30 kaps/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f11",
-    kelasTerapi: "ANTIINFEKSI",
-    subKelasTerapi: "ANTIVIRUS",
-    namaObat: "Abakavir",
-    bentukSediaan: "tab 300 mg",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "√",
-    catatan: "Disediakan program"
-  },
-  {
-    id: "f12",
-    kelasTerapi: "OBAT KARDIOVASKULER",
-    subKelasTerapi: "ANTIARITMIA",
-    namaObat: "Adenosin",
-    bentukSediaan: "inj 3mg/ml",
-    restriksi: "Digunakan untuk mengatasi SVT (dibuktikan dengan EKG). Digunakan untuk uji pembebanan jantung.",
-    peresepanMaksimal: "Maks 5 ampul",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f13",
-    kelasTerapi: "ANTINEOPLASTIK",
-    subKelasTerapi: "ANTINEOPLASTIK",
-    namaObat: "Afatinib",
-    bentukSediaan: "tab sal selaput 40 mg",
-    restriksi: "Untuk NSCLC jenis non squamous yang locally advanced atau metastatik dengan EGFR exon 19 delesi atau mutasi subsitusi exon 21 (L858R atau L861Q), substitusi exon 18 (G719X), atau substitusi mutasi exon 20 (S7681), pada pasien yang belum pernah mendapatkan TKI sebelumnya. Dosis terapi adalah 40 mg, diberikan 1x1 sehari. Tidak digunakan sebagai lini kedua. Jika terjadi progresi pada salah satu (gefitinib, erlotinib, atau afatinib), maka tidak dapat diganti dengan obat-obat tersebut. Dosis 20 mg bukan dosis terapeutik tetapi digunakan apabila muncul efek samping. Dosis dikembalikan ke 40 mg untuk mendapat efikasi yang diharapkan",
-    peresepanMaksimal: "Obat dihentikan jika respons terhadap obat kurang dari 50%, setelah 3 siklus.",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f14",
-    kelasTerapi: "ANTINEOPLASTIK",
-    subKelasTerapi: "ANTINEOPLASTIK",
-    namaObat: "Afatinib",
-    bentukSediaan: "tab sal selaput 30 mg",
-    restriksi: "Dosis 30 mg bukan dosis terapeutik tetapi digunakan apabila muncul efek samping. Dosis dikembalikan ke 40 mg untuk mendapat efikasi yang diharapkan.",
-    peresepanMaksimal: "Obat dihentikan jika respons terhadap obat kurang dari 50%, setelah 3 siklus. 30 tab/bulan.",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f15",
-    kelasTerapi: "ANTINEOPLASTIK",
-    subKelasTerapi: "ANTINEOPLASTIK",
-    namaObat: "Afatinib",
-    bentukSediaan: "tab sal selaput 20 mg",
-    restriksi: "-",
-    peresepanMaksimal: "Obat dihentikan jika respons terhadap obat kurang dari 50%, setelah 3 siklus.",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f16",
-    kelasTerapi: "LARUTAN INTRAVENA",
-    subKelasTerapi: "LAIN-LAIN",
-    namaObat: "Air steril untuk injeksi",
-    bentukSediaan: "cairan inj",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "√",
-    catatan: "-"
-  },
-  {
-    id: "f17",
-    kelasTerapi: "LARUTAN INTRAVENA",
-    subKelasTerapi: "LAIN-LAIN",
-    namaObat: "Air untuk irigasi",
-    bentukSediaan: "cairan irigasi",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "-",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f18",
-    kelasTerapi: "HORMON, ANTIDIABETIK",
-    subKelasTerapi: "ANTIDIABETES",
-    namaObat: "Akarbose",
-    bentukSediaan: "tab 50 mg",
-    restriksi: "-",
-    peresepanMaksimal: "90 tab/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f19",
-    kelasTerapi: "HORMON, ANTIDIABETIK",
-    subKelasTerapi: "ANTIDIABETES",
-    namaObat: "Akarbose",
-    bentukSediaan: "tab 100 mg",
-    restriksi: "-",
-    peresepanMaksimal: "90 tab/bulan.",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f20",
-    kelasTerapi: "OBAT dan SEDIAAN UNTUK MATA",
-    subKelasTerapi: "PREPARAT MATA LAINNYA",
-    namaObat: "Akuades",
-    bentukSediaan: "cairan 500 ml",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f21",
-    kelasTerapi: "ANTIINFEKSI",
-    subKelasTerapi: "ANTELMINTIK",
-    namaObat: "Albendazol",
-    bentukSediaan: "tab 400 mg",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "Pada wanita hamil"
-  },
-  {
-    id: "f22",
-    kelasTerapi: "ANTIINFEKSI",
-    subKelasTerapi: "ANTELMINTIK",
-    namaObat: "Albendazol",
-    bentukSediaan: "susp 200 mg/5ml",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  },
-  {
-    id: "f23",
-    kelasTerapi: "ANTIINFEKSI",
-    subKelasTerapi: "ANTELMINTIK",
-    namaObat: "Albendazol",
-    bentukSediaan: "susp 400 mg/10ml",
-    restriksi: "-",
-    peresepanMaksimal: "-",
-    fpktp: "√",
-    fpktl: "√",
-    oen: "-",
-    catatan: "-"
-  }
-];
+const INITIAL_FORNAS_DATA: FornasDrug[] = [];
 
 interface FornasDrugsProps {
   isAdmin?: boolean;
@@ -341,7 +28,18 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     const saved = localStorage.getItem("fornasData");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as FornasDrug[];
+        const updated = parsed.map(p => {
+          const initial = INITIAL_FORNAS_DATA.find(i => i.id === p.id);
+          if (initial && (p.namaObat !== initial.namaObat || p.bentukSediaan !== initial.bentukSediaan || p.kelasTerapi !== initial.kelasTerapi || p.subKelasTerapi !== initial.subKelasTerapi || p.restriksi !== initial.restriksi || p.peresepanMaksimal !== initial.peresepanMaksimal || p.fpktp !== initial.fpktp || p.fpktl !== initial.fpktl || p.oen !== initial.oen || p.catatan !== initial.catatan)) {
+             return { ...p, ...initial };
+          }
+          return p;
+        });
+        const newInitial = INITIAL_FORNAS_DATA.filter(
+          (initial) => !updated.some((p) => p.id === initial.id)
+        );
+        return [...updated, ...newInitial];
       } catch (e) {
         return INITIAL_FORNAS_DATA;
       }
@@ -477,13 +175,22 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
           </div>
           <div className="flex flex-col gap-2">
             {isAdmin && (
-              <button
-                onClick={() => setIsUpdateModalOpen(true)}
-                className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
-              >
-                <Upload className="w-4 h-4" />
-                Update Data
-              </button>
+              <>
+                <button
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
+                >
+                  <Upload className="w-4 h-4" />
+                  Update Data
+                </button>
+                <button
+                  onClick={() => setFornasData([])}
+                  className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Bersihkan Data
+                </button>
+              </>
             )}
             <a
               href="/fornas_2025.pdf"
