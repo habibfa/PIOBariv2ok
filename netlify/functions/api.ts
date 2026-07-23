@@ -8,18 +8,22 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Initialize Gemini client safely
-let ai: GoogleGenAI | null = null;
-const apiKey = process.env.GEMINI_API_KEY;
-if (apiKey) {
-  ai = new GoogleGenAI({
-    apiKey: apiKey,
-    httpOptions: {
-      headers: {
-        "User-Agent": "aistudio-build",
+// Initialize Gemini client safely (lazy)
+let aiClient: GoogleGenAI | null = null;
+function getAIClient() {
+  if (aiClient) return aiClient;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey) {
+    aiClient = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
       },
-    },
-  });
+    });
+  }
+  return aiClient;
 }
 
 app.post("/api/disease-info", async (req, res) => {
@@ -30,6 +34,7 @@ app.post("/api/disease-info", async (req, res) => {
       return res.status(400).json({ error: "Silakan berikan nama penyakit." });
     }
 
+    const ai = getAIClient();
     if (!ai) {
       return res.status(503).json({ error: "Gemini API key is not configured on the server." });
     }
@@ -227,7 +232,8 @@ ${alertsList}
     };
 
     try {
-      if (!ai) {
+      const ai = getAIClient();
+    if (!ai) {
         console.warn("Gemini API client not initialized (missing API key). Resorting to rule-based fallback report.");
         const fallbackReport = getFallbackReport(inputs, calculated, preset, question);
         return res.json({ text: fallbackReport });
@@ -327,9 +333,10 @@ app.post("/api/soap-ai", async (req, res) => {
       return res.status(400).json({ error: "Data pasien diperlukan." });
     }
 
+    const ai = getAIClient();
     if (!ai) {
       console.warn("Gemini API client not initialized (missing API key).");
-      return res.json({ text: "Sistem AI tidak terhubung. Tidak dapat menghasilkan catatan SOAP. Mohon hubungi administrator." });
+      return res.json({ text: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan GEMINI_API_KEY di pengaturan Environment Variables pada dashboard Netlify Anda, lalu trigger deploy ulang." });
     }
 
     const prompt = `Role: Kamu adalah apoteker klinis di bangsal penyakit dalam yang menulis catatan SOAP untuk rekam medis.
