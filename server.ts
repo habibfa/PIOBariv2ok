@@ -341,7 +341,7 @@ FORMATTING:
       const ai = getAIClient();
       if (!ai) {
         console.warn("Gemini API client not initialized (missing API key).");
-        return res.json({ text: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan GEMINI_API_KEY di pengaturan Environment Variables pada dashboard Netlify Anda, lalu trigger deploy ulang." });
+        return res.json({ text: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan GEMINI_API_KEY di pengaturan Environment Variables pada dashboard Netlify/Vercel Anda, lalu trigger deploy ulang." });
       }
 
       const prompt = `Role: Kamu adalah apoteker klinis di bangsal penyakit dalam yang menulis catatan SOAP untuk rekam medis.
