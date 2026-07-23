@@ -325,6 +325,67 @@ FORMATTING:
     }
   });
 
+  app.post("/api/soap-ai", async (req, res) => {
+    try {
+      const { patientData } = req.body;
+      if (!patientData) {
+        return res.status(400).json({ error: "Data pasien diperlukan." });
+      }
+
+      if (!ai) {
+        console.warn("Gemini API client not initialized (missing API key).");
+        return res.json({ text: "Sistem AI tidak terhubung. Tidak dapat menghasilkan catatan SOAP. Mohon hubungi administrator." });
+      }
+
+      const prompt = `Role: Kamu adalah apoteker klinis di bangsal penyakit dalam yang menulis catatan SOAP untuk rekam medis.
+
+Goal: Ubah data pasien mentah menjadi catatan SOAP terstruktur dengan fokus pada penilaian farmakoterapi.
+
+Context: Data pasien akan diberikan berupa keluhan, riwayat penyakit, daftar obat, hasil lab, dan tanda vital. Pembaca catatan adalah dokter dan apoteker lain.
+
+Requirements:
+- Kelompokkan menjadi empat bagian: Subjective, Objective, Assessment, Plan.
+- Pada Assessment, identifikasi setiap Drug Related Problem (DRP) dan beri alasan singkat.
+- Pada Plan, sertakan rencana monitoring (parameter, frekuensi, target).
+
+Output Format: Markdown dengan heading tiap bagian SOAP. Assessment dan Plan memakai daftar bernomor. Maksimal 500 kata.
+
+Restrictions: Jangan membuat data yang tidak diberikan. Jangan memberi dosis pasti tanpa data berat badan dan fungsi ginjal.
+
+Examples: Jika pasien memakai warfarin dan INR 4,5 -> Assessment: risiko perdarahan (DRP: dosis berlebih); Plan: tahan 1 dosis, cek INR ulang 24 jam.
+
+Data pasien:
+${patientData}`;
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
+          },
+        });
+      } catch (primaryError: any) {
+        try {
+          response = await ai.models.generateContent({
+            model: "gemini-3.1-flash-lite",
+            contents: prompt,
+            config: {
+              systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
+            },
+          });
+        } catch (secondaryError: any) {
+          throw secondaryError;
+        }
+      }
+      res.json({ text: response.text });
+    } catch (routeError: any) {
+      console.error("Critical error in /api/soap-ai:", routeError);
+      res.status(500).json({ error: "Terjadi kesalahan internal server saat memproses permintaan AI." });
+    }
+  });
+
   // Serve static client assets or mount Vite in dev mode
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

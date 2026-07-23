@@ -9,6 +9,7 @@ import { calculateDosage, calculateMostellerBsa, calculateCockcroftGault } from 
 import ClinicalAlerts from "./components/ClinicalAlerts";
 import PharmacistConsultation from "./PharmacistConsultation";
 import FornasDrugs from "./FornasDrugs";
+import ClinicalSOAP from "./ClinicalSOAP";
 import { generateMedicalReportPDF } from "./pdfUtils";
 import CountUp from "./components/CountUp";
 import {
@@ -849,7 +850,7 @@ export default function App() {
   const [isFemale, setIsFemale] = useState<boolean>(false);
 
   // Tab Selection
-  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "ai" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas">("desc");
+  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "ai" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap">("desc");
 
   // Video Tab States
   const [activeVideoId, setActiveVideoId] = useState<string>("suppositoria");
@@ -1499,6 +1500,17 @@ export default function App() {
             <Sparkles className="w-4 h-4 shrink-0" />
             Konsultasi AI
           </button>
+          <button
+            onClick={() => setActiveTab("soap")}
+            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+              activeTab === "soap"
+                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            }`}
+          >
+            <FileText className="w-4 h-4 shrink-0" />
+            Clinical SOAP
+          </button>
 
           <button
             onClick={() => {
@@ -1597,7 +1609,8 @@ export default function App() {
                  activeTab === "diseases" ? "Penyakit & Kondisi" : 
                  activeTab === "medcalc" ? "Kalkulator Medis" : 
                  activeTab === "video" ? "Panduan Alat & Cara Pakai" : 
-                 activeTab === "ai" ? "Konsultasi AI Berpikir Mendalam" : 
+                 activeTab === "ai" ? "Konsultasi AI Berpikir Mendalam" :
+                 activeTab === "soap" ? "Clinical SOAP" : 
                  activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan" : 
                  activeTab === "iv" ? "Kompatibilitas Obat Intravena" : 
                  activeTab === "pharmacist" ? "Konsultasi Apoteker" : 
@@ -1708,6 +1721,17 @@ export default function App() {
             >
               <Sparkles className="w-3.5 h-3.5" />
               Konsultasi AI
+            </button>
+            <button
+              onClick={() => setActiveTab("soap")}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
+                activeTab === "soap"
+                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Clinical SOAP
             </button>
             <button
               onClick={() => {
@@ -2979,6 +3003,12 @@ export default function App() {
         {/* FORNAS TAB */}
         <section className="lg:col-span-12 w-full min-h-[calc(100vh-12rem)] flex flex-col rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
           <FornasDrugs isAdmin={isAdmin} />
+        </section>
+      </>
+    ) : activeTab === "soap" ? (
+      <>
+        <section className="lg:col-span-12 w-full min-h-[calc(100vh-12rem)] flex flex-col rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white p-6">
+          <ClinicalSOAP />
         </section>
       </>
     ) : activeTab === "desc" ? (

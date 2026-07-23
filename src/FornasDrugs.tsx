@@ -24,12 +24,12 @@ const INITIAL_FORNAS_DATA: FornasDrug[] = [
     subKelasTerapi: "ANTIVIRUS",
     namaObat: "Abakavir",
     bentukSediaan: "tab 300 mg",
-    restriksi: "-",
+    restriksi: "Disediakan oleh Program Kemenkes.",
     peresepanMaksimal: "-",
     fpktp: "-",
     fpktl: "√",
     oen: "√",
-    catatan: "Disediakan oleh Program Kemenkes."
+    catatan: "-"
   },
   {
     id: "f2",
@@ -154,12 +154,12 @@ const INITIAL_FORNAS_DATA: FornasDrug[] = [
     subKelasTerapi: "ANTELMINTIK",
     namaObat: "Albendazol",
     bentukSediaan: "tab 400 mg",
-    restriksi: "-",
+    restriksi: "Pada wanita hamil hanya digunakan bila manfaat jelas lebih besar daripada risiko, sebaiknya digunakan pada trimester 2 dan trimester 3.",
     peresepanMaksimal: "-",
     fpktp: "√",
     fpktl: "√",
     oen: "-",
-    catatan: "Pada wanita hamil hanya digunakan bila manfaat jelas lebih besar daripada risiko, sebaiknya digunakan pada trimester 2 dan trimester 3."
+    catatan: "-"
   },
   {
     id: "f12",
@@ -758,6 +758,1007 @@ const INITIAL_FORNAS_DATA: FornasDrug[] = [
     fpktl: "√",
     oen: "√",
     catatan: "-"
+  },
+  {
+    id: "f58",
+    kelasTerapi: "OBAT dan BAHAN untuk GIGI",
+    subKelasTerapi: "PREPARAT LAINNYA",
+    namaObat: "Anestetik Lokal Gigi, Kombinasi Kdt/Fdc Mengandung Lidokain Dan Epinefrin",
+    bentukSediaan: "inj lidokain 2%, epinefrin 1:80.000",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f59",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "ANTASIDA dan ANTIULKUS",
+    namaObat: "Antasida, Kombinasi Aluminium  Hidroksida Dan Magnesium Hidroksida",
+    bentukSediaan: "tablet kunyah aluminium hidroksida 200 mg",
+    restriksi: "magnesium hidroksida 200 mg",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f60",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "ANTASIDA dan ANTIULKUS",
+    namaObat: "Antasida, Kombinasi Aluminium  Hidroksida Dan Magnesium Hidroksida",
+    bentukSediaan: "susp aluminium hidroksida 200 mg",
+    restriksi: "magnesium hidroksida 200 mg",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f61",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "-",
+    namaObat: "Antibakteri, Kombinasi Kdt/Fdc Mengandung Basitrasin Dan Polimiksin B",
+    bentukSediaan: "salep bsitrasin 500 IU/g",
+    restriksi: "polimiksin B 10.000IU/g",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f62",
+    kelasTerapi: "PRODUK DARAH dan PENGGANTI PLASMA",
+    subKelasTerapi: "PENGGANTI PLASMA dan PLASMA EKSPANDER",
+    namaObat: "Anti-D (Rho(D)) Imunoglobulin",
+    bentukSediaan: "inj 1.500 IU",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f63",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "ANTIFUNGI",
+    namaObat: "Antifungi, Kombinasi Kdt/Fdc Mengandung Asam Benzoat Dan Asam Salisilat",
+    bentukSediaan: "Salep asam benzoat 6%",
+    restriksi: "asam salisilat 3%",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f64",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "ANTIHEMOROID",
+    namaObat: "Antihemoroid, Kombinasi Kdt/Fdc Mengandung Bismut Subgalat, Heksaklorofen, Lidokain, Dan Seng Oksida",
+    bentukSediaan: "susp Bismut Subgalat, Heksaklorofen, Lidokain, Dan Seng Oksida",
+    restriksi: "-",
+    peresepanMaksimal: "5 sup/kasus",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f65",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIPSIKOTIK",
+    namaObat: "Aripiprazol",
+    bentukSediaan: "tab 5mg",
+    restriksi: "Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa, atau neurologi, atau neurologi anak. Termasuk untuk kasus iritabilitas terkait dengan gangguan autisme.",
+    peresepanMaksimal: "15 mg/hari",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f66",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIPSIKOTIK",
+    namaObat: "Aripiprazol",
+    bentukSediaan: "tab dispersible 10 mg*",
+    restriksi: "Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa, atau neurologi, atau neurologi anak. Termasuk untuk kasus iritabilitas terkait dengan gangguan autisme.",
+    peresepanMaksimal: "15 mg/hari",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f67",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIPSIKOTIK",
+    namaObat: "Aripiprazol",
+    bentukSediaan: "tab dispersible 15 mg*",
+    restriksi: "Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa, atau neurologi, atau neurologi anak. Termasuk untuk kasus iritabilitas terkait dengan gangguan autisme.",
+    peresepanMaksimal: "15 mg/hari",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f68",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIPSIKOTIK",
+    namaObat: "Aripiprazol",
+    bentukSediaan: "tab 5mg",
+    restriksi: "Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa, atau neurologi, atau neurologi anak. Termasuk untuk kasus iritabilitas terkait dengan gangguan autisme.",
+    peresepanMaksimal: "15 mg/hari",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f69",
+    kelasTerapi: "ANTIVIRUS",
+    subKelasTerapi: "ANTIPROTOZOA",
+    namaObat: "Artesunat [P]",
+    bentukSediaan: "inj 60 mg (i.v./i.m.)",
+    restriksi: "a) Diberikan pada malaria berat. b) Khusus di FPKTP, pemberian hanya 1 kali yang segera dirujuk ke FPKTL.",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f70",
+    kelasTerapi: "OBAT dan BAHAN untuk GIGI",
+    subKelasTerapi: "PREPARAT LAINNYA",
+    namaObat: "Articulating Paper",
+    bentukSediaan: "-",
+    restriksi: "kertas warna penanda oklusi",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f71",
+    kelasTerapi: "OBAT untuk TELINGA, HIDUNG, dan TENGGOROK",
+    subKelasTerapi: "-",
+    namaObat: "Asam Asetat",
+    bentukSediaan: "tts telinga 2%",
+    restriksi: "Catatan: dibuat baru, recenter paratus (r.p.).",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f72",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIAGREGASI PLATELET",
+    namaObat: "Asam Asetilsalisilat (Asetosal)*",
+    bentukSediaan: "tab 80 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f73",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIAGREGASI PLATELET",
+    namaObat: "Asam Asetilsalisilat (Asetosal)*",
+    bentukSediaan: "tab sal enterik 100 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 tab/bulan",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f74",
+    kelasTerapi: "VITAMIN dan MINERAL",
+    subKelasTerapi: "-",
+    namaObat: "Asam Askorbat (Vitamin C)",
+    bentukSediaan: "tab 50 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f75",
+    kelasTerapi: "VITAMIN dan MINERAL",
+    subKelasTerapi: "-",
+    namaObat: "Asam Askorbat (Vitamin C)",
+    bentukSediaan: "tab 250 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f76",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "ANTIANEMI",
+    namaObat: "Asam Folat",
+    bentukSediaan: "tab 0,4mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f77",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "ANTIANEMI",
+    namaObat: "Asam Folat",
+    bentukSediaan: "tab 1 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f78",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "ANTIANEMI",
+    namaObat: "Asam Folat",
+    bentukSediaan: "tab 5 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f79",
+    kelasTerapi: "OBAT untuk MATA",
+    subKelasTerapi: "ANTIMIKROBA",
+    namaObat: "Asam Fusidat",
+    bentukSediaan: "tts mata 1%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f80",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Asam Fusidat",
+    bentukSediaan: "krim 2%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f81",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "LAIN-LAIN",
+    namaObat: "Asam Ibandronat [CA]",
+    bentukSediaan: "-",
+    restriksi: "a) Hiperkalsemia akibat keganasan. b) Metastatik tulang.",
+    peresepanMaksimal: "1 vial/bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f82",
+    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NON STEROID, ANTIPIRAI",
+    subKelasTerapi: "ANALGESIK NON NARKOTIK",
+    namaObat: "Asam Mefenamat",
+    bentukSediaan: "kaps 250 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 kaps/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f83",
+    kelasTerapi: "ANALGESIK, ANTIPIRETIK, ANTIINFLAMASI NON STEROID, ANTIPIRAI",
+    subKelasTerapi: "ANALGESIK NON NARKOTIK",
+    namaObat: "Asam Mefenamat",
+    bentukSediaan: "tab 500 mg",
+    restriksi: "-",
+    peresepanMaksimal: "30 kaps/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f84",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIINFEKSI KHUSUS",
+    namaObat: "Asam Pipemidat",
+    bentukSediaan: "kaps 400 mg",
+    restriksi: "-",
+    peresepanMaksimal: "28 kaps/kasus",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f85",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "ANTIAKNE",
+    namaObat: "Asam Retinoat",
+    bentukSediaan: "krim 0,05%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f86",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "ANTIAKNE",
+    namaObat: "Asam Retinoat",
+    bentukSediaan: "krim 0,1%",
+    restriksi: "a) tidak digunakan pada pagi dan siang hari b) tidak untuk ibu hamil",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f87",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "KERATOLITIK dan KERATOPLASTIK",
+    namaObat: "Asam Salisilat",
+    bentukSediaan: "salep 2%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f88",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "KERATOLITIK dan KERATOPLASTIK",
+    namaObat: "Asam Salisilat",
+    bentukSediaan: "salep 5%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f89",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "KERATOLITIK dan KERATOPLASTIK",
+    namaObat: "Asam Salisilat",
+    bentukSediaan: "salep 10%",
+    restriksi: "Kulit disekitar lesi harus dilindungi dengan pelembab.",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f90",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "OBAT yang MEMENGARUHI KOAGULASI",
+    namaObat: "Asam Traneksamat",
+    bentukSediaan: "kaps 250 mg",
+    restriksi: "Untuk perdarahan masif atau berpotensi perdarahan > 600 cc.",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f91",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "OBAT yang MEMENGARUHI KOAGULASI",
+    namaObat: "Asam Traneksamat",
+    bentukSediaan: "tab sal selaput 500 mg",
+    restriksi: "Untuk perdarahan masif atau berpotensi perdarahan > 600 cc.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f92",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "OBAT yang MEMENGARUHI KOAGULASI",
+    namaObat: "Asam Traneksamat",
+    bentukSediaan: "inj 50 mg/ml",
+    restriksi: "Untuk perdarahan masif atau berpotensi perdarahan > 600 cc.",
+    peresepanMaksimal: "Untuk FPKTP (PP): 4 amp/hari, maks. 3 hari.",
+    fpktp: "√ (PP)",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f93",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "OBAT yang MEMENGARUHI KOAGULASI",
+    namaObat: "Asam Traneksamat",
+    bentukSediaan: "inj 100 mg/ml",
+    restriksi: "Untuk perdarahan masif atau berpotensi perdarahan > 600 cc.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f94",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "LAIN-LAIN",
+    namaObat: "Asam Ursodeoksikolat",
+    bentukSediaan: "kaps 250 mg",
+    restriksi: "-",
+    peresepanMaksimal: "90 kaps/bulan",
+    fpktp: "√",
+    fpktl: "-",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f95",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "LAIN-LAIN",
+    namaObat: "Asam Zoledronat",
+    bentukSediaan: "-",
+    restriksi: "a) Hiperkalsemia akibat keganasan. b) Metastatik tulang.",
+    peresepanMaksimal: "1 vial/bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f96",
+    kelasTerapi: "ANESTETIK LOKAL",
+    subKelasTerapi: "MIOTIK dan ANTIGLAUKOMA",
+    namaObat: "Asetazolamid",
+    bentukSediaan: "tab 250 mg",
+    restriksi: "a) Hati-hati pemberian pada pasien dengan gangguan fungsi ginjal b)Sebagai penanganan awal dan sementara di FPKTP pada pasien glaukoma akut sebelum dirujuk.",
+    peresepanMaksimal: "Glaukoma kronis: 120 tab/bulan",
+    fpktp: "Glaukoma akut: 30 tab/minggu (maks. 2 minggu)",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f97",
+    kelasTerapi: "OBAT untuk MATA",
+    subKelasTerapi: "ANTIMIKROBA",
+    namaObat: "Asiklovir",
+    bentukSediaan: "salep mata 3%",
+    restriksi: "Hanya untuk kasus keratitis herpetiformis.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f98",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Asiklovir",
+    bentukSediaan: "tab 200 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f99",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Asiklovir",
+    bentukSediaan: "tab 400 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f100",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Asiklovir",
+    bentukSediaan: "serb inj 250 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f101",
+    kelasTerapi: "OBAT TOPIKAL untuk KULIT",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Asiklovir",
+    bentukSediaan: "krip 5%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f102",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "ANTINEOPLASTIK",
+    namaObat: "Asparaginase [CA]",
+    bentukSediaan: "-",
+    restriksi: "Untuk leukemia limfoblastik akut",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f103",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "OBAT untuk DIARE",
+    namaObat: "Atapulgit",
+    bentukSediaan: "tab",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f104",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIHIPERTENSI",
+    namaObat: "Atenolol*",
+    bentukSediaan: "tab 50 mg",
+    restriksi: "Pemberian obat antihipertensi harus didasarkan pada prinsip dosis titrasi, mulai dari dosis terkecil hingga tercapai dosis dengan outcome tekanan darah terbaik.",
+    peresepanMaksimal: "30 tab/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f105",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIHIPERTENSI",
+    namaObat: "Atenolol*",
+    bentukSediaan: "tab 50 mg",
+    restriksi: "Pemberian obat antihipertensi harus didasarkan pada prinsip dosis titrasi, mulai dari dosis terkecil hingga tercapai dosis dengan outcome tekanan darah terbaik.",
+    peresepanMaksimal: "30 tab/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f106",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIANGINA",
+    namaObat: "Atenolol*",
+    bentukSediaan: "tab 50 mg",
+    restriksi: "Pemberian obat antihipertensi harus didasarkan pada prinsip dosis titrasi, mulai dari dosis terkecil hingga tercapai dosis dengan outcome tekanan darah terbaik.",
+    peresepanMaksimal: "30 tab/bulan",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f107",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIHIPERLIPIDEMIA",
+    namaObat: "Atorvastatin*",
+    bentukSediaan: "tab sal selaput 10 mg",
+    restriksi: "Sebagai terapi tambahan terhadap terapi diet pada pasien hiperlipidemia. a) Jika setelah pemberian simvastatin selama 3 bulan berturut-turut dengan dosis 40 mg/hari pasien tidak mencapai target penurunan LDL < 100 mg/dL, disamping diet ketat lemak. atau b) Pasien ASCVD (pasca PCI/CABG, stroke iskemi dan/atau PAD, pascainfark) yang dibuktikan dengan EKG atau MSCT atau riwayat angiografi. Target LDL adalah ? 55 mg/dL, yang harus diperiksa setiap 6 bulan. Pemberian dapat dilanjutkan untuk mempertahankan pengendalian LDL, kecuali apabila ada kontraindikasi.",
+    peresepanMaksimal: "30 tab/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f108",
+    kelasTerapi: "OBAT KARDIOVASKULAR",
+    subKelasTerapi: "ANTIHIPERLIPIDEMIA",
+    namaObat: "Atorvastatin*",
+    bentukSediaan: "tab sal selaput 20 mg",
+    restriksi: "Sebagai terapi tambahan terhadap terapi diet pada pasien hiperlipidemia. a) Jika setelah pemberian simvastatin selama 3 bulan berturut-turut dengan dosis 40 mg/hari pasien tidak mencapai target penurunan LDL < 100 mg/dL, disamping diet ketat lemak. atau b) Pasien ASCVD (pasca PCI/CABG, stroke iskemi dan/atau PAD, pascainfark) yang dibuktikan dengan EKG atau MSCT atau riwayat angiografi. Target LDL adalah ? 55 mg/dL, yang harus diperiksa setiap 6 bulan. Pemberian dapat dilanjutkan untuk mempertahankan pengendalian LDL, kecuali apabila ada kontraindikasi.",
+    peresepanMaksimal: "60 tab/bulan",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f109",
+    kelasTerapi: "RELAKSAN OTOT PERIFER dan PENGHAMBAT KOLINESTERASE",
+    subKelasTerapi: "RELAKSAN OTOT PERIFER",
+    namaObat: "Atrakurium",
+    bentukSediaan: "inj 10 mg/mL",
+    restriksi: "Hanya untuk tindakan anestesi dan pasien ICU yang memerlukan, karena menggunakan ventilator.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f110",
+    kelasTerapi: "OBAT untuk MATA",
+    subKelasTerapi: "MIDRIATIK",
+    namaObat: "Atropin",
+    bentukSediaan: "tts mata 0,5%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f111",
+    kelasTerapi: "OBAT untuk MATA",
+    subKelasTerapi: "MIDRIATIK",
+    namaObat: "Atropin",
+    bentukSediaan: "tts mata 1%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f112",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "ANTISPASMODIK",
+    namaObat: "Atropin",
+    bentukSediaan: "tab 0,5 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f113",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "ANTISPASMODIK",
+    namaObat: "Atropin",
+    bentukSediaan: "inj 0,25 mg/mL (i.v./s.k.)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f114",
+    kelasTerapi: "ANESTETIK",
+    subKelasTerapi: "OBAT untuk PROSEDUR PRE OPERATIF",
+    namaObat: "Atropin",
+    bentukSediaan: "inj 0,25 mg/mL (i.v./s.k.)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f115",
+    kelasTerapi: "ANTIDOT dan OBAT LAIN untuk KERACUNAN",
+    subKelasTerapi: "KHUSUS",
+    namaObat: "Atropin",
+    bentukSediaan: "tab 0,5 mg",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f116",
+    kelasTerapi: "ANTIDOT dan OBAT LAIN untuk KERACUNAN",
+    subKelasTerapi: "KHUSUS",
+    namaObat: "Atropin",
+    bentukSediaan: "inj 0,25 mg/mL (i.v.)",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f117",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "IMUNOSUPRESAN",
+    namaObat: "Azatioprin",
+    bentukSediaan: "tab 50 mg",
+    restriksi: "-",
+    peresepanMaksimal: "120 tab/bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f118",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Azitromisin",
+    bentukSediaan: "tab 250 mg",
+    restriksi: "Diberikan atas persetujuan dokter yang memiliki kompetensi di bidang ilmu penyakit tropik dan/atau infeksi atau DPJP yang ditunjuk oleh KFT/KPRA untuk: a) Antibiotik kategori Watch. b) Ketika antibiotik kategori Access tidak efektif.",
+    peresepanMaksimal: "3 hari",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f119",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Azitromisin",
+    bentukSediaan: "tab sal selaput 500 mg",
+    restriksi: "Diberikan atas persetujuan dokter yang memiliki kompetensi di bidang ilmu penyakit tropik dan/atau infeksi atau DPJP yang ditunjuk oleh KFT/KPRA untuk: a) Antibiotik kategori Watch. b) Ketika antibiotik kategori Access tidak efektif.",
+    peresepanMaksimal: "3 hari",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f120",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Azitromisin",
+    bentukSediaan: "sir kering 200 mg/5 mL",
+    restriksi: "Diberikan atas persetujuan dokter yang memiliki kompetensi di bidang ilmu penyakit tropik dan/atau infeksi atau DPJP yang ditunjuk oleh KFT/KPRA untuk: a) Antibiotik kategori Watch. b) Ketika antibiotik kategori Access tidak efektif.",
+    peresepanMaksimal: "3 hari",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f121",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIBAKTERI",
+    namaObat: "Azitromisin",
+    bentukSediaan: "serb inj 500 mg",
+    restriksi: "Diberikan atas persetujuan dokter yang memiliki kompetensi di bidang ilmu penyakit tropik dan/atau infeksi atau DPJP yang ditunjuk oleh KFT/KPRA untuk: a) Antibiotik kategori Watch. b) Ketika antibiotik kategori Access tidak efektif.",
+    peresepanMaksimal: "3 hari",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f101001",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Zidovudin [P]",
+    bentukSediaan: "kaps 100 mg",
+    restriksi: "Dapat diberikan oleh FPKTP yang memiliki kemampuan pengobatan antiretroviral dengan persyaratan memiliki SK Penunjukan sebagai unit pelayanan yang berhak memberikan obat ARV dari Dinas Kesehatan setempat.",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f101002",
+    kelasTerapi: "ANTIINFEKSI",
+    subKelasTerapi: "ANTIVIRUS",
+    namaObat: "Zidovudin [P]",
+    bentukSediaan: "sir 50 mg /5 mL",
+    restriksi: "Dapat diberikan oleh FPKTP yang memiliki kemampuan pengobatan antiretroviral dengan persyaratan memiliki SK Penunjukan sebagai unit pelayanan yang berhak memberikan obat ARV dari Dinas Kesehatan setempat. Dapat digunakan untuk terapi profilaksis pada bayi baru lahir dari ibu ODHIV selama 6 minggu.",
+    peresepanMaksimal: "Maks 6 minggu",
+    fpktp: "-",
+    fpktl: "-",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f101003",
+    kelasTerapi: "LARUTAN ELEKTROLIT, NUTRISI, dan LAIN–LAIN",
+    subKelasTerapi: "ORAL",
+    namaObat: "Zinc",
+    bentukSediaan: "drops 10 mg/Ml",
+    restriksi: "Untuk anak usia < 2 tahun.",
+    peresepanMaksimal: "2 btl/kasus",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f101004",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "OBAT untuk DIARE",
+    namaObat: "Zinc",
+    bentukSediaan: "tab dispersible 20 mg",
+    restriksi: "Harus diberikan bersama oralit selama 10 hari.",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f101005",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "OBAT untuk DIARE",
+    namaObat: "Zinc",
+    bentukSediaan: "sir 20 mg/5 mL",
+    restriksi: "Harus diberikan bersama oralit selama 10 hari.",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f101006",
+    kelasTerapi: "OBAT untuk SALURAN CERNA",
+    subKelasTerapi: "OBAT untuk DIARE",
+    namaObat: "Zinc",
+    bentukSediaan: "drops 10 mg/Ml",
+    restriksi: "Harus diberikan bersama oralit selama 10 hari. Untuk anak usia < 2 tahun.",
+    peresepanMaksimal: "2 btl/kasus",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "f101007",
+    kelasTerapi: "ANTIEPILEPSI - ANTIKONVULSI",
+    subKelasTerapi: "-",
+    namaObat: "Zonisamid",
+    bentukSediaan: "tab sal selaput 100 mg",
+    restriksi: "Digunakan pada pasien epilepsi dewasa dengan ketentuan: a) Sebagai monoterapi untuk pengobatan kejang parsial dengan atau tanpa generalisasi sekunder atau b) Sebagai terapi tambahan untuk pengobatan kejang parsial.",
+    peresepanMaksimal: "-",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "f101000",
+    kelasTerapi: "OBAT yang MEMENGARUHI DARAH",
+    subKelasTerapi: "OBAT yang MEMENGARUHI KOAGULASI",
+    namaObat: "Warfarin",
+    bentukSediaan: "tab 1 mg",
+    restriksi: "a) Untuk pencegahan dan/atau terapi thromboembolism. b) Dosis harian disesuaikan dengan target INR (2-3). c) Pada pasien dalam kondisi stabil (tidak ada perdarahan), dengan tercapainya target INR (2-3), diperlukan evaluasi INR rutin maksimal setiap 3 bulan.",
+    peresepanMaksimal: "-",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "fw1",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "LAIN–LAIN",
+    namaObat: "Urea",
+    bentukSediaan: "krim 10%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "fw2",
+    kelasTerapi: "ANTINEOPLASTIK DAN IMUNOMODULATOR",
+    subKelasTerapi: "LAIN–LAIN",
+    namaObat: "Urea",
+    bentukSediaan: "krim 20%",
+    restriksi: "-",
+    peresepanMaksimal: "-",
+    fpktp: "√",
+    fpktl: "√",
+    oen: "-",
+    catatan: "-"
+  },
+  {
+    id: "fq1",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIDEPRESI",
+    namaObat: "Quetiapin",
+    bentukSediaan: "tab 100 mg",
+    restriksi: "a) Untuk skizofrenia. atau b) Untuk pasien bipolar yang tidak memberikan respons terhadap pemberian litium atau valproat. c) Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa.",
+    peresepanMaksimal: "120 tab / bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "fq2",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIDEPRESI",
+    namaObat: "Quetiapin",
+    bentukSediaan: "tab 200 mg",
+    restriksi: "a) Untuk skizofrenia. atau b) Untuk pasien bipolar yang tidak memberikan respons terhadap pemberian litium atau valproat. c) Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa.",
+    peresepanMaksimal: "60 tab / bulan",
+    fpktp: "-",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
+  },
+  {
+    id: "fq3",
+    kelasTerapi: "PSIKOFARMAKA",
+    subKelasTerapi: "ANTIDEPRESI",
+    namaObat: "Quetiapin",
+    bentukSediaan: "tab pelepasan lambat 150 mg*",
+    restriksi: "a) Untuk skizofrenia. atau b) Untuk pasien bipolar yang tidak memberikan respons terhadap pemberian litium atau valproat. c) Diresepkan oleh dokter yang memiliki kompetensi dibidang ilmu kedokteran jiwa.",
+    peresepanMaksimal: "60 tab / bulan",
+    fpktp: "√*",
+    fpktl: "√",
+    oen: "√",
+    catatan: "-"
   }
 ];
 
@@ -869,7 +1870,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
        setCsvError("");
        setCsvFile(null);
     } else {
-       setCsvError("Format file tidak valid. Pastikan baris pertama berisi header (id, kelasTerapi, subKelasTerapi, namaObat, bentukSediaan, restriksi, peresepanMaksimal, fpktp, fpktl, oen, catatan).");
+       setCsvError("Format file tidak valid. Pastikan baris pertama berisi header (id, kelasTerapi, subKelasTerapi, namaObat, bentukSediaan, restriksi, peresepanMaksimal, fpktp, fpktl, oen).");
     }
   };
 
@@ -1102,8 +2103,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 <th className="px-4 py-3 min-w-[80px]">FPKTP</th>
                 <th className="px-4 py-3 min-w-[80px]">FPKTL</th>
                 <th className="px-4 py-3 min-w-[80px]">OEN</th>
-                <th className="px-4 py-3 min-w-[200px]">Catatan</th>
-              </tr>
+                </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {groupedData.length > 0 ? (
@@ -1155,10 +2155,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                       <td className="px-4 py-3 align-top font-medium text-center">
                         {hasMultiple && !isExpanded ? "-" : (drug.oen && drug.oen !== "-" ? <span className="text-emerald-600 font-bold">{drug.oen}</span> : <span className="text-slate-300">-</span>)}
                       </td>
-                      <td className="px-4 py-3 align-top text-xs leading-relaxed text-slate-600">
-                        {hasMultiple && !isExpanded ? "-" : (drug.catatan !== "-" ? <ExpandableText text={drug.catatan} /> : "")}
-                      </td>
-                    </tr>
+                      </tr>
                     {hasMultiple && isExpanded && group.slice(1).map((subDrug) => (
                       <tr key={subDrug.id} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 align-top border-l-4 border-emerald-500"></td>
@@ -1180,10 +2177,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         <td className="px-4 py-3 align-top font-medium text-center">
                           {subDrug.oen && subDrug.oen !== "-" ? <span className="text-emerald-600 font-bold">{subDrug.oen}</span> : <span className="text-slate-300">-</span>}
                         </td>
-                        <td className="px-4 py-3 align-top text-xs leading-relaxed text-slate-600">
-                          {subDrug.catatan !== "-" ? <ExpandableText text={subDrug.catatan} /> : ""}
-                        </td>
-                      </tr>
+                        </tr>
                     ))}
                   </React.Fragment>
                   );
@@ -1254,13 +2248,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         {drug.peresepanMaksimal}
                       </div>
                     )}
-                    {drug.catatan !== "-" && (
-                      <div className="text-xs text-slate-600 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100/50 leading-relaxed">
-                        <span className="font-semibold block mb-1">Catatan:</span> 
-                        <ExpandableText text={drug.catatan} />
-                      </div>
-                    )}
-                  </>
+                    </>
                 )}
 
                 {hasMultiple && !isExpanded && (
@@ -1297,13 +2285,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                           {subDrug.peresepanMaksimal}
                         </div>
                       )}
-                      {subDrug.catatan !== "-" && (
-                        <div className="text-xs text-slate-600 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100/50 leading-relaxed">
-                          <span className="font-semibold block mb-1">Catatan:</span> 
-                          <ExpandableText text={subDrug.catatan} />
-                        </div>
-                      )}
-                    </div>
+                      </div>
                   </div>
                 ))}
               </div>
@@ -1335,7 +2317,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
               <div className="flex flex-col gap-4 mb-4">
                 <p className="text-sm text-slate-600">
                   Unggah data Fornas dalam format CSV atau Excel (.xlsx). Pastikan file memiliki baris pertama sebagai header dengan nama kolom berikut secara tepat: <br/>
-                  <code className="bg-slate-100 px-1 py-0.5 rounded text-xs text-emerald-600">id, kelasTerapi, subKelasTerapi, namaObat, bentukSediaan, restriksi, peresepanMaksimal, fpktp, fpktl, oen, catatan</code>
+                  <code className="bg-slate-100 px-1 py-0.5 rounded text-xs text-emerald-600">id, kelasTerapi, subKelasTerapi, namaObat, bentukSediaan, restriksi, peresepanMaksimal, fpktp, fpktl, oen</code>
                 </p>
                 <button
                   onClick={handleDownloadTemplate}
