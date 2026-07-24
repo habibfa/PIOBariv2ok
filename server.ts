@@ -65,7 +65,12 @@ Penafian (sertakan di paling bawah, cetak miring): *Catatan: Artikel ini ditujuk
         contents: prompt,
       });
 
-      res.json({ text: response.text });
+      let finalResponse = response.text || "";
+      finalResponse = finalResponse.replace(/^(#+)\s*subjective\b/gmi, '$1 SUBJECTIVE');
+      finalResponse = finalResponse.replace(/^(#+)\s*objective\b/gmi, '$1 OBJECTIVE');
+      finalResponse = finalResponse.replace(/^(#+)\s*assessment\b/gmi, '$1 ASSESSMENT');
+      finalResponse = finalResponse.replace(/^(#+)\s*plan\b/gmi, '$1 PLAN');
+      res.json({ text: finalResponse });
     } catch (routeError: any) {
       console.error("Critical error in /api/disease-info:", routeError);
       res.status(500).json({ error: "Terjadi kesalahan internal server saat mengambil info penyakit." });

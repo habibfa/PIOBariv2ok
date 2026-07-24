@@ -136,11 +136,11 @@ const ClinicalSOAP: React.FC = () => {
           
           <div className="p-6">
             <div className="prose prose-slate prose-sm max-w-none 
-              prose-headings:text-slate-800 prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
-              prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-              prose-p:text-slate-600 prose-p:leading-relaxed prose-p:mb-4
-              prose-ul:list-disc prose-ol:list-decimal prose-li:text-slate-600 prose-li:my-1
-              prose-strong:text-slate-800
+              prose-headings:text-slate-800 prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2 prose-headings:uppercase
+              prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
+              prose-p:text-slate-600 prose-p:leading-relaxed prose-p:mb-4 prose-p:text-justify
+              prose-ul:list-disc prose-ol:list-decimal prose-li:text-slate-600 prose-li:my-1 prose-li:text-justify
+              prose-strong:text-slate-800 text-justify
               bg-slate-50 p-6 rounded-lg border border-slate-100"
             >
               <ReactMarkdown>{soapNote}</ReactMarkdown>
