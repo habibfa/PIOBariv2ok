@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, Save, X, Download } from 'lucide-react';
+import { Upload, Save, X, Download, Trash2 } from 'lucide-react';
 import { Droplets, Info, Search, AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
 
 type CompatibilityStatus = "C" | "I" | "U"; // Compatible, Incompatible, Uncertain/Variable
@@ -23,129 +23,10 @@ interface CompatibilityRecord {
 }
 
 // Sample mock data for IV drugs
-const INITIAL_IV_DRUGS: IvDrug[] = [
-  { id: "acyclovir", name: "Acyclovir", category: "Antiviral", bud: "12 jam suhu ruang setelah rekonstitusi", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "albumin", name: "Albumin", category: "Blood Product", bud: "4 jam setelah dibuka", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "amikacin", name: "Amikacin", category: "Antibiotic", bud: "24 jam suhu ruang, 2 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "amiodarone", name: "Amiodarone", category: "Anti-arrhythmic", bud: "24 jam suhu ruang (dalam D5W)", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "amoxicillin", name: "Amoxicillin/Clavulanate", category: "Antibiotic", bud: "Gunakan dalam 20 menit setelah rekonstitusi", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "amphotericin_b", name: "Amphotericin B", category: "Antifungal", bud: "24 jam suhu ruang (lindung dari cahaya)", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ampicillin", name: "Ampicillin", category: "Antibiotic", bud: "1 jam suhu ruang setelah rekonstitusi", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ampicillin_sulbactam", name: "Ampicillin sulbactam", category: "Antibiotic", bud: "8 jam suhu ruang, 48 jam di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "amsacrine", name: "Amsacrine (Amsidine)", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "bevacizumab", name: "Bevacizumab", category: "Antineoplastic", bud: "24 jam di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "bleomycin", name: "Bleomycin Sulfat", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "calcium_gluconate", name: "Calcium Gluconate", category: "Electrolyte", bud: "Segera gunakan setelah dibuka (Single dose)", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "carboplastin", name: "Carboplastin", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "carmustine", name: "Carmustine (BCNU)", category: "Antineoplastic", bud: "24 jam di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "cefepime", name: "Cefepime", category: "Antibiotic", bud: "24 jam suhu ruang, 7 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "cefotaxime", name: "Cefotaxime", category: "Antibiotic", bud: "24 jam suhu ruang, 5 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ceftazidime", name: "Ceftazidime", category: "Antibiotic", bud: "12 jam suhu ruang, 3 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ceftriaxone", name: "Ceftriaxone", category: "Antibiotic", bud: "2 hari suhu ruang, 10 hari di kulkas (2-8°C)", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "chloramphenicol", name: "Chloramphenicol", category: "Antibiotic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ciprofloxacin", name: "Ciprofloxacine", category: "Antibiotic", bud: "14 hari suhu ruang atau kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "cisplatin", name: "Cisplatin", category: "Antineoplastic", bud: "24 jam suhu ruang (jangan di kulkas)", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "clindamycin", name: "Clindamycin", category: "Antibiotic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "cyclophosphamide", name: "Cyclophosphamid", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "cystarabin", name: "Cystarabin", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "dacarbazine", name: "Dacarbazine", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "dactinomycin", name: "Dactinomycin", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "daunorubicin", name: "Daunorubicin", category: "Antineoplastic", bud: "24 jam suhu ruang (lindung dari cahaya)", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "dexamethasone", name: "Dexamethason", category: "Corticosteroid", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "dextrose5", name: "Dextrose 5% (D5W)", category: "IV Fluid", bud: "24 jam setelah ditusuk/dibuka", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "diazepam", name: "Diazepam", category: "Benzodiazepine", bud: "Segera gunakan, jangan disimpan", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "digoxin", name: "Digoxin", category: "Cardiac Glycoside", bud: "48 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "dobutamine", name: "Dobutamine", category: "Inotrope", bud: "24 jam suhu ruang, 48 jam di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "dopamine", name: "Dopamine", category: "Inotrope", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "doxetaxel", name: "Doxetaxel", category: "Antineoplastic", bud: "4 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "doxorubicin", name: "Doxorubicin", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "epinephrine", name: "Epinephrine", category: "Vasopressor", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "epirubicin", name: "Epirubicin", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "er_asparaginiase", name: "Er-Asparaginiase", category: "Antineoplastic", bud: "8 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "etoposide", name: "Etoposide", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "fentanyl", name: "Fentanyl Citrate", category: "Analgesic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "floxuridine", name: "Floxuridine", category: "Antineoplastic", bud: "14 hari di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "fluconazole", name: "Fluconazole", category: "Antifungal", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "fludarabine", name: "Fludarabine", category: "Antineoplastic", bud: "8 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "fluorourasil", name: "Fluorourasil", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "folinic_acid", name: "Folinic Acid", category: "Antineoplastic Adjunct", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "furosemide", name: "Furosemide", category: "Diuretic", bud: "24 jam suhu ruang (lindung dari cahaya)", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ganciclovir", name: "Ganciclovir", category: "Antiviral", bud: "12 jam suhu ruang (jangan di kulkas)", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "gemcitabine", name: "Gemcitabine", category: "Antineoplastic", bud: "24 jam suhu ruang (jangan di kulkas)", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "gentamicin", name: "Gentamicin", category: "Antibiotic", bud: "24 jam suhu ruang setelah dilarutkan", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "heparin", name: "Heparin", category: "Anticoagulant", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "idarubicin", name: "Idarubicin", category: "Antineoplastic", bud: "72 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "imipenem", name: "Imipenem-Cilastasin", category: "Antibiotic", bud: "4 jam suhu ruang, 24 jam di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "insulin_regular", name: "Insulin Regular", category: "Hormone", bud: "28 hari suhu ruang setelah dibuka", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "iphosfamida", name: "Iphosfamida", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "irinotecan", name: "Irinotecan", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ketorolac", name: "Ketorolac", category: "NSAID", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "lasparaginase", name: "Lasparaginase (LEUNASE)", category: "Antineoplastic", bud: "8 jam di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "levofloxacin", name: "Levofloxacin", category: "Antibiotic", bud: "72 jam suhu ruang, 14 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "lorazepam", name: "Lorazepam", category: "Benzodiazepine", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "magnesium_sulfate", name: "Magnesium Sulfate", category: "Electrolyte", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "mannitol", name: "Mannitol", category: "Diuretic", bud: "Gunakan segera, periksa kristal", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "melphalan", name: "Melphalan", category: "Antineoplastic", bud: "1.5 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "meropenem", name: "Meropenem", category: "Antibiotic", bud: "2 jam suhu ruang, 12 jam di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "mesna", name: "Mesna (Uromitexan)", category: "Antineoplastic Adjunct", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "metrotrexate", name: "Metrotrexate", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "metronidazole", name: "Metronidazole", category: "Antibiotic", bud: "24 jam suhu ruang (jangan di kulkas)", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "midazolam", name: "Midazolam", category: "Benzodiazepine", bud: "24 jam suhu ruang atau 3 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "milrinone", name: "Milrinone", category: "Inotrope", bud: "72 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "mitomycin_c", name: "Mitomycin-C", category: "Antineoplastic", bud: "12 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "morphine", name: "Morphine", category: "Analgesic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "nitroglycerin", name: "Nitroglycerin", category: "Vasodilator", bud: "48 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "norepinephrine", name: "Norepinephrine", category: "Vasopressor", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "normal_saline", name: "Normal Saline (NS 0.9%)", category: "IV Fluid", bud: "24 jam setelah ditusuk/dibuka", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ondansetron", name: "Ondansentron", category: "Antiemetic", bud: "48 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "oxaliplatin", name: "Oxaliplatin", category: "Antineoplastic", bud: "24 jam di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "paclitaxel", name: "Paclitaxel", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "pantoprazole", name: "Pantoprazole", category: "PPI", bud: "12 jam suhu ruang setelah rekonstitusi", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "penicillin_g", name: "Penicillin G", category: "Antibiotic", bud: "24 jam suhu ruang, 7 hari di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "phenytoin", name: "Phenytoin", category: "Anticonvulsant", bud: "Segera gunakan (hanya dengan NS, jangan di kulkas)", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "piperacillin", name: "Piperacillin-Tazobactam", category: "Antibiotic", bud: "24 jam suhu ruang, 48 jam di kulkas", storageTemp: "Suhu Ruang atau Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "potassium_chloride", name: "Potassium Chloride", category: "Electrolyte", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "propofol", name: "Propofol", category: "Sedative", bud: "12 jam setelah vial ditusuk (berisiko kontaminasi mikroba)", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "propranolol", name: "Propanolol", category: "Beta Blocker", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ranitidine", name: "Ranitidin", category: "H2 Blocker", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "rituximab", name: "Rituximab", category: "Antineoplastic", bud: "24 jam di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "ringers_lactate", name: "Ringer's Lactate (RL)", category: "IV Fluid", bud: "24 jam setelah ditusuk/dibuka", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "sodium_bicarbonate", name: "Sodium Bicarbonate", category: "Electrolyte", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "sodium_valproate", name: "Sodium Valproate", category: "Anticonvulsant", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "topotecan", name: "Topotecan", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "transtuzumab", name: "Transtuzumab", category: "Antineoplastic", bud: "28 hari di kulkas", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "vancomycin", name: "Vancomycin", category: "Antibiotic", bud: "14 hari di kulkas (2-8°C) setelah rekonstitusi", storageTemp: "Kulkas (2-8°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "vinblastin", name: "Vinblastin", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-  { id: "vincristine", name: "Vincristine", category: "Antineoplastic", bud: "24 jam suhu ruang", storageTemp: "Suhu Ruang (20-25°C)", reference: "Trissel\'s Handbook on Injectable Drugs (ASHP)" },
-];
+const INITIAL_IV_DRUGS: IvDrug[] = [];
 
 // Matrix of compatibilities. We only need to specify combinations.
-const INITIAL_MATRIX: CompatibilityRecord[] = [
-  { drug1: "amiodarone", drug2: "dextrose5", status: "C" },
-  { drug1: "amiodarone", drug2: "normal_saline", status: "I", notes: "Amiodarone is generally preferred in D5W. May precipitate in NS." },
-  { drug1: "amiodarone", drug2: "heparin", status: "I" },
-  { drug1: "ceftriaxone", drug2: "calcium_gluconate", status: "I", notes: "Fatal precipitates can form. NEVER administer together." },
-  { drug1: "ceftriaxone", drug2: "ringers_lactate", status: "I", notes: "RL contains calcium. Do not mix." },
-  { drug1: "ceftriaxone", drug2: "normal_saline", status: "C" },
-  { drug1: "ceftriaxone", drug2: "dextrose5", status: "C" },
-  { drug1: "diazepam", drug2: "dextrose5", status: "I", notes: "Forms precipitate. Do not mix with any IV fluids, inject slowly directly." },
-  { drug1: "diazepam", drug2: "normal_saline", status: "I", notes: "Forms precipitate." },
-  { drug1: "diazepam", drug2: "ringers_lactate", status: "I", notes: "Forms precipitate." },
-  { drug1: "phenytoin", drug2: "dextrose5", status: "I", notes: "Rapid crystallization. Mix ONLY with NS." },
-  { drug1: "phenytoin", drug2: "normal_saline", status: "C" },
-  { drug1: "furosemide", drug2: "dobutamine", status: "I", notes: "Incompatible at Y-site." },
-  { drug1: "furosemide", drug2: "milrinone", status: "I", notes: "Precipitates immediately." },
-  { drug1: "furosemide", drug2: "amiodarone", status: "I" },
-  { drug1: "pantoprazole", drug2: "midazolam", status: "I" },
-  { drug1: "propofol", drug2: "dextrose5", status: "C" },
-  { drug1: "insulin_regular", drug2: "normal_saline", status: "C" },
-  { drug1: "dopamine", drug2: "furosemide", status: "U", notes: "Variable compatibility depending on concentration." },
-  { drug1: "vancomycin", drug2: "heparin", status: "I" },
-  { drug1: "heparin", drug2: "dobutamine", status: "C" },
-  { drug1: "norepinephrine", drug2: "dextrose5", status: "C", notes: "Preferred diluent." },
-  { drug1: "norepinephrine", drug2: "normal_saline", status: "C" },
-  { drug1: "calcium_gluconate", drug2: "magnesium_sulfate", status: "C", notes: "Generally compatible at Y-site." },
-];
+const INITIAL_MATRIX: CompatibilityRecord[] = [];
 
 // Helper to check compatibility
 
@@ -155,6 +36,7 @@ interface IvCompatibilityCheckerProps {
 
 export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ isAdmin = false }) => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvError, setCsvError] = useState("");
 
@@ -266,7 +148,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   };
 
   const handleDownloadTemplate = () => {
-    let dataToExport = activeTab === "drugs" ? INITIAL_IV_DRUGS : INITIAL_MATRIX;
+    let dataToExport = activeTab === "drugs" ? [{ id: "contoh_id", name: "Contoh Nama", category: "Contoh Kategori", bud: "Contoh BUD", storageTemp: "Contoh Suhu", reference: "Contoh Ref" }] : [{ drug1: "contoh_id_1", drug2: "contoh_id_2", status: "C", notes: "Contoh Notes" }];
     let sheetName = activeTab === "drugs" ? "Template_Obat_IV" : "Template_Matriks_IV";
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
@@ -274,6 +156,15 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     XLSX.writeFile(wb, `${sheetName}.xlsx`);
   };
 
+
+  const handleClearData = () => {
+    setIvDrugsState([]);
+    setMatrixState([]);
+    localStorage.removeItem("ivDrugsData");
+    localStorage.removeItem("ivMatrixData");
+    setSelectedDrugs([]);
+    setIsConfirmClearOpen(false);
+  };
 
   const filteredDrugs = useMemo(() => {
     if (!searchQuery.trim()) return ivDrugsState;
@@ -312,13 +203,22 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
         {isAdmin && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
             <h2 className="text-sm font-bold text-slate-800 mb-2">Administrasi Data IV</h2>
-            <button
-              onClick={() => setIsUpdateModalOpen(true)}
-              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
-            >
-              <Upload className="w-4 h-4" />
-              Update Data Kompatibilitas
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+              >
+                <Upload className="w-4 h-4" />
+                Update Data Kompatibilitas
+              </button>
+              <button
+                onClick={() => setIsConfirmClearOpen(true)}
+                className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition-colors shadow-xs"
+              >
+                <Trash2 className="w-4 h-4" />
+                Hapus Semua Data
+              </button>
+            </div>
           </div>
         )}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
@@ -411,7 +311,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {selectedDrugs.map(rowId => {
-                        const rowDrug = ivDrugsState.find(d => d.id === rowId)!;
+                        const rowDrug = ivDrugsState.find(d => d.id === rowId) || { id: rowId, name: "Unknown", category: "" };
                         return (
                           <tr key={`row-${rowId}`} className="hover:bg-slate-50/50">
                             <td className="px-4 py-3 font-semibold text-slate-700 border-r border-slate-200">
@@ -460,8 +360,8 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                           processedPairs.add(pairKey);
 
                           const comp = checkCompatibility(id1, id2);
-                          const d1 = ivDrugsState.find(d => d.id === id1)!;
-                          const d2 = ivDrugsState.find(d => d.id === id2)!;
+                          const d1 = ivDrugsState.find(d => d.id === id1) || { id: id1, name: "Unknown", category: "" };
+                          const d2 = ivDrugsState.find(d => d.id === id2) || { id: id2, name: "Unknown", category: "" };
 
                           if (comp.status === "I" || comp.notes) {
                             notes.push(
@@ -508,7 +408,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {selectedDrugs.map(id => {
-                      const drug = ivDrugsState.find(d => d.id === id)!;
+                      const drug = ivDrugsState.find(d => d.id === id) || { id, name: "Unknown", category: "", bud: "", storageTemp: "", reference: "" };
                       return (
                         <div key={`bud-${id}`} className="p-4 rounded-xl border bg-slate-50 border-slate-200">
                           <h4 className="text-sm font-bold text-slate-800 mb-1">{drug.name}</h4>
@@ -545,6 +445,39 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
           </div>
         </div>
       </section>
+
+      {isConfirmClearOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">Hapus Semua Data</h3>
+              <button 
+                onClick={() => setIsConfirmClearOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-slate-600 mb-6">Apakah Anda yakin ingin menghapus semua data Obat & Matriks?</p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setIsConfirmClearOpen(false)}
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleClearData}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-xs"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isUpdateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">

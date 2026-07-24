@@ -2793,7 +2793,7 @@ export default function App() {
                               const p = drugPresets.find(x => x.id === id);
                               return (
                                 <th key={id} className="p-3 font-extrabold text-slate-700 border-r border-slate-100 max-w-[120px] truncate" title={p?.name}>
-                                  [{index + 1}] {p?.name.split(" - ")[0]}
+                                  [{index + 1}] {p?.name?.split(" - ")[0]}
                                 </th>
                               );
                             })}
@@ -2808,7 +2808,7 @@ export default function App() {
                                   <span className="inline-block w-4.5 h-4.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-mono font-bold text-center leading-4.5 mr-1.5">
                                     {rowIndex + 1}
                                   </span>
-                                  {pRow?.name.split(" - ")[0]}
+                                  {pRow?.name?.split(" - ")[0]}
                                 </td>
                                 {ddiSelectedIds.map((idCol, colIndex) => {
                                   if (rowIndex === colIndex) {
