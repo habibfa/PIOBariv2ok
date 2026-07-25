@@ -23,10 +23,1956 @@ interface CompatibilityRecord {
 }
 
 // Sample mock data for IV drugs
-const INITIAL_IV_DRUGS: IvDrug[] = [];
+const INITIAL_IV_DRUGS: IvDrug[] = [
+  {
+    "id": "Acyclovir",
+    "name": "Acyclovir",
+    "category": "Obat Intravena",
+    "bud": "12 jam suhu ruang setelah rekonstitusi",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Albumin",
+    "name": "Albumin",
+    "category": "Obat Intravena",
+    "bud": "4 jam setelah dibuka",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Alkohol absolut",
+    "name": "Alkohol absolut",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Amikacin",
+    "name": "Amikacin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang, 2 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Aminophylline",
+    "name": "Aminophylline",
+    "category": "Obat Intravena"
+  },
+  {
+    "id": "Amiodarone",
+    "name": "Amiodarone",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang (dalam Dextrose 5%)",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Amoxicillin/Clavulanate",
+    "name": "Amoxicillin/Clavulanate",
+    "category": "Obat Intravena",
+    "bud": "Gunakan dalam 20 menit setelah rekonstitusi",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Amphotericin B",
+    "name": "Amphotericin B",
+    "category": "Obat Intravena",
+    "bud": "24 jam dalam Water for Injection ; 6 jam dalam Dextrose 5%",
+    "storageTemp": "Harus disimpan dalam suhu pendingin antara 2-8°C.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ampicillin",
+    "name": "Ampicillin",
+    "category": "Obat Intravena",
+    "bud": "8 jam dalam NS (NaCl 0,9%) dalam suhu ruang 25 derajat C, 2\nhari dalam suhu 4 derajat C ; <1 jam dalam Dextrose",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ampicillin sulbactam",
+    "name": "Ampicillin sulbactam",
+    "category": "Obat Intravena",
+    "bud": "8 jam suhu ruang, 48 jam di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Amsacrine (Amsidine)",
+    "name": "Amsacrine (Amsidine)",
+    "category": "Obat Intravena",
+    "bud": "48 jam",
+    "storageTemp": "Suhu Ruang (20-25°C), Terlindung cahaya langsung,",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Asetilsistein",
+    "name": "Asetilsistein",
+    "category": "Obat Intravena",
+    "bud": "24 Jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Azitromisin",
+    "name": "Azitromisin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang <30 derajat C; 7 hari dalam suhu 5 derajat C.",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Bevacizumab",
+    "name": "Bevacizumab",
+    "category": "Obat Intravena",
+    "bud": "8 jam pada suhu 2-8°C",
+    "storageTemp": "Kulkas (2-8°C); JANGAN di KOCOK; Terhindar dari cahaya langsung.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Bleomycin Sulfat",
+    "name": "Bleomycin Sulfat",
+    "category": "Obat Intravena",
+    "bud": "96 jam dalam suhu ruang; 28 jam dalam kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Calcium Gluconate",
+    "name": "Calcium Gluconate",
+    "category": "Obat Intravena",
+    "bud": "24 jam, Segera gunakan setelah dibuka (Single dose)",
+    "storageTemp": "JANGAN disimpan di KULKAS; Disimpan dalam suhu ruang",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Carboplastin",
+    "name": "Carboplastin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Carmustine (BCNU)",
+    "name": "Carmustine (BCNU)",
+    "category": "Obat Intravena",
+    "bud": "8 jam dalam suhu ruang; 24 jam dalam kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C) dalam botol non PVC",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cefazolin",
+    "name": "Cefazolin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang; 10 hari dalam kulkas (4 derajat C)",
+    "storageTemp": "Terlindung dari cahaya langsung; terlindung dari suhu >40oC.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cefepime",
+    "name": "Cefepime",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang, 7 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cefotaxime",
+    "name": "Cefotaxime",
+    "category": "Obat Intravena",
+    "bud": "12-24 jam suhu ruang, 7-10 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cefpirom",
+    "name": "Cefpirom",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang (25-30 derajat C)",
+    "storageTemp": "Suhu Ruang",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ceftazidime",
+    "name": "Ceftazidime",
+    "category": "Obat Intravena",
+    "bud": "12 jam suhu ruang, 3 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ceftizoksim",
+    "name": "Ceftizoksim",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang; 96 jam dalam kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ceftriaxone",
+    "name": "Ceftriaxone",
+    "category": "Obat Intravena",
+    "bud": "2 hari suhu ruang, 10 hari di kulkas (2-8°C)",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cefuroksim",
+    "name": "Cefuroksim",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang; 48 jam dalam kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Chloramphenicol",
+    "name": "Chloramphenicol",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ciprofloxacine",
+    "name": "Ciprofloxacine",
+    "category": "Obat Intravena",
+    "bud": "14 hari suhu ruang atau kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cisplatin",
+    "name": "Cisplatin",
+    "category": "Obat Intravena",
+    "bud": "72 jam pada suhu 4-25°C.",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Clindamycin",
+    "name": "Clindamycin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cyclophosphamid",
+    "name": "Cyclophosphamid",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang; 6 hari dalam kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Cystarabin",
+    "name": "Cystarabin",
+    "category": "Obat Intravena",
+    "bud": "48 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Dacarbazine",
+    "name": "Dacarbazine",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang; 96 jam dalam kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Dactinomycin",
+    "name": "Dactinomycin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya; Pelarut TIDAK mengandung Bahan tambahan lain.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Daunorubicin",
+    "name": "Daunorubicin",
+    "category": "Obat Intravena",
+    "bud": "4 jam suhu ruang (15-25°C)",
+    "storageTemp": "Suhu Ruang (20-25°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Dexamethason",
+    "name": "Dexamethason",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Diazepam",
+    "name": "Diazepam",
+    "category": "Obat Intravena",
+    "bud": "Segera gunakan, jangan disimpan",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Digoxin",
+    "name": "Digoxin",
+    "category": "Obat Intravena",
+    "bud": "48 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Dobutamine",
+    "name": "Dobutamine",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang, 48 jam di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Dopamine",
+    "name": "Dopamine",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Doxetaxel",
+    "name": "Doxetaxel",
+    "category": "Obat Intravena",
+    "bud": "8 jam suhu ruang (2-25°C) atau dalam suhu dingin",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya; jangan di kocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Doxorubicin",
+    "name": "Doxorubicin",
+    "category": "Obat Intravena",
+    "bud": "48 jam dalam suhu 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang (2-25°C) atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Epinephrine",
+    "name": "Epinephrine",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Epirubicin",
+    "name": "Epirubicin",
+    "category": "Obat Intravena",
+    "bud": "24 jam dalam suhu 2-8°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Er-Asparaginiase",
+    "name": "Er-Asparaginiase",
+    "category": "Obat Intravena",
+    "bud": "8 jam suhu ruang (2-25°C) atau dalam suhu dingin",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya; jangan di kocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Etoposide",
+    "name": "Etoposide",
+    "category": "Obat Intravena",
+    "bud": "Suhu ruang 0,2mg/ml: 96 jam; 0,4mg/ml: 24 jam",
+    "storageTemp": "Suhu Ruang (2-25°C) atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Fentanyl Citrate",
+    "name": "Fentanyl Citrate",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Floxuridine",
+    "name": "Floxuridine",
+    "category": "Obat Intravena",
+    "bud": "24 jam dalam suhu kamar 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang (2-25°C) atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Fluconazole",
+    "name": "Fluconazole",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Fludarabine",
+    "name": "Fludarabine",
+    "category": "Obat Intravena",
+    "bud": "48 jam dalam suhu kamar 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang 25°C; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Fluorourasil",
+    "name": "Fluorourasil",
+    "category": "Obat Intravena",
+    "bud": "72 jam dalam suhu kamar 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang 25°C; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Folinic Acid",
+    "name": "Folinic Acid",
+    "category": "Obat Intravena",
+    "bud": "24 jam dalam suhu kamar 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang 25°C; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Fosfomisin",
+    "name": "Fosfomisin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Furosemide",
+    "name": "Furosemide",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang (lindung dari cahaya)",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ganciclovir",
+    "name": "Ganciclovir",
+    "category": "Obat Intravena",
+    "bud": "24 jam dalam suhu kamar 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang 25°C; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Gemcitabine",
+    "name": "Gemcitabine",
+    "category": "Obat Intravena",
+    "bud": "24 jam dalam suhu kamar 25°C terlindung dari cahaya langsung",
+    "storageTemp": "Suhu Ruang 25°C; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Gentamycin",
+    "name": "Gentamycin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang setelah dilarutkan",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Heparin",
+    "name": "Heparin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Idarubicin",
+    "name": "Idarubicin",
+    "category": "Obat Intravena",
+    "bud": "72 jam suhu ruang; 7 hari pada kulkas",
+    "storageTemp": "Suhu Ruang (2-25°C) atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Imipenem-Cilastatin",
+    "name": "Imipenem-Cilastatin",
+    "category": "Obat Intravena",
+    "bud": "4 jam suhu ruang, 24 jam di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C) bukan freezer",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Insulin Regular",
+    "name": "Insulin Regular",
+    "category": "Obat Intravena",
+    "bud": "28 hari suhu ruang setelah dibuka",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Iphosfamida",
+    "name": "Iphosfamida",
+    "category": "Obat Intravena",
+    "bud": "7 hari suhu ruang; 21 hari pada kulkas",
+    "storageTemp": "Suhu Ruang (2-25°C) atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Irinotecan",
+    "name": "Irinotecan",
+    "category": "Obat Intravena",
+    "bud": "12 jam suhu ruang; 24 hari pada kulkas",
+    "storageTemp": "Suhu Ruang (2-25°C) atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ketorolac",
+    "name": "Ketorolac",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "L- Lactic Acid",
+    "name": "L- Lactic Acid",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Larutan Dextrosa 10%",
+    "name": "Larutan Dextrosa 10%",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Larutan Dextrosa 5%",
+    "name": "Larutan Dextrosa 5%",
+    "category": "Cairan Pelarut",
+    "bud": "24 jam setelah ditusuk/dibuka",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Lasparaginase (LEUNASE)",
+    "name": "Lasparaginase (LEUNASE)",
+    "category": "Obat Intravena",
+    "bud": "8 jam di kulkas (2-8°C)",
+    "storageTemp": "Kulkas (2-8°C); terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Levofloxacin",
+    "name": "Levofloxacin",
+    "category": "Obat Intravena",
+    "bud": "72 jam suhu ruang, 14 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C) Hindari cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Lorazepam",
+    "name": "Lorazepam",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Mannitol",
+    "name": "Mannitol",
+    "category": "Obat Intravena",
+    "bud": "Gunakan segera, periksa kristal",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Melphalan",
+    "name": "Melphalan",
+    "category": "Obat Intravena",
+    "bud": "< 60 menit pada suhu ruang",
+    "storageTemp": "suhu 2-8°C, Terlindung Dari Cahaya Langsung-Bungkus dengan ALUMUNIUM FOIL karena larutan tidak stabil.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Meropenem",
+    "name": "Meropenem",
+    "category": "Obat Intravena",
+    "bud": "WFI: 2 jam dalam suhu ruang; 12 jam dalam kulkas;\nNaCl 0,9%: 2 jam dalam suhu ruang, 18 jam dalam kulkas\nDextrose 5% : 1 jam dalam suhu ruang, 8 jam dalam kulkas",
+    "storageTemp": "Kulkas (2-8°C) bukan freezer",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Mesna (Uromitexan)",
+    "name": "Mesna (Uromitexan)",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang; Terhindar dari cahaya langsung.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Metronidazole",
+    "name": "Metronidazole",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang (jangan di kulkas)",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Metrotrexate",
+    "name": "Metrotrexate",
+    "category": "Obat Intravena",
+    "bud": "4-8 jam suhu ruang; 24 jam dalam kulkas; terlindung cahaya",
+    "storageTemp": "suhu 2-8°C, Terlindung Dari Cahaya Langsung-Bungkus dengan ALUMUNIUM FOIL karena larutan tidak stabil.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "MgSO4",
+    "name": "MgSO4",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Midazolam",
+    "name": "Midazolam",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang atau 3 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Milrinone",
+    "name": "Milrinone",
+    "category": "Obat Intravena",
+    "bud": "72 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Mitomycin-C",
+    "name": "Mitomycin-C",
+    "category": "Obat Intravena",
+    "bud": "Suhu ruang; Nacl 0,9% -12jam, Larutan Dextrose 5- 3jam, Water for Injection-7 hari; pada kulkas: water for injection-14 hari.",
+    "storageTemp": "Suhu Ruang dan kulkas (2-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Morphine Sulphate",
+    "name": "Morphine Sulphate",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "NaCl 0.9%",
+    "name": "NaCl 0.9%",
+    "category": "Cairan Pelarut",
+    "bud": "24 jam setelah ditusuk/dibuka",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Nitroglycerin",
+    "name": "Nitroglycerin",
+    "category": "Obat Intravena",
+    "bud": "48 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Norepinephrine",
+    "name": "Norepinephrine",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ondansentron",
+    "name": "Ondansentron",
+    "category": "Obat Intravena",
+    "bud": "48 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Oxaliplatin",
+    "name": "Oxaliplatin",
+    "category": "Obat Intravena",
+    "bud": "24 jam di kulkas",
+    "storageTemp": "Kulkas (2-8°C); hidarkan dari cahaya langsung; Pelarut tidak mengandung NaCl.",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Paclitaxel",
+    "name": "Paclitaxel",
+    "category": "Obat Intravena",
+    "bud": "27 jam suhu ruang",
+    "storageTemp": "Suhu Ruang, simpan dengan botol kaca/botol khusus; terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Pantoprazole",
+    "name": "Pantoprazole",
+    "category": "Obat Intravena",
+    "bud": "12 jam suhu ruang setelah rekonstitusi",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Pelarut Original",
+    "name": "Pelarut Original",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Penicillin G",
+    "name": "Penicillin G",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang, 7 hari di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Phenytoin",
+    "name": "Phenytoin",
+    "category": "Obat Intravena",
+    "bud": "Segera gunakan (hanya dengan NS, jangan di kulkas)",
+    "storageTemp": "Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Piperacillin-Tazobactam",
+    "name": "Piperacillin-Tazobactam",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang, 48 jam di kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Potassium Chloride",
+    "name": "Potassium Chloride",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Propofol",
+    "name": "Propofol",
+    "category": "Obat Intravena",
+    "bud": "12 jam setelah vial ditusuk (berisiko kontaminasi mikroba)",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Propranolol",
+    "name": "Propranolol",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ranitidin",
+    "name": "Ranitidin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Ringer Laktat",
+    "name": "Ringer Laktat",
+    "category": "Cairan Pelarut",
+    "bud": "24 jam setelah ditusuk/dibuka",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Rituximab",
+    "name": "Rituximab",
+    "category": "Obat Intravena",
+    "bud": "12 jam suhu ruang; 24 hari pada kulkas",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-25°C); terlindung cahaya; jangan di kocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Sodium Bikarbonat",
+    "name": "Sodium Bikarbonat",
+    "category": "Cairan Pelarut",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Sodium Valproat",
+    "name": "Sodium Valproat",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Teicoplanin",
+    "name": "Teicoplanin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Tobramisin",
+    "name": "Tobramisin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Topotecan",
+    "name": "Topotecan",
+    "category": "Obat Intravena",
+    "bud": "7 hari pada suhu 2-8°C; 24 jam pada suhu ruang (25°C)",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-25°C); terlindung cahaya; jangan di kocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Transtuzumab",
+    "name": "Transtuzumab",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "dalam suhu ruang atau kulkas; jangan di kocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Vancomycin",
+    "name": "Vancomycin",
+    "category": "Obat Intravena",
+    "bud": "14 hari di kulkas (2-8°C) setelah rekonstitusi",
+    "storageTemp": "Kulkas (2-8°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Vinblastin",
+    "name": "Vinblastin",
+    "category": "Obat Intravena",
+    "bud": "24 jam suhu ruang",
+    "storageTemp": "Suhu Ruang atau dalam suhu dingin; terlindung cahaya langsung",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Vincristine",
+    "name": "Vincristine",
+    "category": "Obat Intravena",
+    "bud": "2 hari suhu ruang; 7 hari pada kulkas",
+    "storageTemp": "Suhu Ruang atau dalam suhu dingin",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Water for Injection",
+    "name": "Water for Injection",
+    "category": "Cairan Pelarut"
+  }
+];
 
 // Matrix of compatibilities. We only need to specify combinations.
-const INITIAL_MATRIX: CompatibilityRecord[] = [];
+const INITIAL_MATRIX: CompatibilityRecord[] = [
+  {
+    "drug1": "Acyclovir",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "larutan dextrose > 10% dapat menjadikan kuning larutan (tidak mempengaruhi potensi obat)"
+  },
+  {
+    "drug1": "Acyclovir",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Acyclovir",
+    "drug2": "Albumin",
+    "status": "I",
+    "notes": "Tidak kompatibel dengan produk darah, larutan yang mengandung protein"
+  },
+  {
+    "drug1": "Amikacin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Amikacin",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Amikacin",
+    "drug2": "Heparin",
+    "status": "I"
+  },
+  {
+    "drug1": "Aminophylline",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Aminophylline",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Amphotericin B",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Amphotericin B",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Amphotericin B",
+    "drug2": "NaCl 0.9%",
+    "status": "I",
+    "notes": "jangan dicampur dengan obat lain"
+  },
+  {
+    "drug1": "Ampicillin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ampicillin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "dekstrosa tidak dalam konsentrasi tinggi"
+  },
+  {
+    "drug1": "Ampicillin sulbactam",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ampicillin sulbactam",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ampicillin sulbactam",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Amsacrine (Amsidine)",
+    "drug2": "L- Lactic Acid",
+    "status": "C"
+  },
+  {
+    "drug1": "Asetilsistein",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Azitromisin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Azitromisin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Azitromisin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Bevacizumab",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Bevacizumab",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Bleomycin Sulfat",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Bleomycin Sulfat",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Calcium Gluconate",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Calcium Gluconate",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Calcium Gluconate",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Carboplastin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Carboplastin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Carboplastin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Carmustine (BCNU)",
+    "drug2": "Alkohol absolut",
+    "status": "C"
+  },
+  {
+    "drug1": "Carmustine (BCNU)",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefazolin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefazolin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefepime",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefepime",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefepime",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefotaxime",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefotaxime",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefotaxime",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefpirom",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefpirom",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefpirom",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftazidime",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftazidime",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftazidime",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftizoksim",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftizoksim",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftriaxone",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftriaxone",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ceftriaxone",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefuroksim",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cefuroksim",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Chloramphenicol",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Chloramphenicol",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Chloramphenicol",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Ciprofloxacine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ciprofloxacine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ciprofloxacine",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Cisplatin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Clindamycin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Clindamycin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Clindamycin",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Cystarabin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dacarbazine",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Dacarbazine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dacarbazine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dactinomycin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dactinomycin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Daunorubicin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Daunorubicin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Daunorubicin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dexamethason",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dexamethason",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dexamethason",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Diazepam",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Tidak direkomendasi untuk dilarutkan tapi NaCl 0.9% dapat digunakan untuk penggunaan darurat"
+  },
+  {
+    "drug1": "Digoxin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "mungkin terjadi endapan"
+  },
+  {
+    "drug1": "Digoxin",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "mungkin terjadi endapan"
+  },
+  {
+    "drug1": "Dobutamine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dobutamine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dobutamine",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Dobutamine",
+    "drug2": "Heparin",
+    "status": "I"
+  },
+  {
+    "drug1": "Dopamine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dopamine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Dopamine",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Dopamine",
+    "drug2": "Heparin",
+    "status": "C",
+    "notes": "Gunakan N5 (D5 1/4 NS) bila ada heparin"
+  },
+  {
+    "drug1": "Doxetaxel",
+    "drug2": "Pelarut Original",
+    "status": "C"
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Epinephrine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Epinephrine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Epinephrine",
+    "drug2": "Ringer Laktat",
+    "status": "I"
+  },
+  {
+    "drug1": "Epinephrine",
+    "drug2": "Sodium Bikarbonat",
+    "status": "I"
+  },
+  {
+    "drug1": "Epirubicin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Epirubicin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Epirubicin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Er-Asparaginiase",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Er-Asparaginiase",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Etoposide",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Etoposide",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fentanyl Citrate",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fentanyl Citrate",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fentanyl Citrate",
+    "drug2": "Ringer Laktat",
+    "status": "I"
+  },
+  {
+    "drug1": "Floxuridine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Floxuridine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fluconazole",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fluconazole",
+    "drug2": "Larutan Dextrosa 10%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fluconazole",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Fluconazole",
+    "drug2": "NaCl 0.9%",
+    "status": "I"
+  },
+  {
+    "drug1": "Fludarabine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fludarabine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Folinic Acid",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Folinic Acid",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fosfomisin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Fosfomisin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Fosfomisin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Furosemide",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Jangan dicampur dengan larutan asam"
+  },
+  {
+    "drug1": "Furosemide",
+    "drug2": "Ringer Laktat",
+    "status": "C",
+    "notes": "Jangan dicampur dengan larutan asam"
+  },
+  {
+    "drug1": "Ganciclovir",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ganciclovir",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ganciclovir",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Ganciclovir",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ganciclovir",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Gemcitabine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Gemcitabine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Gentamycin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Gentamycin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Heparin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Heparin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Idarubicin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Idarubicin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Imipenem-Cilastatin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Imipenem-Cilastatin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "digunakan pada kondisi khusus"
+  },
+  {
+    "drug1": "Iphosfamida",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Iphosfamida",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Iphosfamida",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ketorolac",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ketorolac",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ketorolac",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Lasparaginase (LEUNASE)",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Lasparaginase (LEUNASE)",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Lasparaginase (LEUNASE)",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Levofloxacin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Levofloxacin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Levofloxacin",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Lorazepam",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Lorazepam",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "kurang stabil"
+  },
+  {
+    "drug1": "Mannitol",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Biasanya tidak dilarutkan"
+  },
+  {
+    "drug1": "Mannitol",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Biasanya tidak dilarutkan"
+  },
+  {
+    "drug1": "Melphalan",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Meropenem",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Lebih disukai"
+  },
+  {
+    "drug1": "Meropenem",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "kurang stabil"
+  },
+  {
+    "drug1": "Meropenem",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Meropenem",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Mesna (Uromitexan)",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Mesna (Uromitexan)",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Metronidazole",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Tidak perlu dilarutkan. Jangan dicampur dengan obat lain"
+  },
+  {
+    "drug1": "Metronidazole",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Tidak perlu dilarutkan. Jangan dicampur dengan obat lain"
+  },
+  {
+    "drug1": "Metrotrexate",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Metrotrexate",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Metrotrexate",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "MgSO4",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "MgSO4",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Midazolam",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Midazolam",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Midazolam",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Mitomycin-C",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Mitomycin-C",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Mitomycin-C",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Morphine Sulphate",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "bila diinfus bersama dgn heparin gunakan hanya NaCl 0.9%"
+  },
+  {
+    "drug1": "Morphine Sulphate",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "bila diinfus bersama dgn heparin gunakan hanya NaCl 0.9%"
+  },
+  {
+    "drug1": "Ondansentron",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Tidak tercampur dengan obat dan larutan bersifat basa"
+  },
+  {
+    "drug1": "Ondansentron",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "NaCl 0.9%",
+    "status": "I"
+  },
+  {
+    "drug1": "Paclitaxel",
+    "drug2": "Pelarut Original",
+    "status": "C"
+  },
+  {
+    "drug1": "Penicillin G",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Penicillin G",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Phenytoin",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Jangan dicampur dengan obat lain"
+  },
+  {
+    "drug1": "Piperacillin-Tazobactam",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Piperacillin-Tazobactam",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Piperacillin-Tazobactam",
+    "drug2": "Ringer Laktat",
+    "status": "I"
+  },
+  {
+    "drug1": "Propranolol",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Tidak direkomendasi untuk dilarutkan tapi NaCl 0.9% dapat digunakan"
+  },
+  {
+    "drug1": "Ranitidin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ranitidin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Ranitidin",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Sodium Bikarbonat",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Sodium Bikarbonat",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Sodium Valproat",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Sodium Valproat",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Sodium Valproat",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Teicoplanin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Tobramisin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Tobramisin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Topotecan",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Topotecan",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Transtuzumab",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Transtuzumab",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Vancomycin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Vancomycin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  },
+  {
+    "drug1": "Vancomycin",
+    "drug2": "Ringer Laktat",
+    "status": "C"
+  },
+  {
+    "drug1": "Vancomycin",
+    "drug2": "Heparin",
+    "status": "I"
+  },
+  {
+    "drug1": "Vinblastin",
+    "drug2": "Water for Injection",
+    "status": "C"
+  },
+  {
+    "drug1": "Vinblastin",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Vincristine",
+    "drug2": "NaCl 0.9%",
+    "status": "C"
+  },
+  {
+    "drug1": "Vincristine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C"
+  }
+];
 
 // Helper to check compatibility
 
@@ -44,11 +1990,28 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
 
   const [selectedDrugs, setSelectedDrugs] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [ivDrugsState, setIvDrugsState] = useState<IvDrug[]>(() => {
-    const saved = localStorage.getItem("ivDrugsData");
+      const [ivDrugsState, setIvDrugsState] = useState<IvDrug[]>(() => {
+    const saved = localStorage.getItem("ivDrugsData_v2");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) {
+          // Merge missing fields from INITIAL_IV_DRUGS to existing
+          const merged = parsed.map((p: IvDrug) => {
+             const init = INITIAL_IV_DRUGS.find(i => i.id === p.id);
+             if (init) {
+                return { ...init, ...p, bud: init.bud || p.bud, storageTemp: init.storageTemp || p.storageTemp, reference: init.reference || p.reference };
+             }
+             return p;
+          });
+          // Add new from init
+          INITIAL_IV_DRUGS.forEach(i => {
+             if (!merged.find((m: IvDrug) => m.id === i.id)) {
+                merged.push(i);
+             }
+          });
+          return merged;
+        }
       } catch (e) {
         return INITIAL_IV_DRUGS;
       }
@@ -56,11 +2019,12 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     return INITIAL_IV_DRUGS;
   });
 
-  const [matrixState, setMatrixState] = useState<CompatibilityRecord[]>(() => {
+    const [matrixState, setMatrixState] = useState<CompatibilityRecord[]>(() => {
     const saved = localStorage.getItem("ivMatrixData");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) return parsed;
       } catch (e) {
         return INITIAL_MATRIX;
       }
@@ -69,7 +2033,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   });
 
   useEffect(() => {
-    localStorage.setItem("ivDrugsData", JSON.stringify(ivDrugsState));
+    localStorage.setItem("ivDrugsData_v2", JSON.stringify(ivDrugsState));
     localStorage.setItem("ivMatrixData", JSON.stringify(matrixState));
   }, [ivDrugsState, matrixState]);
 
@@ -160,7 +2124,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   const handleClearData = () => {
     setIvDrugsState([]);
     setMatrixState([]);
-    localStorage.removeItem("ivDrugsData");
+    localStorage.removeItem("ivDrugsData_v2");
     localStorage.removeItem("ivMatrixData");
     setSelectedDrugs([]);
     setIsConfirmClearOpen(false);
