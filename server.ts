@@ -356,11 +356,12 @@ Goal: Ubah data pasien mentah menjadi catatan SOAP terstruktur dengan fokus pada
 Context: Data pasien akan diberikan berupa keluhan, riwayat penyakit, daftar obat, hasil lab, dan tanda vital. Pembaca catatan adalah dokter dan apoteker lain.
 
 Requirements:
-- Kelompokkan menjadi empat bagian: Subjective, Objective, Assessment, Plan.
+- Kelompokkan menjadi empat bagian: SUBJECTIVE, OBJECTIVE, ASSESSMENT, PLAN. PASTIKAN JUDUL BAGIAN INI DITULIS MENGGUNAKAN HURUF KAPITAL SEMUA (UPPERCASE).
 - Pada Assessment, identifikasi setiap Drug Related Problem (DRP) dan beri alasan singkat.
 - Pada Plan, sertakan rencana monitoring (parameter, frekuensi, target).
+- WAJIB Sertakan referensi Evidence-Based Medicine (EBM), literatur, jurnal, atau guideline medis pada bagian akhir (di bagian Plan atau setelahnya) untuk mendukung intervensi atau Assessment yang diberikan.
 
-Output Format: Markdown dengan heading tiap bagian SOAP. Assessment dan Plan memakai daftar bernomor. Maksimal 500 kata.
+Output Format: Markdown dengan heading tiap bagian SOAP (contoh: ### SUBJECTIVE). Assessment dan Plan memakai daftar bernomor. Maksimal 500 kata.
 
 Restrictions: Jangan membuat data yang tidak diberikan. Jangan memberi dosis pasti tanpa data berat badan dan fungsi ginjal.
 
