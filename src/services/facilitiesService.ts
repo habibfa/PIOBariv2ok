@@ -44,3 +44,17 @@ export const saveFacilitiesToDb = async (facilities: Facility[]) => {
     throw error;
   }
 };
+
+export const deleteAllFacilities = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+    const batch = writeBatch(db);
+    querySnapshot.forEach((d) => {
+      batch.delete(d.ref);
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error("Error deleting facilities: ", error);
+    throw error;
+  }
+};

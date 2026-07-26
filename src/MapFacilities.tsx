@@ -7,7 +7,7 @@ import { Search, Navigation, MapPin, Loader2 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { getFacilitiesFromDb, saveFacilitiesToDb, Facility } from './services/facilitiesService';
+import { getFacilitiesFromDb, saveFacilitiesToDb, deleteAllFacilities, Facility } from './services/facilitiesService';
 
 // Fix for default Leaflet icon not showing in React correctly due to bundler
 // We're using standard icons from leaflet CDN as a fallback, or base64 inline them.
@@ -79,9 +79,9 @@ const mockFacilities: Facility[] = [
     "id": 101,
     "name": "Charitas Hospital Kenten",
     "type": "Hospital",
-    "address": "Jalan Betawi Raya No 1340 RT 22 RW 06",
-    "lat": -2.9374835285955725,
-    "lng": 104.79483646196289,
+    "address": "Jl. Betawi Raya No.1340, Lebong Gajah, Kec. Sematang Borang, Kota Palembang, Sumatera Selatan 30163",
+    "lat": -2.937275,
+    "lng": 104.794784,
     "contact": "0711-817196",
     "kelas": "D",
     "jenis": "RSU",
@@ -89,11 +89,11 @@ const mockFacilities: Facility[] = [
   },
   {
     "id": 102,
-    "name": "RS Umum Charitas Hospital Palembang",
+    "name": "Charitas Hospital Palembang",
     "type": "Hospital",
-    "address": "Jalan Jenderal Sudirman",
-    "lat": -2.9765,
-    "lng": 104.754,
+    "address": "Jl. Jend. Sudirman No.1054, Sungai Pangeran, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30114",
+    "lat": -2.9750631,
+    "lng": 104.7526774,
     "contact": "0711-353374",
     "kelas": "B",
     "jenis": "RSU",
@@ -104,8 +104,8 @@ const mockFacilities: Facility[] = [
     "name": "Rumah Sakit Islam Ar-Rasyid Palembang",
     "type": "Hospital",
     "address": "Jl. HM. Saleh No.2 KM.7, Sukarami, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9364778,
-    "lng": 104.7200747,
+    "lat": -2.9361687,
+    "lng": 104.7115559,
     "contact": "07115610503",
     "kelas": "C",
     "jenis": "RSU",
@@ -115,9 +115,9 @@ const mockFacilities: Facility[] = [
     "id": 108,
     "name": "RS Bhayangkara M. Hasan Palembang",
     "type": "Hospital",
-    "address": "Jl. Jenderal Sudirman KM. 4.5",
-    "lat": -2.9588564218828313,
-    "lng": 104.73754837829966,
+    "address": "Jl. Jend. Sudirman No.km 4, RW.5, Ario Kemuning, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30128",
+    "lat": -2.959032,
+    "lng": 104.7269447,
     "contact": "0711-414855",
     "kelas": "C",
     "jenis": "RSU",
@@ -128,8 +128,8 @@ const mockFacilities: Facility[] = [
     "name": "RS Umum Bunda Palembang",
     "type": "Hospital",
     "address": "Jl. Demang Lebar Daun No 70 Palembang",
-    "lat": -2.9679362,
-    "lng": 104.7254294,
+    "lat": -2.9679297,
+    "lng": 104.7318648,
     "contact": "0711-311866",
     "kelas": "C",
     "jenis": "RSU",
@@ -139,9 +139,9 @@ const mockFacilities: Facility[] = [
     "id": 111,
     "name": "RS Bunda Medika Jakabaring",
     "type": "Hospital",
-    "address": "Jl. Gubernur H.A. Bastari",
-    "lat": -3.050035,
-    "lng": 104.803463,
+    "address": "Jl. Gubernur H. A Bastari, Sungai Kedukan, Kec. Rambutan, Kab. Banyuasin, Sumatera Selatan 30967",
+    "lat": -3.0498861,
+    "lng": 104.793065,
     "contact": "0711-3037000",
     "kelas": "C",
     "jenis": "RSU",
@@ -151,9 +151,9 @@ const mockFacilities: Facility[] = [
     "id": 114,
     "name": "RS Umum Pusat Dr. Mohammad Hoesin Palembang",
     "type": "Hospital",
-    "address": "Jalan Jendral Sudirman Km. 3,5",
-    "lat": -2.9663924,
-    "lng": 104.7488317,
+    "address": "Jalan Jendral Sudirman KM.3,5, Sekip Jaya, Kemuning, Sekip Jaya, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30114",
+    "lat": -2.9672422,
+    "lng": 104.7481157,
     "contact": "0711-354088",
     "kelas": "A",
     "jenis": "RSU",
@@ -163,9 +163,9 @@ const mockFacilities: Facility[] = [
     "id": 115,
     "name": "RS Jiwa Ernaldi Bahar Provinsi Sumatera Selatan",
     "type": "Hospital",
-    "address": "Jalan Gubernur H. Muhammad Ali Amin KM. 12",
-    "lat": -2.9383527,
-    "lng": 104.7069004,
+    "address": "Jalan Gubernur H. Muhammad Ali Amin, RT./RW/RW.20, 04, Alang Alang Lebar, Kec. Alang-Alang Lebar, Kota Palembang, Sumatera Selatan 30154",
+    "lat": -2.9233796,
+    "lng": 104.6802979,
     "contact": "07115645126",
     "kelas": "A",
     "jenis": "RSK Jiwa",
@@ -175,10 +175,10 @@ const mockFacilities: Facility[] = [
     "id": 117,
     "name": "RS Umum Graha Mandiri",
     "type": "Hospital",
-    "address": "Jl.ANWAR ARSYAD NO.12",
-    "lat": -2.9685113930494835,
-    "lng": 104.7262533263893,
-    "contact": "0711-414082",
+    "address": "Jl. Kapten A. Anwar Arsyad No.12, Siring Agung, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.968516,
+    "lng": 104.7236938,
+    "contact": "0711-412354",
     "kelas": "C",
     "jenis": "RSU",
     "city": "Kota Palembang"
@@ -187,9 +187,9 @@ const mockFacilities: Facility[] = [
     "id": 118,
     "name": "RS Hermina Palembang",
     "type": "Hospital",
-    "address": "JALAN BASUKI RAHMAT NOMOR 897 RUKUN TETANGGA 11 RUKUN WARGA 003",
-    "lat": -2.955951968134232,
-    "lng": 104.74863915648803,
+    "address": "Jl. Jend. Basuki Rachmat No.897, Pahlawan, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30127",
+    "lat": -2.9557995,
+    "lng": 104.7457326,
     "contact": "0711352525",
     "kelas": "C",
     "jenis": "RSU",
@@ -199,9 +199,9 @@ const mockFacilities: Facility[] = [
     "id": 119,
     "name": "RS Hermina OPI Jakabaring",
     "type": "Hospital",
-    "address": "Jl. Gub H A Bastari RT 010 RW 005 Kel. Jakabaring Selatan Kec. Rambutan",
-    "lat": -3.034199,
-    "lng": 104.791005,
+    "address": "Jl. Gubernur H. A Bastari, RT.010/RW.005, Kelurahan Jakabaring Selatan, Kec. Rambutan, Kab. Banyuasin, Sumatera Selatan 30257",
+    "lat": -3.0338765,
+    "lng": 104.788419,
     "contact": "0711 3031520",
     "kelas": "C",
     "jenis": "RSU",
@@ -209,12 +209,12 @@ const mockFacilities: Facility[] = [
   },
   {
     "id": 120,
-    "name": "RS Khusus Gigi dan Mulut Palembang Provinsi Sumate",
+    "name": "RS Khusus Gigi dan Mulut Provinsi Sumatera Selatan",
     "type": "Hospital",
-    "address": "Jalan Kolonel. H. Burlian KM. 6",
-    "lat": -2.9482346,
-    "lng": 104.7345504,
-    "contact": "0711-5610491",
+    "address": "Jl. Suka Jaya No.316, Suka Bangun, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.949328,
+    "lng": 104.7320669,
+    "contact": "0711-5610494",
     "kelas": "C",
     "jenis": "RSK GM",
     "city": "Kota Palembang"
@@ -223,9 +223,9 @@ const mockFacilities: Facility[] = [
     "id": 122,
     "name": "RS Musi Medika Cendikia",
     "type": "Hospital",
-    "address": "Jl. Demang Lebar Daun No.62",
-    "lat": -2.9863592,
-    "lng": 104.6885311,
+    "address": "Jl. Demang Lebar Daun, Demang Lebar Daun, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.9799252,
+    "lng": 104.7214043,
     "contact": "0711 - 446272",
     "kelas": "C",
     "jenis": "RSU",
@@ -235,10 +235,10 @@ const mockFacilities: Facility[] = [
     "id": 124,
     "name": "RS Muhammadiyah Palembang",
     "type": "Hospital",
-    "address": "Jl. A. Yani 13 Ulu, kota Palembang,Sumatera selatan",
-    "lat": -2.996709841809831,
-    "lng": 104.77676896762841,
-    "contact": "0711511446",
+    "address": "Jl. Jenderal Ahmad Yani Jl. Silaberanti No.13, 13 Ulu, Kec. Seberang Ulu II, Kota Palembang, Sumatera Selatan 30263",
+    "lat": -2.9963576,
+    "lng": 104.7741142,
+    "contact": "08117441446",
     "kelas": "C",
     "jenis": "RSU",
     "city": "Kota Palembang"
@@ -247,9 +247,9 @@ const mockFacilities: Facility[] = [
     "id": 125,
     "name": "RS Pelabuhan Palembang",
     "type": "Hospital",
-    "address": "Jl. Mayor Memet Sastra Wirya No.1 Boom Baru",
-    "lat": -2.9788835698905314,
-    "lng": 104.7768023511444,
+    "address": "Jl. Mayor Memet Sastra Wirya No.1, Lawang Kidul, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30163",
+    "lat": -2.9783177,
+    "lng": 104.7714601,
     "contact": "(0711) 711843",
     "kelas": "C",
     "jenis": "RSU",
@@ -259,9 +259,9 @@ const mockFacilities: Facility[] = [
     "id": 126,
     "name": "RS Permata Palembang",
     "type": "Hospital",
-    "address": "Jalan Soekarno Hatta, Ilir Barat I",
-    "lat": -2.9861858851054244,
-    "lng": 104.71837103513413,
+    "address": "Jl. Soekarno Hatta, Bukit Baru, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30139",
+    "lat": -2.9857883,
+    "lng": 104.7160428,
     "contact": "0711-5260000",
     "kelas": "C",
     "jenis": "RSU",
@@ -271,10 +271,10 @@ const mockFacilities: Facility[] = [
     "id": 127,
     "name": "RS Umum Pertamina Palembang",
     "type": "Hospital",
-    "address": "Jalan Pengantingan Nomor 1",
-    "lat": -3.0008927511793027,
-    "lng": 104.82427423858644,
-    "contact": "0711-597401",
+    "address": "Komplek Pertamina UP III, Jl. Pengantingan No.1, Komperta, Kec. Plaju, Kota Palembang, Sumatera Selatan 30967",
+    "lat": -2.9944983,
+    "lng": 104.8221109,
+    "contact": "081515150442",
     "kelas": "C",
     "jenis": "RSU",
     "city": "Kota Palembang"
@@ -283,9 +283,9 @@ const mockFacilities: Facility[] = [
     "id": 131,
     "name": "RS Umum Pusri Palembang",
     "type": "Hospital",
-    "address": "Jl May Zen Komplek Pusri, 2 Ilir Palembang",
-    "lat": -2.9697602476057607,
-    "lng": 104.80142086770628,
+    "address": "Komp. PT PUSRI, Jl. May Zen, Sei Selayur, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30118",
+    "lat": -2.9702722,
+    "lng": 104.7987858,
     "contact": "0711-721313",
     "kelas": "C",
     "jenis": "RSU",
@@ -295,10 +295,10 @@ const mockFacilities: Facility[] = [
     "id": 132,
     "name": "RS Siloam Sriwijaya Palembang",
     "type": "Hospital",
-    "address": "JL.POM IX (KOMPLEK PS MALL)",
-    "lat": -2.9779351,
-    "lng": 104.7422583,
-    "contact": "0711-5229100",
+    "address": "Jl. POM IX, Lorok Pakjo, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30137",
+    "lat": -2.9777647,
+    "lng": 104.7397584,
+    "contact": "1500911",
     "kelas": "C",
     "jenis": "RSU",
     "city": "Kota Palembang"
@@ -307,9 +307,9 @@ const mockFacilities: Facility[] = [
     "id": 133,
     "name": "RS Umum Sriwijaya",
     "type": "Hospital",
-    "address": "Jl. Jenderal Sudirman, Km. 4.5, No. 502",
-    "lat": -2.95965,
-    "lng": 104.737173,
+    "address": "Jalan Jenderal Sudirman KM.4.5 No.502, 20 Ilir D. IV, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30138",
+    "lat": -2.9596254,
+    "lng": 104.7344336,
     "contact": "0711-419680",
     "kelas": "C",
     "jenis": "RSU",
@@ -319,9 +319,9 @@ const mockFacilities: Facility[] = [
     "id": 135,
     "name": "RS Umum dr. AK. Gani Kota Palembang",
     "type": "Hospital",
-    "address": "Jl. dr AK Gani no I",
-    "lat": -2.9900512,
-    "lng": 104.7573011,
+    "address": "Jl. Dr. Ak. Gani No.1, 16 Ilir, Kec. Bukit Kecil, Kota Palembang, Sumatera Selatan 30113",
+    "lat": -2.9903228,
+    "lng": 104.7575673,
     "contact": "0711-354691",
     "kelas": "C",
     "jenis": "RSU",
@@ -332,8 +332,8 @@ const mockFacilities: Facility[] = [
     "name": "RSU YK Madira",
     "type": "Hospital",
     "address": "Jl. Jend. Sudirman No.1051, 20 Ilir D. I, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30114",
-    "lat": -2.9727999,
-    "lng": 104.751192,
+    "lat": -2.9727942,
+    "lng": 104.7497437,
     "contact": "(0711) 364954",
     "kelas": "C",
     "jenis": "RSU",
@@ -343,9 +343,9 @@ const mockFacilities: Facility[] = [
     "id": 139,
     "name": "RS Islam Siti Khadijah",
     "type": "Hospital",
-    "address": "Jl. Demang Lebar Daun, Lorok Pakjo",
-    "lat": -2.9714035538447767,
-    "lng": 104.730974105835,
+    "address": "Jl. Demang Lebar Daun, Lorok Pakjo, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30137",
+    "lat": -2.9716447,
+    "lng": 104.7288348,
     "contact": "0711-356008",
     "kelas": "B",
     "jenis": "RSU",
@@ -356,8 +356,8 @@ const mockFacilities: Facility[] = [
     "name": "Rumah Sakit Ibu dan Anak Az-Zahra Palembang",
     "type": "Hospital",
     "address": "Jalan Brigadir jenderal Hasan Khasim Nomor 1-2 Kelurahan, Bukit Sangkal, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30114",
-    "lat": -2.9422846,
-    "lng": 104.7841096,
+    "lat": -2.9422792,
+    "lng": 104.7815347,
     "contact": "07113038799",
     "kelas": "C",
     "jenis": "Rumah Sakit Khusus Ibu dan Anak",
@@ -368,8 +368,8 @@ const mockFacilities: Facility[] = [
     "name": "RSIA Bunda Noni",
     "type": "Hospital",
     "address": "Jl. Srijaya Negara No.1, Bukit Lama, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30121",
-    "lat": -2.9929434,
-    "lng": 104.7264614,
+    "lat": -2.992938,
+    "lng": 104.7238865,
     "contact": "0711441952",
     "kelas": "C",
     "jenis": "Rumah Sakit Khusus Ibu dan Anak",
@@ -379,12 +379,12 @@ const mockFacilities: Facility[] = [
     "id": 143,
     "name": "RS Ibu dan Anak Mama",
     "type": "Hospital",
-    "address": "Jalan Lembing Blok F No. 15 Kampus POM IX",
-    "lat": -2.975501,
-    "lng": 104.740858,
+    "address": "Jl. Lembing Kampus No.15, Jl. Lembing Kampus No.15 Blok f, Lorok Pakjo, Ilir Barat I, Palembang City, South Sumatra 30121",
+    "lat": -2.9754798,
+    "lng": 104.7381606,
     "contact": "0711 357351",
     "kelas": "C",
-    "jenis": "RSIA",
+    "jenis": "Rumah Sakit Khusus Ibu dan Anak",
     "city": "Kota Palembang"
   },
   {
@@ -392,8 +392,8 @@ const mockFacilities: Facility[] = [
     "name": "Rumah Sakit Ibu Dan Anak Marissa",
     "type": "Hospital",
     "address": "Jl. Kapten Abdullah No.1212, RT.18, Plaju Ilir, Kec. Plaju, Kota Palembang, Sumatera Selatan 30119",
-    "lat": -3.0057493,
-    "lng": 104.8180779,
+    "lat": -3.0057439,
+    "lng": 104.815503,
     "contact": "082280841273",
     "kelas": "C",
     "jenis": "Rumah Sakit Khusus Ibu dan Anak",
@@ -403,10 +403,10 @@ const mockFacilities: Facility[] = [
     "id": 153,
     "name": "RS Umum Daerah Gandus Palembang",
     "type": "Hospital",
-    "address": "Jl. Sofyan Kenawas Gandus",
-    "lat": -3.0148010021291323,
-    "lng": 104.68978397722073,
-    "contact": "081178718686",
+    "address": "Gandus, Kec. Gandus, Kota Palembang, Sumatera Selatan 30149",
+    "lat": -3.0148165,
+    "lng": 104.68721,
+    "contact": "081379179785",
     "kelas": "D",
     "jenis": "RSU",
     "city": "Kota Palembang"
@@ -415,9 +415,9 @@ const mockFacilities: Facility[] = [
     "id": 165,
     "name": "RS Umum Daerah Palembang Bari",
     "type": "Hospital",
-    "address": "Jl. Panca Usaha No.1",
-    "lat": -3.0105683345683327,
-    "lng": 104.76858652053224,
+    "address": "Jl. Panca Usaha No.1, 5 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30254",
+    "lat": -3.0106723,
+    "lng": 104.7660224,
     "contact": "0711-519211",
     "kelas": "B",
     "jenis": "RSU",
@@ -425,11 +425,11 @@ const mockFacilities: Facility[] = [
   },
   {
     "id": 169,
-    "name": "RS Umum Daerah Siti Fatimah Provinsi Sumatera Sela",
+    "name": "RSUD Siti Fatimah Provinsi Sumatera Selatan",
     "type": "Hospital",
-    "address": "Jl. Kol. H. Burlian Km 6",
-    "lat": -2.9482346,
-    "lng": 104.7345504,
+    "address": "Jl. Kolonel H. Barlian, Suka Bangun, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.9482292,
+    "lng": 104.7319755,
     "contact": "07115178883",
     "kelas": "A",
     "jenis": "RSU",
@@ -439,9 +439,9 @@ const mockFacilities: Facility[] = [
     "id": 175,
     "name": "RS Umum Pusat Dr. Rivai Abdullah",
     "type": "Hospital",
-    "address": "Jalan Sungai Kundur No. 1",
-    "lat": -2.9795094329980407,
-    "lng": 104.8638046119213,
+    "address": "RSUP Dr. Rivai Abdullah, Jl. Sungai Kundur No.Kelurahan, Mariana, Kec. Banyuasin I, Kab. Banyuasin, Sumatera Selatan 30963",
+    "lat": -2.9800618,
+    "lng": 104.8615871,
     "contact": "0711-7537201",
     "kelas": "C",
     "jenis": "RSU",
@@ -452,8 +452,8 @@ const mockFacilities: Facility[] = [
     "name": "RSIA Trinanda",
     "type": "Hospital",
     "address": "Jl. R. E. Martadinata No.6A, Sei Buah, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30118",
-    "lat": -2.9701634,
-    "lng": 104.7850769,
+    "lat": -2.970158,
+    "lng": 104.782502,
     "contact": "0711716643",
     "kelas": "C",
     "jenis": "Rumah Sakit Khusus Ibu dan Anak",
@@ -461,11 +461,11 @@ const mockFacilities: Facility[] = [
   },
   {
     "id": 999,
-    "name": "RS Umum Myria Palembang",
+    "name": "Charitas Hospital KM. 7",
     "type": "Hospital",
-    "address": "Jl. Kol. H. Burlian Km. 7 No. 228",
-    "lat": -2.9411326568720257,
-    "lng": 104.72608905713885,
+    "address": "Jl. Kolonel H. Barlian No.228, Sukarami, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.941132,
+    "lng": 104.7235104,
     "contact": "0711-411610",
     "kelas": "C",
     "jenis": "RSU",
@@ -476,8 +476,8 @@ const mockFacilities: Facility[] = [
     "name": "Rumah Sakit Namira Palembang",
     "type": "Hospital",
     "address": "Lorong Foker Jl. Letjen Harun Sohar, Kebun Bunga, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30152",
-    "lat": -2.9113902,
-    "lng": 104.7125229,
+    "lat": -2.9108146,
+    "lng": 104.7110562,
     "contact": "08136011994",
     "kelas": "C",
     "jenis": "RSU",
@@ -582,7 +582,8 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   };
 
   const handleDownloadTemplate = () => {
-    const ws = XLSX.utils.json_to_sheet(mockFacilities);
+    const template = [{ id: 101, name: "Charitas Hospital Kenten", type: "Hospital", address: "Jalan Betawi Raya No 1340 RT 22 RW 06", lat: -2.937483, lng: 104.794836, contact: "0711-817196", kelas: "D", jenis: "RSU", city: "Palembang" }];
+    const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Peta_Faskes");
     XLSX.writeFile(wb, "Template_Peta_Faskes.xlsx");
@@ -736,13 +737,32 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
               <span className="text-xs font-semibold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{filteredFacilities.length} Faskes</span>
             </h2>
             {isAdmin && (
-              <button
-                onClick={() => setIsUpdateModalOpen(true)}
-                className="inline-flex justify-center items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
-              >
-                <Upload className="w-4 h-4" />
-                Update Data
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Apakah Anda yakin ingin menghapus semua data fasilitas kesehatan? Data tidak dapat dikembalikan.")) {
+                      try {
+                        await deleteAllFacilities();
+                        setFacilities([]);
+                        alert("Semua data berhasil dihapus.");
+                      } catch (e) {
+                        alert("Gagal menghapus data.");
+                      }
+                    }
+                  }}
+                  className="inline-flex justify-center items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
+                >
+                  <X className="w-4 h-4" />
+                  Hapus Semua
+                </button>
+                <button
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="inline-flex justify-center items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
+                >
+                  <Upload className="w-4 h-4" />
+                  Update Data
+                </button>
+              </div>
             )}
           </div>
           <div className="relative mt-2 max-w-lg flex gap-2">
@@ -968,7 +988,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
             <Marker 
               key={facility.id} 
               position={[facility.lat, facility.lng]}
-              draggable={!facility.locked}
+              draggable={false}
               eventHandlers={{
                 dragend: (e) => handleDragEnd(e, facility.id)
               }}
