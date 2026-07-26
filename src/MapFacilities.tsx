@@ -498,26 +498,51 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   const center: [number, number] = [-2.9761, 104.7754];
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("Semua");
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [facilities, setFacilities] = useState<Facility[]>(() => {
+    try {
+      const saved = localStorage.getItem("faskes_facilities_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error("Error reading facilities from localStorage:", e);
+    }
+    return mockFacilities.map(f => ({ ...f, locked: false }));
+  });
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const loadData = async () => {
       try {
         const data = await getFacilitiesFromDb();
-        if (data.length > 0) {
-          setFacilities(data.map(f => ({ ...f, locked: false })).sort((a, b) => a.id - b.id));
-        } else {
-          setFacilities(mockFacilities.map(f => ({ ...f, locked: false })));
+        if (isMounted && data && data.length > 0) {
+          const sorted = data.map(f => ({ ...f, locked: false })).sort((a, b) => a.id - b.id);
+          setFacilities(sorted);
+          try {
+            localStorage.setItem("faskes_facilities_v1", JSON.stringify(sorted));
+          } catch (e) {}
+        } else if (isMounted) {
+          try {
+            const saved = localStorage.getItem("faskes_facilities_v1");
+            if (!saved) {
+              localStorage.setItem("faskes_facilities_v1", JSON.stringify(mockFacilities.map(f => ({ ...f, locked: false }))));
+            }
+          } catch (e) {}
         }
       } catch (e) {
-        console.error("Failed to load from DB, using mock data", e);
-        setFacilities(mockFacilities.map(f => ({ ...f, locked: false })));
+        console.warn("Failed to load from DB, using local data", e);
       } finally {
-        setIsLoadingData(false);
+        if (isMounted) {
+          setIsLoadingData(false);
+        }
       }
     };
     loadData();
+    return () => { isMounted = false; };
   }, []);
 
   const saveToDb = async (data: Facility[]) => {
@@ -679,10 +704,11 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   const [hoveredKelas, setHoveredKelas] = useState<string | null>(null);
 
   const baseFilteredFacilities = facilities.filter(facility => 
-    (cityFilter === "Semua" || facility.city === cityFilter) &&
-    (facility.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    facility.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (facility.jenis && facility.jenis.toLowerCase().includes(searchQuery.toLowerCase())))
+    facility && 
+    (cityFilter === "Semua" || facility.city === cityFilter || !facility.city) &&
+    ((facility.name || "").toLowerCase().includes((searchQuery || "").toLowerCase()) || 
+     (facility.address || "").toLowerCase().includes((searchQuery || "").toLowerCase()) ||
+     (facility.jenis && facility.jenis.toLowerCase().includes((searchQuery || "").toLowerCase())))
   );
 
   const filteredFacilities = baseFilteredFacilities.filter(facility => {
@@ -743,7 +769,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                     if (window.confirm("Apakah Anda yakin ingin menghapus semua data fasilitas kesehatan? Data tidak dapat dikembalikan.")) {
                       try {
                         await deleteAllFacilities();
-                        setFacilities([]);
+                        setFacilities([]); localStorage.removeItem("faskes_facilities_v1");
                         alert("Semua data berhasil dihapus.");
                       } catch (e) {
                         alert("Gagal menghapus data.");
