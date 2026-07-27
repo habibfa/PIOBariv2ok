@@ -482,6 +482,522 @@ const mockFacilities: Facility[] = [
     "kelas": "C",
     "jenis": "RSU",
     "city": "Kota Palembang"
+  },
+  {
+    "id": 2001,
+    "name": "Puskesmas 1 Ulu",
+    "type": "Puskesmas",
+    "address": "Jl. H Faqih Usman No.2329, 1 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30256",
+    "lat": -3.0114406,
+    "lng": 104.7493961,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2002,
+    "name": "Puskesmas 11 Ilir",
+    "type": "Puskesmas",
+    "address": "Jl. Slamet Riady No.455, 11 Ilir, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30112",
+    "lat": -2.9812056,
+    "lng": 104.7648357,
+    "contact": "0711364125",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2003,
+    "name": "Puskesmas 23 Ilir",
+    "type": "Puskesmas",
+    "address": "Jl. Datuk Moh. Akib No.100, 23 Ilir, Kec. Bukit Kecil, Kota Palembang, Sumatera Selatan 30113",
+    "lat": -2.9878873,
+    "lng": 104.7523147,
+    "contact": "08117111926",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2004,
+    "name": "Puskesmas 4 Ulu",
+    "type": "Puskesmas",
+    "address": "Jalan Kyai Haji Asyik No.1484, 3-4 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30122",
+    "lat": -3.0069627,
+    "lng": 104.7583844,
+    "contact": "0711511373",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2005,
+    "name": "Puskesmas 5 Ilir",
+    "type": "Puskesmas",
+    "address": "Jalan Jendral Jalan Bambang Utoyo No.1095, 5 Ilir, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30111",
+    "lat": -2.9650764,
+    "lng": 104.7701258,
+    "contact": "07115625790",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2006,
+    "name": "Puskesmas 7 Ulu",
+    "type": "Puskesmas",
+    "address": "Jl. KH. Azhari, 7 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30253",
+    "lat": -2.9967198,
+    "lng": 104.7613694,
+    "contact": "08117846767",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2007,
+    "name": "Puskesmas Alang Alang Lebar",
+    "type": "Puskesmas",
+    "address": "Jl. Bypass Alang-Alang Lebar, Talang Klp., Kec. Alang-Alang Lebar, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9315366,
+    "lng": 104.6881571,
+    "contact": "08117111699",
+    "kelas": "Rawat Inap",
+    "jenis": "Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2008,
+    "name": "Puskesmas Ariodillah",
+    "type": "Puskesmas",
+    "address": "Jl. Ariodillah 1 No.2102, 20 Ilir D. III, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.964005,
+    "lng": 104.7400458,
+    "contact": "0711317308",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2009,
+    "name": "Puskesmas Basuki Rahmat",
+    "type": "Puskesmas",
+    "address": "Jl. Sersan Sani No.1305, Talang Aman, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9481797,
+    "lng": 104.7464607,
+    "contact": "0711814470",
+    "kelas": "Rawat Inap",
+    "jenis": "Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2010,
+    "name": "Puskesmas Boom Baru",
+    "type": "Puskesmas",
+    "address": "Jl. Penyaringan No.8, 3 Ilir, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30111",
+    "lat": -2.9752538,
+    "lng": 104.7798426,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2011,
+    "name": "Puskesmas Bukit Sangkal",
+    "type": "Puskesmas",
+    "address": "Jl. Tj. Sari II No.46, Bukit Sangkal, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9376557,
+    "lng": 104.7779766,
+    "contact": "085369555755",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2012,
+    "name": "Puskesmas Dempo",
+    "type": "Puskesmas",
+    "address": "Jl. Kolonel Atmo No.861, 17 Ilir, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30125",
+    "lat": -2.9818032,
+    "lng": 104.7563211,
+    "contact": "08117182222",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2013,
+    "name": "Puskesmas Gandus",
+    "type": "Puskesmas",
+    "address": "Jl. Tp Husin Damar Jaya Sungai Tenang, RT.19/RW.02, Pulo Kerto, Kec. Gandus, Kota Palembang, Sumatera Selatan 30149",
+    "lat": -3.018992,
+    "lng": 104.6745262,
+    "contact": "081288224040",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2014,
+    "name": "Puskesmas Jakabaring",
+    "type": "Puskesmas",
+    "address": "Plaju Darat, Kec. Plaju, Kota Palembang, Sumatera Selatan 30967",
+    "lat": -3.0317825,
+    "lng": 104.7970437,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2015,
+    "name": "Puskesmas Kalidoni",
+    "type": "Puskesmas",
+    "address": "Jl. Talang Gading No.RT 07, Kalidoni, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30163",
+    "lat": -2.9606593,
+    "lng": 104.7966831,
+    "contact": "0711712938",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2016,
+    "name": "Puskesmas Kampus",
+    "type": "Puskesmas",
+    "address": "Jl. Golf No.5 Blok G, Lorok Pakjo, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30126",
+    "lat": -2.975502,
+    "lng": 104.7357682,
+    "contact": "082279529534",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2017,
+    "name": "Puskesmas Karya Jaya",
+    "type": "Puskesmas",
+    "address": "Jl. Musi, Keramasan, Kec. Kertapati, Kota Palembang, Sumatera Selatan 30259",
+    "lat": -3.0408233,
+    "lng": 104.7235448,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2018,
+    "name": "Puskesmas Kenten",
+    "type": "Puskesmas",
+    "address": "Jl. MP. Mangkunegara No.1, Bukit Sangkal, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9404871,
+    "lng": 104.7648187,
+    "contact": "081279878741",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2019,
+    "name": "Puskesmas Keramasan",
+    "type": "Puskesmas",
+    "address": "Jl. Gotong Royong No.466, Kemang Agung, Kec. Kertapati, Kota Palembang, Sumatera Selatan 30145",
+    "lat": -3.0277071,
+    "lng": 104.7432487,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2020,
+    "name": "Puskesmas Kertapati",
+    "type": "Puskesmas",
+    "address": "Jl. Abi Kusno Cokro Suyoso No.335, Kemang Agung, Kec. Kertapati, Kota Palembang, Sumatera Selatan 30145",
+    "lat": -3.0256198,
+    "lng": 104.7444493,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2021,
+    "name": "Puskesmas Makrayu",
+    "type": "Puskesmas",
+    "address": "Jl. Makrayu No.960, 32 Ilir, Kec. Ilir Bar. II, Kota Palembang, Sumatera Selatan 30129",
+    "lat": -3.0000265,
+    "lng": 104.7417205,
+    "contact": "0711318400",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2022,
+    "name": "Puskesmas Merdeka",
+    "type": "Puskesmas",
+    "address": "Jl. Merdeka No.66, Talang Semut, Kec. Bukit Kecil, Kota Palembang, Sumatera Selatan 30136",
+    "lat": -2.9905595,
+    "lng": 104.7502104,
+    "contact": "0711317303",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2023,
+    "name": "Puskesmas Multiwahana",
+    "type": "Puskesmas",
+    "address": "Jl. Musi Raya Komplek Perkantoran No.1, Sako, Kec. Sako, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9286993,
+    "lng": 104.7779542,
+    "contact": "082175338955",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2024,
+    "name": "Puskesmas Naga Swidak",
+    "type": "Puskesmas",
+    "address": "Gg. Bangdes, 14 Ulu, Kec. Seberang Ulu II, Kota Palembang, Sumatera Selatan 30111",
+    "lat": -2.9915556,
+    "lng": 104.7801198,
+    "contact": "081977873700",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2025,
+    "name": "Puskesmas Ogan Permata Indah",
+    "type": "Puskesmas",
+    "address": "Jl. Opi Raya, Sungai Kedukan, Kec. Rambutan, Kab. Banyuasin, Sumatera Selatan 30257",
+    "lat": -3.0485046,
+    "lng": 104.7822671,
+    "contact": "08117877668",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2026,
+    "name": "Puskesmas Padang Selasa",
+    "type": "Puskesmas",
+    "address": "Jl. Padang Selasa, Bukit Lama, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30139",
+    "lat": -2.9901656,
+    "lng": 104.731724,
+    "contact": "082279529534",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2027,
+    "name": "Puskesmas Pakjo",
+    "type": "Puskesmas",
+    "address": "Jl. Inspektur Marzuki Lorong Bambu Kuning No.2240, Demang Lebar Daun, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.9635757,
+    "lng": 104.7318695,
+    "contact": "07115613007",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2028,
+    "name": "Puskesmas Pembina",
+    "type": "Puskesmas",
+    "address": "Jl. Jenderal Ahmad Yani No.62A, Silaberanti, Kecamatan Jakabaring, Kota Palembang, Sumatera Selatan 30252",
+    "lat": -2.9968641,
+    "lng": 104.7727409,
+    "contact": "0711510203",
+    "kelas": "Rawat Inap",
+    "jenis": "Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2029,
+    "name": "Puskesmas Plaju",
+    "type": "Puskesmas",
+    "address": "Jl. D.I. Panjaitan No.40, Plaju Ulu, Kec. Plaju, Kota Palembang, Sumatera Selatan 30268",
+    "lat": -2.9957247,
+    "lng": 104.8111146,
+    "contact": "0711541212",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2030,
+    "name": "Puskesmas Punti Kayu",
+    "type": "Puskesmas",
+    "address": "Komplek Pemda, Jl. Srijaya No.5,5, Srijaya, Kec. Alang-Alang Lebar, Kota Palembang, Sumatera Selatan 30151",
+    "lat": -2.9498248,
+    "lng": 104.7238623,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2031,
+    "name": "Puskesmas Sabokingking",
+    "type": "Puskesmas",
+    "address": "Sei Buah, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30111",
+    "lat": -2.9737327,
+    "lng": 104.7889828,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2032,
+    "name": "Puskesmas Sako",
+    "type": "Puskesmas",
+    "address": "Jl. Sematang Borang No.765, RT.14/RW.06, Sako Baru, Kec. Sako, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9211914,
+    "lng": 104.7895145,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2033,
+    "name": "Puskesmas Sei Baung",
+    "type": "Puskesmas",
+    "address": "Jl. Pertiwi No.RT.10, Demang Lebar Daun, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30121",
+    "lat": -2.9732879,
+    "lng": 104.7405414,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2034,
+    "name": "Puskesmas Sei Selincah",
+    "type": "Puskesmas",
+    "address": "Jl. May Zen No.3, Sei Selincah, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30161",
+    "lat": -2.9682963,
+    "lng": 104.8191075,
+    "contact": "0711718374",
+    "kelas": "Rawat Inap",
+    "jenis": "Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2035,
+    "name": "Puskesmas Sekip",
+    "type": "Puskesmas",
+    "address": "20 Ilir D II, Kec. Kemuning, Kota Palembang, Sumatera Selatan",
+    "lat": -2.957851,
+    "lng": 104.7511441,
+    "contact": "08117105145",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2036,
+    "name": "Puskesmas Sematang Borang",
+    "type": "Puskesmas",
+    "address": "Jl. Lematang Raya No.16, Sialang, Kec. Sako, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9340606,
+    "lng": 104.7879162,
+    "contact": "0711824770",
+    "kelas": "Rawat Inap",
+    "jenis": "Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2037,
+    "name": "Puskesmas Sosial",
+    "type": "Puskesmas",
+    "address": "Lorong Mekar I, RT.033/RW.005, Suka Bangun, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9463286,
+    "lng": 104.7388928,
+    "contact": "085268184440",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2038,
+    "name": "Puskesmas Sukarami",
+    "type": "Puskesmas",
+    "address": "Jl. Kebun Bunga, RT.37/RW.05, Kebun Bunga, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.9204236,
+    "lng": 104.7144485,
+    "contact": "088286531911",
+    "kelas": "Rawat Inap",
+    "jenis": "Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2039,
+    "name": "Puskesmas Talang Betutu",
+    "type": "Puskesmas",
+    "address": "Palembang, Sumatera, Jalan Selatan, Talang Putri, Kota Palembang, Sumatera, Selatan, Talang Betutu, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.8888877,
+    "lng": 104.6843079,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2040,
+    "name": "Puskesmas Talang Jambe",
+    "type": "Puskesmas",
+    "address": "Jl. AMD, Talang Jambe, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
+    "lat": -2.8897467,
+    "lng": 104.7155045,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2041,
+    "name": "Puskesmas Talang Ratu",
+    "type": "Puskesmas",
+    "address": "Jl. Letnan Murod No.986, RT.13, 20 Ilir D. IV, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30128",
+    "lat": -2.9540056,
+    "lng": 104.7295172,
+    "contact": "0711353259",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2042,
+    "name": "Puskesmas Taman Bacaan",
+    "type": "Puskesmas",
+    "address": "Lorong Taman Bacaan, Tangga Takat, Kec. Seberang Ulu II, Kota Palembang, Sumatera Selatan 30164",
+    "lat": -2.9864392,
+    "lng": 104.7809528,
+    "contact": "0711514482",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
+  },
+  {
+    "id": 2043,
+    "name": "Puskesmas Tegal Binangun",
+    "type": "Puskesmas",
+    "address": "Lorong Jambu, Plaju Darat, Kec. Plaju, Kota Palembang, Sumatera Selatan 30267",
+    "lat": -3.0139221,
+    "lng": 104.8090331,
+    "contact": "-",
+    "kelas": "Non Rawat Inap",
+    "jenis": "Non Rawat Inap",
+    "city": "Palembang"
   }
 ];
 
@@ -500,7 +1016,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   const [cityFilter, setCityFilter] = useState("Semua");
   const [facilities, setFacilities] = useState<Facility[]>(() => {
     try {
-      const saved = localStorage.getItem("faskes_facilities_v1");
+      const saved = localStorage.getItem("faskes_facilities_v4");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -523,13 +1039,13 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
           const sorted = data.map(f => ({ ...f, locked: false })).sort((a, b) => a.id - b.id);
           setFacilities(sorted);
           try {
-            localStorage.setItem("faskes_facilities_v1", JSON.stringify(sorted));
+            localStorage.setItem("faskes_facilities_v4", JSON.stringify(sorted));
           } catch (e) {}
         } else if (isMounted) {
           try {
-            const saved = localStorage.getItem("faskes_facilities_v1");
+            const saved = localStorage.getItem("faskes_facilities_v4");
             if (!saved) {
-              localStorage.setItem("faskes_facilities_v1", JSON.stringify(mockFacilities.map(f => ({ ...f, locked: false }))));
+              localStorage.setItem("faskes_facilities_v4", JSON.stringify(mockFacilities.map(f => ({ ...f, locked: false }))));
             }
           } catch (e) {}
         }
@@ -727,7 +1243,15 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
     totalApotek: baseFilteredFacilities.filter(f => f.type === "Pharmacy").length,
     totalKlinik: baseFilteredFacilities.filter(f => f.type === "Clinic").length,
     totalPuskesmas: baseFilteredFacilities.filter(f => f.type === "Puskesmas").length,
+    puskesmasRawatInap: baseFilteredFacilities.filter(f => f.type === "Puskesmas" && f.kelas === "Rawat Inap").length,
+    puskesmasNonRawatInap: baseFilteredFacilities.filter(f => f.type === "Puskesmas" && f.kelas === "Non Rawat Inap").length,
   };
+
+  const pieDataPuskesmas = [
+    { name: "Rawat Inap", value: stats.puskesmasRawatInap, color: "#f97316" },
+    { name: "Non Rawat Inap", value: stats.puskesmasNonRawatInap, color: "#8b5cf6" },
+  ].filter(d => d.value > 0);
+
 
   const pieDataKelas = [
     { name: "Kelas A", value: stats.rsKelasA, color: "#ef4444" },
@@ -769,7 +1293,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                     if (window.confirm("Apakah Anda yakin ingin menghapus semua data fasilitas kesehatan? Data tidak dapat dikembalikan.")) {
                       try {
                         await deleteAllFacilities();
-                        setFacilities([]); localStorage.removeItem("faskes_facilities_v1");
+                        setFacilities([]); localStorage.removeItem("faskes_facilities_v4");
                         alert("Semua data berhasil dihapus.");
                       } catch (e) {
                         alert("Gagal menghapus data.");
@@ -972,6 +1496,57 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
               </div>
             </div>
 
+            {/* Puskesmas Section */}
+            {stats.totalPuskesmas > 0 && (
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Puskesmas (Total: {stats.totalPuskesmas})</span>
+              </div>
+              <div className="space-y-6">
+                
+                {/* Pie Chart: Puskesmas */}
+                {pieDataPuskesmas.length > 0 && (
+                  <div>
+                    <h4 className="text-[11px] font-bold text-slate-500 mb-2 text-center">Berdasarkan Pelayanan</h4>
+                    <div className="h-48 w-full -ml-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieDataPuskesmas}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={2}
+                            dataKey="value"
+                            stroke="none"
+                            onMouseEnter={(_, index) => setHoveredKelas(pieDataPuskesmas[index].name)}
+                            onMouseLeave={() => setHoveredKelas(null)}
+                          >
+                            {pieDataPuskesmas.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontSize: '12px' }}
+                            itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
+                          />
+                          <Legend 
+                            layout="horizontal" 
+                            verticalAlign="bottom" 
+                            align="center"
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            )}
+
           </div>
         </div>
 
@@ -1018,7 +1593,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
               eventHandlers={{
                 dragend: (e) => handleDragEnd(e, facility.id)
               }}
-              icon={iconHospital}
+              icon={facility.type === "Hospital" ? iconHospital : facility.type === "Clinic" ? iconClinic : facility.type === "Pharmacy" ? iconPharmacy : facility.type === "Puskesmas" ? iconPuskesmas : iconHospital}
             >
               <Popup>
                 <div className="font-sans">
