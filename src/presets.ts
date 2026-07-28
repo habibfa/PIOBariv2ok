@@ -9691,6 +9691,41 @@ const UNSORTED_PRESETS: DrugPreset[] = [
 }
 ];
 
-export const DRUG_PRESETS: DrugPreset[] = [...UNSORTED_PRESETS].sort((a, b) =>
+export const DRUG_PRESETS: DrugPreset[] = [
+  {
+    id: "auto_allopurinol",
+    name: "Allopurinol",
+    indication: "Gout / Hiperurisemia",
+    calcMethod: "flat",
+    defaultDoseValue: 100,
+    doseUnit: "mg",
+    frequency: "once",
+    maxDoseValue: 800,
+    maxDoseUnit: "mg/day",
+    isHighAlert: false,
+    liquidConcentrationValue: 0,
+    liquidConcentrationVolume: 0,
+    weightMinKg: 20,
+    weightMaxKg: 150,
+    notes: "Dosis disesuaikan berdasarkan kadar asam urat.",
+  },
+  {
+    id: "auto_amikacin",
+    name: "Amikacin",
+    indication: "Infeksi bakteri gram negatif",
+    calcMethod: "flat",
+    defaultDoseValue: 15,
+    doseUnit: "mg",
+    frequency: "once",
+    maxDoseValue: 1500,
+    maxDoseUnit: "mg/day",
+    isHighAlert: true,
+    liquidConcentrationValue: 0,
+    liquidConcentrationVolume: 0,
+    weightMinKg: 20,
+    weightMaxKg: 150,
+    notes: "Aminoglikosida. Harus dilakukan penyesuaian dosis pada gangguan ginjal.",
+  },
+...UNSORTED_PRESETS].sort((a, b) =>
   a.name.localeCompare(b.name, "id")
 );

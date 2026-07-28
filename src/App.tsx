@@ -720,7 +720,7 @@ export default function App() {
   };
 
     const [interactionDatabase, setInteractionDatabase] = useState<DrugInteraction[]>(() => {
-    const saved = localStorage.getItem("interactionDatabase");
+    const saved = localStorage.getItem("interactionDatabase_v3");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -732,7 +732,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem("interactionDatabase", JSON.stringify(interactionDatabase));
+    localStorage.setItem("interactionDatabase_v3", JSON.stringify(interactionDatabase));
   }, [interactionDatabase]);
 
   const [isUpdateDdiModalOpen, setIsUpdateDdiModalOpen] = useState(false);
@@ -808,7 +808,7 @@ export default function App() {
   };
 
   const [drugPresets, setDrugPresets] = useState(() => {
-    const saved = localStorage.getItem("drugPresets");
+    const saved = localStorage.getItem("drugPresets_v2");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -820,7 +820,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem("drugPresets", JSON.stringify(drugPresets));
+    localStorage.setItem("drugPresets_v2", JSON.stringify(drugPresets));
   }, [drugPresets]);
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -2437,7 +2437,7 @@ export default function App() {
                   onClick={() => setDdiSelectedIds(["propranolol_ped", "salbutamol_syr", "spironolactone_ped"])}
                   className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10.5px] font-bold rounded-lg border border-emerald-100 transition-colors"
                 >
-                  Gunakan Contoh Kombinasi Kritis
+                  Gunakan Contoh Kombinasi Major
                 </button>
                 <button
                   onClick={() => setDdiSelectedIds(["warfarin_adult", "ibuprofen_ped", "clopidogrel_adult", "omeprazole_adult"])}
@@ -2543,13 +2543,13 @@ export default function App() {
                           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                             criticalFoodCount > 0 ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
                           }`}>
-                            {criticalFoodCount > 0 ? "KRITIS" : "PERINGATAN"}
+                            {criticalFoodCount > 0 ? "MAJOR" : "PERINGATAN"}
                           </span>
                         </h4>
                         <p className={`text-xs leading-relaxed font-sans ${
                           criticalFoodCount > 0 ? "text-rose-850 font-medium" : "text-amber-850 font-medium"
                         }`}>
-                          Ditemukan <strong className="font-extrabold">{detectedFoodInteractions.length} potensi interaksi dengan makanan/zat gizi</strong> untuk obat yang Anda pilih ({criticalFoodCount} Kritis, {warningFoodCount} Moderat). Tinjau detail konseling gizi dan obat di bawah ini.
+                          Ditemukan <strong className="font-extrabold">{detectedFoodInteractions.length} potensi interaksi dengan makanan/zat gizi</strong> untuk obat yang Anda pilih ({criticalFoodCount} Major, {warningFoodCount} Moderat). Tinjau detail konseling gizi dan obat di bawah ini.
                         </p>
                       </div>
                     </div>
@@ -2570,7 +2570,7 @@ export default function App() {
                         <Utensils className="w-8 h-8 text-slate-300 mx-auto" />
                         <p className="text-xs font-bold text-slate-600">Rejimen Aman dari Interaksi Makanan</p>
                         <p className="text-[11px] text-slate-400 max-w-sm mx-auto font-sans leading-relaxed">
-                          Obat-obat dalam keranjang tidak memiliki catatan interaksi kritis dengan susu, alkohol, kafein, jus grapefruit, atau makanan kaya Vitamin K/Kalium dalam sistem kami.
+                          Obat-obat dalam keranjang tidak memiliki catatan interaksi major dengan susu, alkohol, kafein, jus grapefruit, atau makanan kaya Vitamin K/Kalium dalam sistem kami.
                         </p>
                       </div>
                     ) : (
@@ -2604,7 +2604,7 @@ export default function App() {
                                 <Info className="w-4.5 h-4.5 text-emerald-600" />
                               )}
                               <span className="font-bold text-xs uppercase tracking-wider font-mono text-[10px]">
-                                {foodInt.severity === "CRITICAL" ? "KONTRAINDIKASI MAKANAN / KRITIS" : foodInt.severity === "WARNING" ? "PERINGATAN KONSUMSI / MODERAT" : "INFORMASI PENYERAPAN / RINGAN"}
+                                {foodInt.severity === "CRITICAL" ? "KONTRAINDIKASI MAKANAN / MAJOR" : foodInt.severity === "WARNING" ? "PERINGATAN KONSUMSI / MODERAT" : "INFORMASI PENYERAPAN / RINGAN"}
                               </span>
                             </div>
                             <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border ${
@@ -2730,7 +2730,7 @@ export default function App() {
                         <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Lolos Audit</span>
                       </h4>
                       <p className="text-xs text-emerald-850 leading-relaxed font-sans">
-                        Tidak ditemukan interaksi kontraindikasi mayor, kritis, atau bermakna secara klinis di antara <strong className="text-emerald-950 font-bold">{ddiSelectedIds.length} obat</strong> terpilih dalam database klinis kami.
+                        Tidak ditemukan interaksi kontraindikasi mayor, atau bermakna secara klinis di antara <strong className="text-emerald-950 font-bold">{ddiSelectedIds.length} obat</strong> terpilih dalam database klinis kami.
                       </p>
                       <p className="text-[10px] text-slate-400 italic pt-1 leading-normal font-sans">
                         *Disclaimer: Sistem menyaring kecocokan farmakologis berbasis pustaka jurnal kedokteran terverifikasi. Keputusan klinis akhir tetap berada di bawah wewenang dokter/apoteker penanggung jawab.
@@ -2754,13 +2754,13 @@ export default function App() {
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                           criticalCount > 0 ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
                         }`}>
-                          {criticalCount > 0 ? "KRITIS" : "PERINGATAN KLINIS"}
+                          {criticalCount > 0 ? "MAJOR" : "PERINGATAN KLINIS"}
                         </span>
                       </h4>
                       <p className={`text-xs leading-relaxed font-sans ${
                         criticalCount > 0 ? "text-rose-850 font-medium" : "text-amber-850 font-medium"
                       }`}>
-                        Ditemukan <strong className="font-extrabold">{detectedInteractions.length} potensi interaksi</strong> di antara <strong className="font-extrabold">{ddiSelectedIds.length} obat</strong> yang Anda pilih ({criticalCount} Kritis, {warningCount} Moderat). Silakan tinjau matriks pemetaan dan rincian referensi klinis di bawah ini.
+                        Ditemukan <strong className="font-extrabold">{detectedInteractions.length} potensi interaksi</strong> di antara <strong className="font-extrabold">{ddiSelectedIds.length} obat</strong> yang Anda pilih ({criticalCount} Major, {warningCount} Moderat). Silakan tinjau matriks pemetaan dan rincian referensi klinis di bawah ini.
                       </p>
                     </div>
                   </div>
@@ -2839,7 +2839,7 @@ export default function App() {
                                       {severity === "CRITICAL" ? (
                                         <div className="flex flex-col items-center gap-0.5">
                                           <ShieldAlert className="w-4 h-4 text-white shrink-0" />
-                                          <span className="text-[9px] uppercase tracking-tighter">KRITIS</span>
+                                          <span className="text-[9px] uppercase tracking-tighter">MAJOR</span>
                                         </div>
                                       ) : severity === "WARNING" ? (
                                         <div className="flex flex-col items-center gap-0.5">
@@ -2904,7 +2904,7 @@ export default function App() {
                               <AlertCircle className="w-4.5 h-4.5 text-amber-600" />
                             )}
                             <span className="font-bold text-xs uppercase tracking-wider font-mono">
-                              {interaction.severity === "CRITICAL" ? "KRITIS / BAHAYA TINGGI" : "PERINGATAN KLINIS / MODERAT"}
+                              {interaction.severity === "CRITICAL" ? "MAJOR / BAHAYA TINGGI" : "PERINGATAN KLINIS / MODERAT"}
                             </span>
                           </div>
                           <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border ${

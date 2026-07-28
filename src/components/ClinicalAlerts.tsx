@@ -17,7 +17,7 @@ export default function ClinicalAlerts({ alerts }: ClinicalAlertsProps) {
         </div>
         <div>
           <h4 className="text-sm font-semibold">Parameter Berada dalam Batas Klinis Aman</h4>
-          <p className="text-xs text-emerald-700/90 mt-0.5">Tidak ada batas keamanan kritis atau indikator fisiologi ekstrem yang terpicu.</p>
+          <p className="text-xs text-emerald-700/90 mt-0.5">Tidak ada batas keamanan major atau indikator fisiologi ekstrem yang terpicu.</p>
         </div>
       </div>
     );
@@ -49,7 +49,7 @@ export default function ClinicalAlerts({ alerts }: ClinicalAlertsProps) {
             bgClass = "bg-rose-50/70 border-rose-100 text-rose-950";
             iconColor = "text-rose-600";
             badgeBg = "bg-rose-100 text-rose-700";
-            badgeLabel = "KRITIS";
+            badgeLabel = "MAJOR";
             IconComponent = AlertCircle;
           } else if (isWarning) {
             bgClass = "bg-amber-50/70 border-amber-100 text-amber-950";
