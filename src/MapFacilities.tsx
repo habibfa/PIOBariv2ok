@@ -1141,20 +1141,6 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   const [routingError, setRoutingError] = useState("");
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number, destinationName: string} | null>(null);
 
-  const handleDragEnd = (e: L.DragEndEvent, id: number) => {
-    const marker = e.target as L.Marker;
-    const newPos = marker.getLatLng();
-    setFacilities(prev => prev.map(f => 
-      f.id === id ? { ...f, lat: newPos.lat, lng: newPos.lng } : f
-    ));
-  };
-
-  const lockFacility = (id: number) => {
-    setFacilities(prev => prev.map(f =>
-      f.id === id ? { ...f, locked: true } : f
-    ));
-  };
-
   const locateUser = () => {
     setIsLocating(true);
     setRoutingError("");
@@ -1590,9 +1576,6 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
               key={facility.id} 
               position={[facility.lat, facility.lng]}
               draggable={false}
-              eventHandlers={{
-                dragend: (e) => handleDragEnd(e, facility.id)
-              }}
               icon={facility.type === "Hospital" ? iconHospital : facility.type === "Clinic" ? iconClinic : facility.type === "Pharmacy" ? iconPharmacy : facility.type === "Puskesmas" ? iconPuskesmas : iconHospital}
             >
               <Popup>
@@ -1609,39 +1592,14 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                     <p className="text-xs text-emerald-600 mt-1 mb-0">☎ {facility.contact}</p>
                   )}
                   
-                  {!facility.locked && (
-                    <p className="text-[10px] text-amber-600 bg-amber-50 p-1 rounded mt-2 text-center border border-amber-200">
-                      Anda dapat menggeser pin ini
-                    </p>
-                  )}
-                  
-                  {!facility.locked ? (
-                    <div className="flex gap-2 mt-3">
-                      <button 
-                        onClick={() => lockFacility(facility.id)}
-                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center"
-                      >
-                        Simpan Pin
-                      </button>
-                      <button 
-                        onClick={() => getRouteTo([facility.lat, facility.lng], facility.name)}
-                        disabled={isRouting}
-                        className="flex-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      >
-                        {isRouting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Navigation className="w-3 h-3" />}
-                        {isRouting ? "Rute..." : "Arahkan"}
-                      </button>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => getRouteTo([facility.lat, facility.lng], facility.name)}
-                      disabled={isRouting}
-                      className="mt-3 w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      {isRouting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
-                      {isRouting ? "Mencari Rute..." : "Arahkan ke Sini"}
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => getRouteTo([facility.lat, facility.lng], facility.name)}
+                    disabled={isRouting}
+                    className="mt-3 w-full bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isRouting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+                    {isRouting ? "Mencari Rute..." : "Arahkan ke Sini"}
+                  </button>
                 </div>
               </Popup>
             </Marker>

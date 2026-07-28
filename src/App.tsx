@@ -202,7 +202,7 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("ursodeoxycholic") ||
     lowercaseId.includes("lansoprazole")
   ) {
-    return { label: "Gastrointestinal", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100" };
+    return { label: "Gastrointestinal", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-100" };
   }
 
   if (
@@ -239,7 +239,7 @@ const getDrugFormulation = (preset: DrugPreset) => {
     return { label: "Suppositoria", icon: "💊", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-100" };
   }
   if (combined.includes("salep") || combined.includes("krim") || combined.includes("gel") || combined.includes("topikal") || combined.includes("powder")) {
-    return { label: "Topikal", icon: "🧴", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100" };
+    return { label: "Topikal", icon: "🧴", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-100" };
   }
   if (combined.includes("spray") || combined.includes("inhaler") || combined.includes("nebulizer")) {
     return { label: "Inhalasi", icon: "🌬️", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-100" };
@@ -720,7 +720,7 @@ export default function App() {
   };
 
     const [interactionDatabase, setInteractionDatabase] = useState<DrugInteraction[]>(() => {
-    const saved = localStorage.getItem("interactionDatabase_v3");
+    const saved = localStorage.getItem("interactionDatabase_v4");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -732,7 +732,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem("interactionDatabase_v3", JSON.stringify(interactionDatabase));
+    localStorage.setItem("interactionDatabase_v4", JSON.stringify(interactionDatabase));
   }, [interactionDatabase]);
 
   const [isUpdateDdiModalOpen, setIsUpdateDdiModalOpen] = useState(false);
@@ -808,7 +808,7 @@ export default function App() {
   };
 
   const [drugPresets, setDrugPresets] = useState(() => {
-    const saved = localStorage.getItem("drugPresets_v2");
+    const saved = localStorage.getItem("drugPresets_v4");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -820,7 +820,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem("drugPresets_v2", JSON.stringify(drugPresets));
+    localStorage.setItem("drugPresets_v4", JSON.stringify(drugPresets));
   }, [drugPresets]);
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1383,7 +1383,7 @@ export default function App() {
                 onClick={() => handleInputChange("useBsaManual", !inputs.useBsaManual)}
                 className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded border transition-colors \${
                   inputs.useBsaManual
-                    ? "bg-amber-100 border-amber-300 text-amber-800"
+                    ? "bg-orange-100 border-orange-300 text-orange-800"
                     : "bg-white hover:bg-slate-50 text-slate-500 border-slate-300"
                 }`}
               >
@@ -1394,13 +1394,13 @@ export default function App() {
 
           {inputs.useBsaManual && (
             <div className="mt-3 space-y-1">
-              <label className="block text-[10px] font-bold text-amber-800 uppercase">Atur BSA Manual (m²)</label>
+              <label className="block text-[10px] font-bold text-orange-800 uppercase">Atur BSA Manual (m²)</label>
               <input
                 type="number"
                 step="any"
                 value={inputs.bsaManual}
                 onChange={(e) => handleInputChange("bsaManual", e.target.value === "" ? "" : parseFloat(e.target.value))}
-                className="w-full bg-amber-50/50 border border-amber-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-1 focus:ring-amber-500 outline-none"
+                className="w-full bg-orange-50/50 border border-orange-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-1 focus:ring-amber-500 outline-none"
                 placeholder="misal: 1.85"
               />
             </div>
@@ -1559,7 +1559,7 @@ export default function App() {
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
-            <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTab !== 'ddi' ? 'animate-pulse text-amber-500' : ''}`} />
+            <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTab !== 'ddi' ? 'animate-pulse text-orange-500' : ''}`} />
             Skrining Interaksi
           </button>
         </div>
@@ -1843,7 +1843,7 @@ export default function App() {
                         <span className="text-[10px] text-slate-500 line-clamp-2 mt-0.5 whitespace-normal">{p.indication}</span>
                       </div>
                       {p.requiresRenalAdjustment && (
-                        <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1 py-0.2 rounded mt-1.5 self-start uppercase tracking-wider">
+                        <span className="text-[9px] bg-orange-100 text-orange-800 font-bold px-1 py-0.2 rounded mt-1.5 self-start uppercase tracking-wider">
                           Pengawasan Ginjal
                         </span>
                       )}
@@ -2059,8 +2059,8 @@ export default function App() {
 
               {/* Renal adjustments indicator */}
               {calculated.renalAdjustmentApplied && (
-                <div className="mt-2.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-bold flex items-center gap-1">
-                  <ShieldAlert className="w-3 h-3 text-amber-600" />
+                <div className="mt-2.5 px-3 py-1 bg-orange-50 text-orange-800 border border-orange-200 rounded-full text-[10px] font-bold flex items-center gap-1">
+                  <ShieldAlert className="w-3 h-3 text-orange-600" />
                   Penyesuaian Ginjal: -{calculated.renalDoseReductionPercent}% diterapkan
                 </div>
               )}
@@ -2083,7 +2083,7 @@ export default function App() {
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Est. Bersihan Ginjal (CrCl)</span>
                 {calculatedCrCl > 0 ? (
                   <span className={`text-base font-bold font-mono ${
-                    calculatedCrCl < 30 ? "text-rose-600" : calculatedCrCl < 60 ? "text-amber-600" : "text-emerald-700"
+                    calculatedCrCl < 30 ? "text-rose-600" : calculatedCrCl < 60 ? "text-orange-600" : "text-emerald-700"
                   }`}>
                     <CountUp value={calculatedCrCl} decimals={1} /> <span className="text-xs font-sans font-medium text-slate-500">mL/min</span>
                   </span>
@@ -2184,7 +2184,7 @@ export default function App() {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300" />
+                    <Sparkles className="w-4 h-4 text-orange-300 fill-amber-300" />
                     <span>Jalankan Penilaian Farmakologi Klinis</span>
                   </>
                 )}
@@ -2528,26 +2528,26 @@ export default function App() {
                     </div>
                   ) : (
                     <div className={`border rounded-2xl p-5 flex items-start gap-4 shadow-3xs animate-fadeIn ${
-                      criticalFoodCount > 0 ? "bg-rose-50 border-rose-200/60" : "bg-amber-50 border-amber-200/60"
+                      criticalFoodCount > 0 ? "bg-rose-50 border-rose-200/60" : "bg-orange-50 border-orange-200/60"
                     }`}>
                       <div className={`p-2.5 rounded-xl shrink-0 ${
-                        criticalFoodCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                        criticalFoodCount > 0 ? "bg-rose-100 text-rose-700" : "bg-orange-100 text-orange-700"
                       }`}>
                         <AlertTriangle className={`w-6 h-6 ${criticalFoodCount > 0 ? "animate-bounce" : ""}`} />
                       </div>
                       <div className="space-y-1 flex-1">
                         <h4 className={`text-sm font-bold flex items-center flex-wrap gap-2 ${
-                          criticalFoodCount > 0 ? "text-rose-950" : "text-amber-950"
+                          criticalFoodCount > 0 ? "text-rose-950" : "text-orange-950"
                         }`}>
                           Perhatian! Terdeteksi Potensi Interaksi Obat dengan Makanan/Zat Gizi
                           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                            criticalFoodCount > 0 ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
+                            criticalFoodCount > 0 ? "bg-rose-600 text-white" : "bg-orange-600 text-white"
                           }`}>
                             {criticalFoodCount > 0 ? "MAJOR" : "PERINGATAN"}
                           </span>
                         </h4>
                         <p className={`text-xs leading-relaxed font-sans ${
-                          criticalFoodCount > 0 ? "text-rose-850 font-medium" : "text-amber-850 font-medium"
+                          criticalFoodCount > 0 ? "text-rose-850 font-medium" : "text-orange-850 font-medium"
                         }`}>
                           Ditemukan <strong className="font-extrabold">{detectedFoodInteractions.length} potensi interaksi dengan makanan/zat gizi</strong> untuk obat yang Anda pilih ({criticalFoodCount} Major, {warningFoodCount} Moderat). Tinjau detail konseling gizi dan obat di bawah ini.
                         </p>
@@ -2581,7 +2581,7 @@ export default function App() {
                             foodInt.severity === "CRITICAL"
                               ? "border-rose-200 bg-rose-50/10"
                               : foodInt.severity === "WARNING"
-                              ? "border-amber-200 bg-amber-50/10"
+                              ? "border-orange-200 bg-orange-50/10"
                               : "border-emerald-200 bg-emerald-50/10"
                           }`}
                         >
@@ -2591,7 +2591,7 @@ export default function App() {
                               foodInt.severity === "CRITICAL"
                                 ? "bg-rose-50 border-rose-100 text-rose-950"
                                 : foodInt.severity === "WARNING"
-                                ? "bg-amber-50 border-amber-100 text-amber-950"
+                                ? "bg-orange-50 border-orange-100 text-orange-950"
                                 : "bg-emerald-50 border-emerald-100 text-emerald-950"
                             }`}
                           >
@@ -2599,7 +2599,7 @@ export default function App() {
                               {foodInt.severity === "CRITICAL" ? (
                                 <ShieldAlert className="w-4.5 h-4.5 text-rose-600 animate-pulse" />
                               ) : foodInt.severity === "WARNING" ? (
-                                <AlertCircle className="w-4.5 h-4.5 text-amber-600" />
+                                <AlertTriangle className="w-4.5 h-4.5 text-orange-600" />
                               ) : (
                                 <Info className="w-4.5 h-4.5 text-emerald-600" />
                               )}
@@ -2611,7 +2611,7 @@ export default function App() {
                               foodInt.severity === "CRITICAL"
                                 ? "bg-rose-600 border-rose-700 text-white"
                                 : foodInt.severity === "WARNING"
-                                ? "bg-amber-600 border-amber-700 text-white"
+                                ? "bg-orange-600 border-orange-700 text-white"
                                 : "bg-emerald-600 border-emerald-700 text-white"
                             }`}>
                               {foodInt.severity}
@@ -2626,7 +2626,7 @@ export default function App() {
                               <div className="flex flex-wrap items-center gap-1.5 font-bold text-slate-800">
                                 <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[10.5px] border border-emerald-100">Obat: {foodInt.drugName}</span>
                                 <span className="text-slate-400 font-normal">↔</span>
-                                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md text-[10.5px] border border-amber-100">Makanan/Zat: {foodInt.foodName}</span>
+                                <span className="px-2 py-0.5 bg-orange-50 text-orange-700 rounded-md text-[10.5px] border border-orange-100">Makanan/Zat: {foodInt.foodName}</span>
                               </div>
                             </div>
 
@@ -2680,7 +2680,7 @@ export default function App() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold leading-none ${
                         ddiSubTab === "drug" 
                           ? "bg-rose-500 text-white" 
-                          : (criticalCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700")
+                          : (criticalCount > 0 ? "bg-rose-100 text-rose-700" : "bg-orange-100 text-orange-700")
                       }`}>
                         {detectedInteractions.length}
                       </span>
@@ -2704,7 +2704,7 @@ export default function App() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold leading-none ${
                         ddiSubTab === "food"
                           ? "bg-rose-500 text-white"
-                          : (criticalFoodCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700")
+                          : (criticalFoodCount > 0 ? "bg-rose-100 text-rose-700" : "bg-orange-100 text-orange-700")
                       }`}>
                         {detectedFoodInteractions.length}
                       </span>
@@ -2739,26 +2739,26 @@ export default function App() {
                   </div>
                 ) : (
                   <div className={`border rounded-2xl p-5 flex items-start gap-4 shadow-3xs ${
-                    criticalCount > 0 ? "bg-rose-50 border-rose-200/60" : "bg-amber-50 border-amber-200/60"
+                    criticalCount > 0 ? "bg-rose-50 border-rose-200/60" : "bg-orange-50 border-orange-200/60"
                   }`}>
                     <div className={`p-2.5 rounded-xl shrink-0 ${
-                      criticalCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                      criticalCount > 0 ? "bg-rose-100 text-rose-700" : "bg-orange-100 text-orange-700"
                     }`}>
                       <AlertTriangle className={`w-6 h-6 ${criticalCount > 0 ? "animate-bounce" : ""}`} />
                     </div>
                     <div className="space-y-1 flex-1">
                       <h4 className={`text-sm font-bold flex items-center flex-wrap gap-2 ${
-                        criticalCount > 0 ? "text-rose-950" : "text-amber-950"
+                        criticalCount > 0 ? "text-rose-950" : "text-orange-950"
                       }`}>
                         Perhatian Keamanan! Terdeteksi Potensi Interaksi Obat
                         <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                          criticalCount > 0 ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
+                          criticalCount > 0 ? "bg-rose-600 text-white" : "bg-orange-600 text-white"
                         }`}>
                           {criticalCount > 0 ? "MAJOR" : "PERINGATAN KLINIS"}
                         </span>
                       </h4>
                       <p className={`text-xs leading-relaxed font-sans ${
-                        criticalCount > 0 ? "text-rose-850 font-medium" : "text-amber-850 font-medium"
+                        criticalCount > 0 ? "text-rose-850 font-medium" : "text-orange-850 font-medium"
                       }`}>
                         Ditemukan <strong className="font-extrabold">{detectedInteractions.length} potensi interaksi</strong> di antara <strong className="font-extrabold">{ddiSelectedIds.length} obat</strong> yang Anda pilih ({criticalCount} Major, {warningCount} Moderat). Silakan tinjau matriks pemetaan dan rincian referensi klinis di bawah ini.
                       </p>
@@ -2830,7 +2830,7 @@ export default function App() {
                                         severity === "CRITICAL"
                                           ? "bg-rose-500 text-white shadow-inner"
                                           : severity === "WARNING"
-                                          ? "bg-amber-400 text-slate-900 shadow-inner"
+                                          ? "bg-orange-500 text-white shadow-inner"
                                           : severity === "INFO"
                                           ? "bg-emerald-100 text-emerald-800"
                                           : "bg-emerald-50 text-emerald-800"
@@ -2843,7 +2843,7 @@ export default function App() {
                                         </div>
                                       ) : severity === "WARNING" ? (
                                         <div className="flex flex-col items-center gap-0.5">
-                                          <AlertCircle className="w-4 h-4 text-slate-900 shrink-0" />
+                                          <AlertTriangle className="w-4 h-4 text-white shrink-0" />
                                           <span className="text-[9px] uppercase tracking-tighter">MODERAT</span>
                                         </div>
                                       ) : severity === "INFO" ? (
@@ -2886,7 +2886,7 @@ export default function App() {
                         className={`border rounded-xl overflow-hidden shadow-3xs transition-all ${
                           interaction.severity === "CRITICAL"
                             ? "border-rose-200 bg-rose-50/10"
-                            : "border-amber-200 bg-amber-50/10"
+                            : "border-orange-200 bg-orange-50/10"
                         }`}
                       >
                         {/* Header */}
@@ -2894,14 +2894,14 @@ export default function App() {
                           className={`px-4 py-3 flex items-center justify-between border-b ${
                             interaction.severity === "CRITICAL"
                               ? "bg-rose-50 border-rose-100 text-rose-950"
-                              : "bg-amber-50 border-amber-100 text-amber-950"
+                              : "bg-orange-50 border-orange-100 text-orange-950"
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             {interaction.severity === "CRITICAL" ? (
                               <ShieldAlert className="w-4.5 h-4.5 text-rose-600 animate-pulse" />
                             ) : (
-                              <AlertCircle className="w-4.5 h-4.5 text-amber-600" />
+                              <AlertTriangle className="w-4.5 h-4.5 text-orange-600" />
                             )}
                             <span className="font-bold text-xs uppercase tracking-wider font-mono">
                               {interaction.severity === "CRITICAL" ? "MAJOR / BAHAYA TINGGI" : "PERINGATAN KLINIS / MODERAT"}
@@ -2910,7 +2910,7 @@ export default function App() {
                           <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border ${
                             interaction.severity === "CRITICAL"
                               ? "bg-rose-600 border-rose-700 text-white"
-                              : "bg-amber-600 border-amber-700 text-white"
+                              : "bg-orange-600 border-orange-700 text-white"
                           }`}>
                             {interaction.severity}
                           </span>
@@ -3151,7 +3151,7 @@ export default function App() {
               <div className="grid grid-cols-5 gap-1 text-[11px] font-mono text-center font-bold">
                 <span className="bg-emerald-600/35 border border-emerald-500/30 rounded text-emerald-300">A</span>
                 <span className="bg-emerald-500/25 border border-emerald-400/20 rounded text-emerald-200">B</span>
-                <span className="bg-amber-500/25 border border-amber-400/20 rounded text-amber-200">C</span>
+                <span className="bg-orange-500/25 border border-orange-400/20 rounded text-orange-200">C</span>
                 <span className="bg-rose-500/25 border border-rose-400/20 rounded text-rose-200">D</span>
                 <span className="bg-rose-600/35 border border-rose-500/30 rounded text-rose-300">X</span>
               </div>
@@ -3294,8 +3294,8 @@ export default function App() {
                             Generik
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 shadow-2xs">
-                            <span className="text-[8px] bg-amber-700 text-amber-50 rounded-sm px-1 py-0.5 leading-none font-black uppercase">B</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200 flex items-center gap-1 shadow-2xs">
+                            <span className="text-[8px] bg-orange-700 text-orange-50 rounded-sm px-1 py-0.5 leading-none font-black uppercase">B</span>
                             Obat Bermerek / Paten
                           </span>
                         )}
@@ -3312,7 +3312,7 @@ export default function App() {
                             ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                             : metadata.pregnancySafety.status === "Kontraindikasi"
                             ? "bg-rose-50 border-rose-200 text-rose-700 animate-pulse"
-                            : "bg-amber-50 border-amber-200 text-amber-700"
+                            : "bg-orange-50 border-orange-200 text-orange-700"
                         }`}>
                           <Baby className="w-3 h-3 shrink-0" />
                           Hamil: {metadata.pregnancySafety.category} ({metadata.pregnancySafety.status})
@@ -3324,7 +3324,7 @@ export default function App() {
                             ? "bg-emerald-50 border-emerald-100 text-emerald-700"
                             : metadata.breastfeedingSafety.status === "Kontraindikasi"
                             ? "bg-rose-50 border-rose-100 text-rose-700"
-                            : "bg-amber-50 border-amber-100 text-amber-700"
+                            : "bg-orange-50 border-orange-100 text-orange-700"
                         }`}>
                           Menyusui: {metadata.breastfeedingSafety.status}
                         </span>
@@ -3444,7 +3444,7 @@ export default function App() {
                               ? "bg-emerald-50/40 border-emerald-100 text-emerald-950"
                               : metadata.pregnancySafety.status === "Kontraindikasi"
                               ? "bg-rose-50/40 border-rose-150 text-rose-950"
-                              : "bg-amber-50/40 border-amber-150 text-amber-950"
+                              : "bg-orange-50/40 border-orange-150 text-orange-950"
                           } space-y-2`}>
                             <h5 className="font-extrabold text-[10.5px] uppercase tracking-wider flex items-center gap-1.5">
                               <span className={`px-2 py-0.5 rounded font-black border ${
@@ -3452,7 +3452,7 @@ export default function App() {
                                   ? "bg-emerald-600 border-emerald-700 text-white"
                                   : metadata.pregnancySafety.status === "Kontraindikasi"
                                   ? "bg-rose-600 border-rose-700 text-white animate-pulse"
-                                  : "bg-amber-600 border-amber-700 text-white"
+                                  : "bg-orange-600 border-orange-700 text-white"
                               }`}>
                                 Kategori {metadata.pregnancySafety.category}
                               </span>
@@ -3469,7 +3469,7 @@ export default function App() {
                               ? "bg-emerald-50/40 border-emerald-100 text-emerald-950"
                               : metadata.breastfeedingSafety.status === "Kontraindikasi"
                               ? "bg-rose-50/40 border-rose-150 text-rose-950"
-                              : "bg-amber-50/40 border-amber-150 text-amber-950"
+                              : "bg-orange-50/40 border-orange-150 text-orange-950"
                           } space-y-2`}>
                             <h5 className="font-extrabold text-[10.5px] uppercase tracking-wider flex items-center gap-1.5">
                               <span className={`px-2 py-0.5 rounded font-black border ${
@@ -3477,7 +3477,7 @@ export default function App() {
                                   ? "bg-emerald-600 border-emerald-700 text-white"
                                   : metadata.breastfeedingSafety.status === "Kontraindikasi"
                                   ? "bg-rose-600 border-rose-700 text-white"
-                                  : "bg-amber-600 border-amber-700 text-white"
+                                  : "bg-orange-600 border-orange-700 text-white"
                               }`}>
                                 {metadata.breastfeedingSafety.status.toUpperCase()}
                               </span>
@@ -3899,7 +3899,7 @@ export default function App() {
                       <span className="text-[10px] font-extrabold uppercase tracking-wider bg-teal-50 border border-teal-100 text-teal-700 px-2.5 py-1 rounded-full">
                         Sediaan Alat Khusus: {currentItem.device}
                       </span>
-                      <span className="text-xs font-mono font-bold bg-amber-50 text-amber-700 border border-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                      <span className="text-xs font-mono font-bold bg-orange-50 text-orange-700 border border-orange-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
                         Instruksi Terverifikasi Klinis (Kemenkes & FDA)
                       </span>
@@ -4113,13 +4113,13 @@ export default function App() {
                   {/* Clinical Counseling Pearls */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
                     <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <Sparkles className="w-4 h-4 text-orange-500" />
                       Mutiara Klinis & Panduan Konseling Pasien (Counseling Pearls)
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs text-slate-700 leading-relaxed font-sans">
                       {currentItem.counseling.map((counselItem, idx) => (
                         <div key={"counsel_" + idx} className="bg-slate-50/60 border border-slate-100 p-4 rounded-xl flex items-start gap-3">
-                          <span className="text-amber-500 font-extrabold shrink-0">💡</span>
+                          <span className="text-orange-500 font-extrabold shrink-0">💡</span>
                           <p className="font-medium">{counselItem}</p>
                         </div>
                       ))}
