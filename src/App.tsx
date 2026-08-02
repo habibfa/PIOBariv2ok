@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { Upload, Save } from "lucide-react";
+import { Upload, Save, Menu } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 import { DRUG_PRESETS as INITIAL_DRUG_PRESETS } from "./presets";
 import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction } from "./interactions";
@@ -657,6 +657,7 @@ const getDrugMetadata = (preset: DrugPreset) => {
 };
 
 export default function App() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUpdateDrugModalOpen, setIsUpdateDrugModalOpen] = useState(false);
   const [drugCsvFile, setDrugCsvFile] = useState<File | null>(null);
   const [drugCsvError, setDrugCsvError] = useState("");
@@ -1413,9 +1414,14 @@ export default function App() {
   return (
     <div className="h-screen bg-slate-50 flex font-sans text-slate-900 selection:bg-emerald-100 overflow-hidden">
       
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+      
       {/* SIDEBAR (Desktop) */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex-col shrink-0 overflow-y-auto hidden lg:flex">
-        <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex-col shrink-0 overflow-y-auto transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} flex`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-rsud-green">
               PIOBARI <span className="text-rsud-red">v2</span>
@@ -1427,10 +1433,13 @@ export default function App() {
               RSUD Palembang BARI
             </span>
           </div>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           <button
-            onClick={() => setActiveTab("desc")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "desc"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1442,7 +1451,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("pharmacist")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("pharmacist"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "pharmacist"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1454,7 +1463,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("fornas")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("fornas"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "fornas"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1466,7 +1475,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("medcalc")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "medcalc"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1478,7 +1487,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("iv")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("iv"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "iv"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1490,7 +1499,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("ai")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ai"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "ai"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1501,7 +1510,7 @@ export default function App() {
             Konsultasi AI
           </button>
           <button
-            onClick={() => setActiveTab("soap")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("soap"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "soap"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1514,7 +1523,7 @@ export default function App() {
 
           <button
             onClick={() => {
-              setActiveTab("video");
+              setIsMobileMenuOpen(false); setActiveTab("video");
               setActiveVideoStep(0);
             }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
@@ -1528,7 +1537,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("diseases")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("diseases"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "diseases"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1540,7 +1549,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("map")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("map"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "map"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1552,7 +1561,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveTab("ddi")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }}
             className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
               activeTab === "ddi"
                 ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
@@ -1595,6 +1604,12 @@ export default function App() {
         {/* Header (Desktop and Mobile) */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shadow-xs shrink-0">
           <div className="flex items-center gap-3 lg:hidden">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 -ml-2 text-slate-500 hover:text-emerald-600 transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="flex flex-col">
               <span className="text-xl font-black tracking-tight text-rsud-green">
                 PIOBARI <span className="text-rsud-red">v2</span>
@@ -1653,138 +1668,8 @@ export default function App() {
           </div>
         </header>
 
-        {/* Mobile Navigation (Horizontal scrollable tabs) */}
-        <div className="lg:hidden bg-white border-b border-slate-200 shrink-0">
-          <div className="flex overflow-x-auto p-2 gap-2 custom-scrollbar">
-            <button
-              onClick={() => setActiveTab("desc")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "desc"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              Informasi Obat
-            </button>
-            <button
-              onClick={() => setActiveTab("pharmacist")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "pharmacist"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <User className="w-3.5 h-3.5" />
-              Konsultasi Apoteker
-            </button>
-            <button
-              onClick={() => setActiveTab("fornas")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "fornas"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              Obat Fornas
-            </button>
-            <button
-              onClick={() => setActiveTab("medcalc")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "medcalc"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <Calculator className="w-3.5 h-3.5" />
-              Kalkulator Medis
-            </button>
-            <button
-              onClick={() => setActiveTab("iv")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "iv"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <Droplets className="w-3.5 h-3.5" />
-              Kompatibilitas IV
-            </button>
-            <button
-              onClick={() => setActiveTab("ai")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "ai"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Konsultasi AI
-            </button>
-            <button
-              onClick={() => setActiveTab("soap")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "soap"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Clinical SOAP
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("video");
-                setActiveVideoStep(0);
-              }}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "video"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <Image className="w-3.5 h-3.5" />
-              Panduan Alat
-            </button>
-            <button
-              onClick={() => setActiveTab("diseases")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "diseases"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <Stethoscope className="w-3.5 h-3.5" />
-              Penyakit & Kondisi
-            </button>
-            <button
-              onClick={() => setActiveTab("map")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "map"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              Peta Faskes
-            </button>
-            <button
-              onClick={() => setActiveTab("ddi")}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === "ddi"
-                  ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                  : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200"
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              Skrining Interaksi
-            </button>
-          </div>
-        </div>
-
         {/* Main Content scrollable area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8 overflow-y-auto custom-scrollbar">
           <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         
         {activeTab === "single" ? (
@@ -3516,7 +3401,7 @@ export default function App() {
                             }
                             
                             // Go back to the single calculator tab
-                            setActiveTab("single");
+                            setIsMobileMenuOpen(false); setActiveTab("single");
                             
                             // Scroll up smoothly to calculations
                             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4317,6 +4202,26 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around pb-[env(safe-area-inset-bottom,16px)] pt-1 px-2 z-30 shadow-[0_-4px_15px_-5px_rgba(0,0,0,0.05)]">
+        <button onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }} className={`flex flex-col items-center justify-center w-16 h-12 gap-1 ${activeTab === "desc" ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
+          <BookOpen className={`w-5 h-5 ${activeTab === "desc" ? "fill-emerald-50 text-emerald-600" : ""}`} />
+          <span className="text-[9px] font-bold">Informasi</span>
+        </button>
+        <button onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }} className={`flex flex-col items-center justify-center w-16 h-12 gap-1 ${activeTab === "ddi" ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
+          <ShieldAlert className={`w-5 h-5 ${activeTab === "ddi" ? "fill-emerald-50 text-emerald-600" : ""}`} />
+          <span className="text-[9px] font-bold">Skrining</span>
+        </button>
+        <button onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }} className={`flex flex-col items-center justify-center w-16 h-12 gap-1 ${activeTab === "medcalc" ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
+          <Calculator className={`w-5 h-5 ${activeTab === "medcalc" ? "fill-emerald-50 text-emerald-600" : ""}`} />
+          <span className="text-[9px] font-bold">Kalkulator</span>
+        </button>
+        <button onClick={() => setIsMobileMenuOpen(true)} className="flex flex-col items-center justify-center w-16 h-12 gap-1 text-slate-400 hover:text-slate-600">
+          <Menu className="w-5 h-5" />
+          <span className="text-[9px] font-bold">Menu</span>
+        </button>
+      </div>
     </div>
   );
 }
