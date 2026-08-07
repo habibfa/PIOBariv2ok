@@ -1,10 +1,32 @@
 import React, { useState } from "react";
-import { Calculator, Activity, Heart, Brain, Baby, Weight, Pill } from "lucide-react";
+import { Calculator, Activity, Heart, Brain, Baby, Weight, Pill, Droplet, Microscope } from "lucide-react";
 
-type CalculatorType = "bmi" | "crcl" | "bsa" | "gcs" | "apgar" | "cha2ds2vasc" | "pediatric" | "chemo";
+type CalculatorType = "bmi" | "crcl" | "bsa" | "gcs" | "apgar" | "cha2ds2vasc" | "pediatric" | "chemo" | "egfr" | "lab";
 
 export function MedicalCalculators() {
   const [activeCalc, setActiveCalc] = useState<CalculatorType | null>(null);
+
+  const ReferenceFooter = ({ references }: { references: string[] }) => (
+    <div className="mt-8 pt-4 border-t border-slate-200">
+      <h4 className="text-xs font-bold text-slate-500 mb-2">Referensi & Pustaka:</h4>
+      <ul className="text-[10px] text-slate-400 list-disc pl-4 space-y-1">
+        {references.map((ref, idx) => (
+          <li key={idx}>{ref}</li>
+        ))}
+      </ul>
+    </div>
+  );
+
+
+  // States for eGFR
+  const [egfrAge, setEgfrAge] = useState("");
+  const [egfrCr, setEgfrCr] = useState("");
+  const [egfrGender, setEgfrGender] = useState<"male" | "female">("male");
+  const [egfrRace, setEgfrRace] = useState<"black" | "other">("other");
+
+  // States for Lab
+  const [labParam, setLabParam] = useState("Na");
+  const [labValue, setLabValue] = useState("");
 
   // States for Chemotherapy
   const [chemoRegimen, setChemoRegimen] = useState<"ginekologi" | "payudara" | "serviks">("ginekologi");
@@ -118,7 +140,6 @@ export function MedicalCalculators() {
           <p className="text-slate-500 text-sm mt-1">Glasgow Coma Scale</p>
         </div>
       </button>
-
       <button onClick={() => setActiveCalc("chemo")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
         <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
           <Activity className="w-6 h-6" />
@@ -128,7 +149,6 @@ export function MedicalCalculators() {
           <p className="text-slate-500 text-sm mt-1">Paclitaxel, Cisplatin, AC, dll</p>
         </div>
       </button>
-
       <button onClick={() => setActiveCalc("pediatric")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
         <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
           <Pill className="w-6 h-6" />
@@ -138,8 +158,215 @@ export function MedicalCalculators() {
           <p className="text-slate-500 text-sm mt-1">Young, Dilling, Fried, Clark</p>
         </div>
       </button>
+      <button onClick={() => setActiveCalc("egfr")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
+        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
+          <Droplet className="w-6 h-6" />
+        </div>
+        <div>
+          <h3 className="font-bold text-slate-800 text-lg">eGFR (CKD-EPI)</h3>
+          <p className="text-slate-500 text-sm mt-1">Fungsi Ginjal CKD-EPI 2021</p>
+        </div>
+      </button>
+      <button onClick={() => setActiveCalc("lab")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
+        <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center">
+          <Microscope className="w-6 h-6" />
+        </div>
+        <div>
+          <h3 className="font-bold text-slate-800 text-lg">Interpretasi Lab</h3>
+          <p className="text-slate-500 text-sm mt-1">Elektrolit & Fungsi Organ</p>
+        </div>
+      </button>
     </div>
   );
+
+  const renderEgfrCalculator = () => {
+    let egfr = 0;
+    const a = parseFloat(egfrAge);
+    const cr = parseFloat(egfrCr);
+    
+    if (a > 0 && cr > 0) {
+      const k = egfrGender === "female" ? 0.7 : 0.9;
+      const alpha = egfrGender === "female" ? -0.241 : -0.302;
+      const alpha2 = -1.200;
+      const p1 = Math.min(cr / k, 1);
+      const p2 = Math.max(cr / k, 1);
+      
+      egfr = 142 * Math.pow(p1, alpha) * Math.pow(p2, alpha2) * Math.pow(0.9938, a) * (egfrGender === "female" ? 1.012 : 1);
+    }
+    
+    let stage = "";
+    if (egfr > 0) {
+      if (egfr >= 90) stage = "G1 (Normal atau Tinggi)";
+      else if (egfr >= 60) stage = "G2 (Menurun Ringan)";
+      else if (egfr >= 45) stage = "G3a (Menurun Ringan-Sedang)";
+      else if (egfr >= 30) stage = "G3b (Menurun Sedang-Berat)";
+      else if (egfr >= 15) stage = "G4 (Menurun Berat)";
+      else stage = "G5 (Gagal Ginjal)";
+    }
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">eGFR (CKD-EPI 2021)</h2>
+          <p className="text-slate-500 text-sm mt-1">Estimasi Laju Filtrasi Glomerulus untuk menilai fungsi ginjal.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Usia (Tahun)</label>
+            <input type="number" value={egfrAge} onChange={e => setEgfrAge(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none transition-all" placeholder="misal: 45" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Serum Kreatinin (mg/dL)</label>
+            <input type="number" step="0.1" value={egfrCr} onChange={e => setEgfrCr(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none transition-all" placeholder="misal: 1.2" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Jenis Kelamin</label>
+            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+              <button onClick={() => setEgfrGender("male")} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${egfrGender === 'male' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500'}`}>Laki-laki</button>
+              <button onClick={() => setEgfrGender("female")} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${egfrGender === 'female' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500'}`}>Perempuan</button>
+            </div>
+          </div>
+        </div>
+
+        {egfr > 0 && (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 mt-6">
+            <h3 className="text-sm font-bold text-rose-800 uppercase mb-2">Hasil Estimasi</h3>
+            <div className="flex items-end gap-2 mb-2">
+              <span className="text-4xl font-black text-rose-600">{egfr.toFixed(1)}</span>
+              <span className="text-rose-700 font-bold mb-1">mL/min/1.73m²</span>
+            </div>
+            <div className="bg-white/60 px-3 py-2 rounded-lg border border-rose-100 inline-block">
+              <span className="text-sm font-bold text-rose-900">Stadium CKD: {stage}</span>
+            </div>
+          </div>
+        )}
+      
+        <ReferenceFooter references={["Inker LA, Schmid CH, Tighiouart H, et al. Estimating glomerular filtration rate from serum creatinine and cystatin C. N Engl J Med. 2012;367(1):20-29. (CKD-EPI 2021 update)"]} />
+      </div>
+    );
+  };
+
+  const renderLabCalculator = () => {
+    const labParams = [
+      // Elektrolit
+      { id: "Na", category: "Elektrolit", label: "Natrium (Na)", unit: "mEq/L", min: 135, max: 145, lowMsg: "Hiponatremia", highMsg: "Hipernatremia", example: "140" },
+      { id: "K", category: "Elektrolit", label: "Kalium (K)", unit: "mEq/L", min: 3.5, max: 5.0, lowMsg: "Hipokalemia", highMsg: "Hiperkalemia", example: "4.2" },
+      { id: "Cl", category: "Elektrolit", label: "Klorida (Cl)", unit: "mEq/L", min: 98, max: 106, lowMsg: "Hipokloremia", highMsg: "Hiperkloremia", example: "102" },
+      { id: "Ca", category: "Elektrolit", label: "Kalsium (Ca) Total", unit: "mg/dL", min: 8.5, max: 10.5, lowMsg: "Hipokalsemia", highMsg: "Hiperkalsemia", example: "9.5" },
+      { id: "Mg", category: "Elektrolit", label: "Magnesium (Mg)", unit: "mg/dL", min: 1.7, max: 2.2, lowMsg: "Hipomagnesemia", highMsg: "Hipermagnesemia", example: "2.0" },
+      
+      // Fungsi Hati
+      { id: "AST", category: "Fungsi Hati", label: "AST (SGOT)", unit: "U/L", min: 8, max: 48, lowMsg: "Rendah", highMsg: "Peningkatan (Hepatik/Otot)", example: "25" },
+      { id: "ALT", category: "Fungsi Hati", label: "ALT (SGPT)", unit: "U/L", min: 7, max: 55, lowMsg: "Rendah", highMsg: "Peningkatan (Hepatik)", example: "30" },
+      { id: "Albumin", category: "Fungsi Hati", label: "Albumin", unit: "g/dL", min: 3.4, max: 5.4, lowMsg: "Hipoalbuminemia", highMsg: "Hiperalbuminemia/Dehidrasi", example: "4.0" },
+      
+      // Fungsi Ginjal
+      { id: "Cr", category: "Fungsi Ginjal", label: "Serum Creatinine", unit: "mg/dL", min: 0.6, max: 1.2, lowMsg: "Rendah", highMsg: "Tinggi (Gangguan Ginjal)", example: "0.9" },
+      { id: "BUN", category: "Fungsi Ginjal", label: "BUN (Blood Urea Nitrogen)", unit: "mg/dL", min: 7, max: 20, lowMsg: "Rendah", highMsg: "Tinggi (Uremia/Dehidrasi)", example: "15" }
+    ];
+
+    const currentParam = labParams.find(p => p.id === labParam) || labParams[0];
+    let interpretation = null;
+    const val = parseFloat(labValue);
+
+    if (!isNaN(val)) {
+      let status: "Low" | "Normal" | "High" = "Normal";
+      let message = "Normal";
+      if (val < currentParam.min) { status = "Low"; message = currentParam.lowMsg; }
+      else if (val > currentParam.max) { status = "High"; message = currentParam.highMsg; }
+      interpretation = { value: val, status, message };
+    }
+    
+    // Group parameters by category
+    const groupedParams = labParams.reduce((acc, param) => {
+      if (!acc[param.category]) {
+        acc[param.category] = [];
+      }
+      acc[param.category].push(param);
+      return acc;
+    }, {} as Record<string, typeof labParams>);
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <Microscope className="w-6 h-6 text-indigo-600" />
+            Interpretasi Laboratorium
+          </h2>
+          <p className="text-slate-500 text-sm mt-1">Evaluasi cepat nilai elektrolit, fungsi hati, dan fungsi ginjal.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Parameter Lab</label>
+              <select 
+                value={labParam} 
+                onChange={e => { setLabParam(e.target.value); setLabValue(""); }}
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 shadow-xs"
+              >
+                {Object.entries(groupedParams).map(([category, params]) => (
+                  <optgroup key={category} label={category}>
+                    {params.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Nilai ({currentParam.unit})</label>
+              <input 
+                type="number" 
+                step="0.1" 
+                value={labValue} 
+                onChange={e => setLabValue(e.target.value)} 
+                className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm shadow-xs" 
+                placeholder={`Contoh: ${currentParam.example}`} 
+              />
+            </div>
+          </div>
+
+          <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 flex flex-col justify-center min-h-[160px]">
+            <h3 className="text-sm font-bold text-indigo-800 text-center mb-4">Hasil Interpretasi</h3>
+            
+            {interpretation ? (
+              <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center ${
+                interpretation.status === 'Normal' ? 'bg-emerald-50 border-emerald-200' :
+                interpretation.status === 'Low' ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'
+              }`}>
+                <div className="mb-2">
+                  <span className={`text-3xl font-black ${
+                    interpretation.status === 'Normal' ? 'text-emerald-700' :
+                    interpretation.status === 'Low' ? 'text-amber-700' : 'text-rose-700'
+                  }`}>{interpretation.value}</span>
+                  <span className="text-sm font-semibold ml-1 text-slate-600">{currentParam.unit}</span>
+                </div>
+                <div className={`px-3 py-1.5 rounded-md text-sm font-bold inline-block ${
+                  interpretation.status === 'Normal' ? 'bg-emerald-100 text-emerald-800' :
+                  interpretation.status === 'Low' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {interpretation.message}
+                </div>
+                <div className="mt-3 text-xs text-slate-500 font-medium">
+                  Nilai Rujukan: {currentParam.min} - {currentParam.max} {currentParam.unit}
+                </div>
+              </div>
+            ) : (
+              <div className="border border-indigo-100 border-dashed rounded-xl p-4 bg-white/60">
+                <p className="text-xs text-slate-500 text-center leading-relaxed">
+                  Masukkan nilai hasil laboratorium untuk melihat interpretasi klinis sesuai nilai rujukan standar.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <ReferenceFooter references={["Kementerian Kesehatan RI / Panduan Praktik Klinis / Referensi Nilai Laboratorium Standar Nasional.", "Fauci AS, et al. Harrison's Principles of Internal Medicine. 20th ed. McGraw-Hill Education; 2018.", "Kratz A, Ferraro M, Sluss PM, Lewandrowski KB. Case records of the Massachusetts General Hospital. Normal reference laboratory values. N Engl J Med. 2004;351(15):1548-1563."]} />
+      </div>
+    );
+  };
 
   const renderBMICalculator = () => {
     let bmi = 0;
@@ -199,6 +426,8 @@ export function MedicalCalculators() {
             </div>
           )}
         </div>
+      
+        <ReferenceFooter references={["World Health Organization (WHO). Obesity: preventing and managing the global epidemic. Report of a WHO consultation. World Health Organ Tech Rep Ser. 2000;894:i-xii, 1-253.", "Devine BJ. Gentamicin therapy. Drug Intell Clin Pharm. 1974;8:650-655. (IBW formula)"]} />
       </div>
     );
   };
@@ -248,6 +477,8 @@ export function MedicalCalculators() {
             </div>
           )}
         </div>
+      
+        <ReferenceFooter references={["Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. Nephron. 1976;16(1):31-41."]} />
       </div>
     );
   };
@@ -284,6 +515,8 @@ export function MedicalCalculators() {
             </div>
           )}
         </div>
+      
+        <ReferenceFooter references={["Mosteller RD. Simplified calculation of body-surface area. N Engl J Med. 1987;317(17):1098."]} />
       </div>
     );
   };
@@ -336,6 +569,8 @@ export function MedicalCalculators() {
             </p>
           </div>
         </div>
+      
+        <ReferenceFooter references={["Teasdale G, Jennett B. Assessment of coma and impaired consciousness. A practical scale. Lancet. 1974;2(7872):81-84."]} />
       </div>
     );
   };
@@ -373,6 +608,8 @@ export function MedicalCalculators() {
              </p>
           </div>
         </div>
+      
+        <ReferenceFooter references={["Apgar V. A proposal for a new method of evaluation of the newborn infant. Curr Res Anesth Analg. 1953;32(4):260-267.", "American Academy of Pediatrics, Committee on Fetus and Newborn; American College of Obstetricians and Gynecologists and Committee on Obstetric Practice. The Apgar Score. Pediatrics. 2015;136(4):819-822."]} />
       </div>
     );
   };
@@ -445,6 +682,8 @@ export function MedicalCalculators() {
              </p>
            </div>
         </div>
+      
+        <ReferenceFooter references={["Lip GY, Nieuwlaat R, Pisters R, Lane DA, Crijns HJ. Refining clinical risk stratification for predicting stroke and thromboembolism in atrial fibrillation using a novel risk factor-based approach: the euro heart survey on atrial fibrillation. Chest. 2010;137(2):263-272."]} />
       </div>
     );
   };
@@ -535,6 +774,8 @@ export function MedicalCalculators() {
              </div>
            )}
         </div>
+      
+        <ReferenceFooter references={["Taketomo CK, Hodding JH, Kraus DM. Pediatric & Neonatal Dosage Handbook. 26th ed. Lexicomp; 2019-2020.", "Kliegman RM, St. Geme JW, Blum NJ, Shah SS, Tasker RC, Wilson KM. Nelson Textbook of Pediatrics. 21st ed. Elsevier; 2020."]} />
       </div>
     );
   };
@@ -750,6 +991,8 @@ export function MedicalCalculators() {
             </div>
           )}
         </div>
+      
+        <ReferenceFooter references={["Calvert AH, Newell DR, Gumbrell LA, et al. Carboplatin dosage: prospective evaluation of a simple formula based on renal clearance. J Clin Oncol. 1989;7(11):1748-1756.", "NCCN Clinical Practice Guidelines in Oncology (NCCN Guidelines®)"]} />
       </div>
     );
   };
@@ -792,6 +1035,8 @@ export function MedicalCalculators() {
               {activeCalc === "cha2ds2vasc" && renderCha2ds2vasc()}
               {activeCalc === "pediatric" && renderPediatricDoseCalculator()}
               {activeCalc === "chemo" && renderChemoCalculator()}
+              {activeCalc === "egfr" && renderEgfrCalculator()}
+              {activeCalc === "lab" && renderLabCalculator()}
             </div>
           )}
         </div>
