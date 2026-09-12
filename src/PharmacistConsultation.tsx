@@ -40,8 +40,8 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     nip: "198110192010012020",
     str: "EA00001152127890",
     strValidity: "Seumur hidup",
-    sipa: "446/IPA/0273/DPMPTSP-PPK/2021",
-    sipaValidity: "19 Oktober 2026",
+    sipa: "440/SIPA/0263/DPMPTSP-PPK/2026",
+    sipaValidity: "31 Juli 2031",
     phone: "628129603330",
     room: "Penyakit Dalam Laki-laki dan Hasanah",
     schedule: "Senin - Jumat, 08:00 - 14:00",
@@ -111,7 +111,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     str: "JI00001093288072",
     strValidity: "Seumur hidup",
     sipa: "446/IPA/0059/DPMPTSP-PPK/2023",
-    sipaValidity: "29 Maret 2026",
+    sipaValidity: "29 Maret 2028",
     phone: "6281373413627",
     room: "Kelas 2",
     schedule: "Senin - Jumat, 08:00 - 14:00",
@@ -138,8 +138,8 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     nip: "199308162019022003",
     str: "XP00000934296315",
     strValidity: "Seumur hidup",
-    sipa: "446/IPA/0263/DPMPTSP-PPK/2021",
-    sipaValidity: "16 Agustus 2026",
+    sipa: "440/SIPA/0260/DPMPTSP-PPK/2026",
+    sipaValidity: "30 Juli 2031",
     phone: "6281287376506",
     room: "Anak 3",
     schedule: "Senin - Jumat, 08:00 - 14:00",
@@ -166,8 +166,8 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     nip: "198405252023212003",
     str: "GI00001966373573",
     strValidity: "Seumur hidup",
-    sipa: "446/IPA/0183/DPMPTSP-PPK/2021",
-    sipaValidity: "25 Mei 2026",
+    sipa: "440/SIPA/0162/DPMPTSP-PPK/2026",
+    sipaValidity: "11 Mei 2031",
     phone: "6281930288078",
     room: "VVIP,VIP, dan Kelas 1",
     schedule: "Senin - Jumat, 08:00 - 14:00",
@@ -189,7 +189,7 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
         const updated = parsed.map(p => {
           const initial = INITIAL_PHARMACISTS.find(i => i.id === p.id);
           // If initial data has changed (e.g. image, name), we overwrite to ensure updates are reflected
-          if (initial && (p.name !== initial.name || p.imageUrl !== initial.imageUrl || p.str !== initial.str || p.sipa !== initial.sipa || p.specialty !== initial.specialty)) {
+          if (initial && (p.name !== initial.name || p.imageUrl !== initial.imageUrl || p.str !== initial.str || p.sipa !== initial.sipa || p.specialty !== initial.specialty || p.sipaValidity !== initial.sipaValidity || p.strValidity !== initial.strValidity || p.schedule !== initial.schedule || p.room !== initial.room)) {
              return { ...p, ...initial };
           }
           return p;
