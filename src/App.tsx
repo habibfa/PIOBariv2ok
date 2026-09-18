@@ -11,6 +11,7 @@ import PharmacistConsultation from "./PharmacistConsultation";
 import FornasDrugs from "./FornasDrugs";
 import ClinicalSOAP from "./ClinicalSOAP";
 import { generateMedicalReportPDF } from "./pdfUtils";
+import FloatingAIAssistant from "./components/FloatingAIAssistant";
 import CountUp from "./components/CountUp";
 import {
   Calculator,
@@ -4222,6 +4223,7 @@ export default function App() {
           <span className="text-[9px] font-bold">Menu</span>
         </button>
       </div>
-    </div>
+      <FloatingAIAssistant />
+</div>
   );
 }
