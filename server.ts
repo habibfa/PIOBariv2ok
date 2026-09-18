@@ -340,19 +340,35 @@ FORMATTING:
   app.post("/api/chat-ai", async (req, res) => {
     try {
       const { message, history } = req.body;
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = getAIClient();
+      if (!ai) {
+        return res.json({ reply: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan API Key di pengaturan." });
+      }
       
       let systemPrompt = "Anda adalah Asisten Apoteker Klinis yang ahli dan ringkas. Berikan jawaban yang tepat, medis, dan berbasis bukti.";
       let prompt = `Konteks Percakapan Sebelumnya: ${JSON.stringify(history)}\n\nPertanyaan Pengguna: ${message}\n\nJawaban:`;
       
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-pro",
-        contents: prompt,
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.2
-        }
-      });
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.2
+          }
+        });
+      } catch (err) {
+        console.warn("gemini-2.5-flash failed, trying fallback to gemini-1.5-flash", err);
+        response = await ai.models.generateContent({
+          model: "gemini-1.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.2
+          }
+        });
+      }
       
       res.json({ reply: response.text });
     } catch (error) {
