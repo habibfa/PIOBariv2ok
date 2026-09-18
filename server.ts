@@ -61,7 +61,7 @@ Format dalam bahasa Indonesia yang sangat klinis, akurat, profesional, namun mud
 Penafian (sertakan di paling bawah, cetak miring): *Catatan: Artikel ini ditujukan sebagai referensi informasi klinis umum dan bukan pengganti penilaian medis profesional secara langsung.*`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
       });
 
@@ -302,24 +302,24 @@ FORMATTING:
       let response;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.5-flash",
           contents: prompt,
           config: {
             systemInstruction: "You are an elite Clinical Pharmacologist and Board-Certified Medical Dosage Expert. Use advanced reasoning to verify drug calculation setups, identify subtle clinical safety risks, detect errors, and explain medical rationale thoroughly. ALWAYS WRITE YOUR RESPONSE ENTIRELY IN INDONESIAN (BAHASA INDONESIA).",
           },
         });
       } catch (primaryError: any) {
-        console.warn("Primary model (gemini-2.5-flash) failed or rate-limited, trying fallback (gemini-2.5-pro):", primaryError.message || primaryError);
+        console.warn("Primary model (gemini-3.5-flash) failed or rate-limited, trying fallback (gemini-3.1-flash-lite):", primaryError.message || primaryError);
         try {
           response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
+            model: "gemini-3.1-flash-lite",
             contents: prompt,
             config: {
               systemInstruction: "You are an elite Clinical Pharmacologist and Board-Certified Medical Dosage Expert. Verify drug calculation setups, identify subtle safety risks, and explain medical rationale. ALWAYS WRITE YOUR RESPONSE ENTIRELY IN INDONESIAN (BAHASA INDONESIA).",
             },
           });
         } catch (secondaryError: any) {
-          console.warn("Secondary model (gemini-2.5-pro) failed. Throwing to fallback.", secondaryError.message || secondaryError);
+          console.warn("Secondary model (gemini-3.1-flash-lite) failed. Throwing to fallback.", secondaryError.message || secondaryError);
           throw secondaryError;
         }
       }
@@ -351,7 +351,7 @@ FORMATTING:
       let response;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.5-flash",
           contents: prompt,
           config: {
             systemInstruction: systemPrompt,
@@ -359,9 +359,9 @@ FORMATTING:
           }
         });
       } catch (err) {
-        console.warn("gemini-2.5-flash failed, trying fallback to gemini-2.5-pro", err.message || err);
+        console.warn("gemini-3.5-flash failed, trying fallback to gemini-3.1-flash-lite", err.message || err);
         response = await ai.models.generateContent({
-          model: "gemini-2.5-pro",
+          model: "gemini-3.1-flash-lite",
           contents: prompt,
           config: {
             systemInstruction: systemPrompt,
@@ -414,7 +414,7 @@ ${patientData}`;
       let response;
       try {
         response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.5-flash",
           contents: prompt,
           config: {
             systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
@@ -423,7 +423,7 @@ ${patientData}`;
       } catch (primaryError: any) {
         try {
           response = await ai.models.generateContent({
-            model: "gemini-2.5-pro",
+            model: "gemini-3.1-flash-lite",
             contents: prompt,
             config: {
               systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
