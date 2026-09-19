@@ -7,6 +7,15 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Initialize Gemini client safely (lazy)
 let aiClient: GoogleGenAI | null = null;
@@ -26,7 +35,7 @@ function getAIClient() {
   return aiClient;
 }
 
-app.post("/api/disease-info", async (req, res) => {
+app.post(["/api/disease-info", "/disease-info"], async (req, res) => {
   try {
     const { diseaseName } = req.body;
 
@@ -67,7 +76,7 @@ Penafian (sertakan di paling bawah, cetak miring): *Catatan: Artikel ini ditujuk
   }
 });
 
-app.post("/api/calculate-ai", async (req, res) => {
+app.post(["/api/calculate-ai", "/calculate-ai"], async (req, res) => {
   try {
     const { inputs, calculated, preset, question } = req.body;
 
@@ -326,7 +335,78 @@ FORMATTING:
 });
 
 
-app.post("/api/soap-ai", async (req, res) => {
+
+  const handleChatAi = async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "Pesan tidak boleh kosong." });
+      }
+      const ai = getAIClient();
+      if (!ai) {
+        return res.json({
+          reply: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan GEMINI_API_KEY di menu Environment Variables pada dashboard Vercel/Netlify Anda, lalu lakukan deploy ulang."
+        });
+      }
+
+      let systemPrompt = "Anda adalah Asisten Apoteker Klinis dan Ahli Farmakologi yang ramah, ringkas, dan berbasis bukti (evidence-based medicine). Jawab pertanyaan pengguna mengenai obat, dosis, indikasi, atau interaksi secara jelas dalam Bahasa Indonesia.";
+      
+      let conversationContext = "";
+      if (Array.isArray(history) && history.length > 0) {
+        conversationContext = history
+          .map((h) => `${h.role === 'user' ? 'Pengguna' : 'Asisten'}: ${h.content}`)
+          .join("\n");
+      }
+
+      const prompt = conversationContext 
+        ? `Riwayat percakapan:\n${conversationContext}\n\nPertanyaan pengguna: ${message}\n\nJawaban:` 
+        : `Pertanyaan pengguna: ${message}\n\nJawaban:`;
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.2
+          }
+        });
+      } catch (err) {
+        console.warn("gemini-2.5-flash failed, trying fallback to gemini-3.1-flash-lite", err.message || err);
+        try {
+          response = await ai.models.generateContent({
+            model: "gemini-3.1-flash-lite",
+            contents: prompt,
+            config: {
+              systemInstruction: systemPrompt,
+              temperature: 0.2
+            }
+          });
+        } catch (secondaryErr) {
+          console.warn("gemini-3.1-flash-lite failed, trying gemini-3.5-flash", secondaryErr.message || secondaryErr);
+          response = await ai.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: prompt,
+            config: {
+              systemInstruction: systemPrompt,
+              temperature: 0.2
+            }
+          });
+        }
+      }
+
+      res.json({ reply: response.text });
+    } catch (error) {
+      console.error("AI Chat Error:", error);
+      res.status(500).json({ error: "Gagal memproses pertanyaan AI: " + (error.message || error) });
+    }
+  };
+
+  app.post("/api/chat-ai", handleChatAi);
+  app.post("/chat-ai", handleChatAi);
+
+  app.post(["/api/soap-ai", "/soap-ai"], async (req, res) => {
   try {
     const { patientData } = req.body;
     if (!patientData) {

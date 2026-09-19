@@ -47,7 +47,13 @@ export default function FloatingAIAssistant() {
         })
       });
 
-      if (!response.ok) { const errData = await response.json().catch(() => ({})); throw new Error(errData.error || 'Network response was not ok'); }
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        if (response.status === 404) {
+          throw new Error("Endpoint /api/chat-ai belum terdaftar di deployment Anda (Error 404). Silakan lakukan redeploy di Vercel/Netlify agar endpoint baru aktif.");
+        }
+        throw new Error(errData.error || `Koneksi server gagal (Status ${response.status})`);
+      }
       const data = await response.json();
       
       setMessages(prev => [...prev, { 
