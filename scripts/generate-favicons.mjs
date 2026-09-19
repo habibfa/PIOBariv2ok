@@ -1,0 +1,196 @@
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gel/Glass Gradients -->
+    <radialGradient id="bgRadial" cx="45%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="35%" stop-color="#10B981" />
+      <stop offset="70%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064E3B" />
+    </radialGradient>
+
+    <linearGradient id="glassBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="30%" stop-color="#6EE7B7" stop-opacity="0.6" />
+      <stop offset="70%" stop-color="#047857" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#A7F3D0" stop-opacity="0.7" />
+    </linearGradient>
+
+    <linearGradient id="topSheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45" />
+      <stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0" />
+    </linearGradient>
+
+    <linearGradient id="bookSheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F0FDFA" />
+      <stop offset="100%" stop-color="#CCFBF1" />
+    </linearGradient>
+
+    <linearGradient id="pillGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#022C22" flood-opacity="0.45" />
+    </filter>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- 1. BASE SQUIRCLE WITH 3D GLASSMORPHIC AMBIENCE -->
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#bgRadial)" />
+  
+  <!-- Outer Specular Ring / Border -->
+  <rect x="25" y="25" width="462" height="462" rx="103" fill="none" stroke="url(#glassBorder)" stroke-width="4.5" />
+  
+  <!-- Glass Top Sheen Reflection -->
+  <path d="M 28,128 C 28,70 70,28 128,28 L 384,28 C 442,28 484,70 484,128 C 484,210 370,200 256,215 C 140,230 28,210 28,128 Z" fill="url(#topSheen)" />
+
+  <!-- Star Sparkle on Upper-Left Glass Corner -->
+  <g transform="translate(32, 215) scale(0.7)">
+    <circle cx="0" cy="0" r="14" fill="#FFFFFF" opacity="0.6" filter="url(#glow)" />
+    <path d="M 0,-24 L 3,-6 L 24,0 L 3,6 L 0,24 L -3,6 L -24,0 L -3,-6 Z" fill="#FFFFFF" />
+  </g>
+
+  <!-- 2. MEDICAL SYMBOLS & OPEN BOOK COMPOSITION -->
+  <g filter="url(#softShadow)">
+    <!-- CIRCULAR EMBLEM WITH GREEN CROSS (Back Layer) -->
+    <g transform="translate(210, 142)">
+      <circle cx="0" cy="0" r="46" fill="#F0FDFA" stroke="#99F6E4" stroke-width="3" />
+      <!-- Medical Cross (+) -->
+      <rect x="-8" y="-24" width="16" height="48" rx="5" fill="#10B981" />
+      <rect x="-24" y="-8" width="48" height="16" rx="5" fill="#10B981" />
+    </g>
+
+    <!-- OPEN BOOK (Behind pill, under magnifier) -->
+    <g transform="translate(256, 222)">
+      <!-- Book Pages -->
+      <path d="M 0,16 C -50,6 -105,-4 -145,26 C -148,16 -108,-14 0,0 C 108,-14 148,16 145,26 C 105,-4 50,6 0,16 Z" fill="url(#bookSheen)" stroke="#5EEAD4" stroke-width="2.5" />
+      <path d="M 0,24 C -50,14 -105,4 -148,34 C -150,26 -110,-4 0,8 C 110,-4 150,26 148,34 C 105,4 50,14 0,24 Z" fill="#CCFBF1" opacity="0.8" />
+    </g>
+
+    <!-- 3D CAPSULE PILL (Diagonal) -->
+    <g transform="translate(266, 148) rotate(-40)">
+      <!-- Pill Drop Halo -->
+      <rect x="-25" y="-55" width="50" height="110" rx="25" fill="none" stroke="#FFFFFF" stroke-width="4.5" />
+      <!-- Top Half (Green) -->
+      <path d="M -24,0 L 24,0 L 24,-30 C 24,-44 14,-54 0,-54 C -14,-54 -24,-44 -24,-30 Z" fill="url(#pillGreen)" />
+      <!-- Bottom Half (White) -->
+      <path d="M -24,0 L 24,0 L 24,30 C 24,44 14,54 0,54 C -14,54 -24,44 -24,30 Z" fill="#FFFFFF" />
+      <!-- Dividing line -->
+      <line x1="-24" y1="0" x2="24" y2="0" stroke="#059669" stroke-width="2" />
+      <!-- Pill Specular Shine Streak -->
+      <rect x="-14" y="-46" width="6" height="40" rx="3" fill="#FFFFFF" opacity="0.65" />
+    </g>
+
+    <!-- MAGNIFYING GLASS WITH 'i' (Information) -->
+    <g transform="translate(310, 172)">
+      <!-- Handle -->
+      <line x1="26" y1="26" x2="48" y2="48" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" />
+      <!-- Outer Metallic Ring -->
+      <circle cx="0" cy="0" r="38" fill="#047857" stroke="#FFFFFF" stroke-width="7" />
+      <!-- Inner Green Lens -->
+      <circle cx="0" cy="0" r="33" fill="#059669" opacity="0.9" />
+      <!-- Letter 'i' inside lens -->
+      <!-- Dot -->
+      <circle cx="0" cy="-14" r="5.5" fill="#FFFFFF" />
+      <!-- Stem -->
+      <rect x="-5" y="-3" width="10" height="24" rx="5" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- 3. MAIN TYPOGRAPHY: "PIO" (Bold Display) -->
+  <g filter="url(#softShadow)">
+    <!-- Letter P -->
+    <path d="M 138,260 L 178,260 C 204,260 220,274 220,296 C 220,318 204,332 178,332 L 165,332 L 165,356 C 165,361 161,365 156,365 L 147,365 C 142,365 138,361 138,356 Z M 165,284 L 165,308 L 176,308 C 189,308 196,303 196,296 C 196,289 189,284 176,284 Z" fill="#FFFFFF" />
+
+    <!-- Letter I -->
+    <rect x="238" y="260" width="27" height="105" rx="9" fill="#FFFFFF" />
+
+    <!-- Letter O with Pill Inside -->
+    <g transform="translate(322, 312.5)">
+      <!-- Outer circle of O -->
+      <circle cx="0" cy="0" r="52.5" fill="#FFFFFF" />
+      <!-- Inner hole of O -->
+      <circle cx="0" cy="0" r="28" fill="#059669" />
+      
+      <!-- Small Green/White Pill nested inside O -->
+      <g transform="rotate(-40) scale(0.48)">
+        <!-- Pill Top (Green) -->
+        <path d="M -18,0 L 18,0 L 18,-24 C 18,-34 10,-42 0,-42 C -10,-42 -18,-34 -18,-24 Z" fill="#34D399" />
+        <!-- Pill Bottom (White) -->
+        <path d="M -18,0 L 18,0 L 18,24 C 18,34 10,42 0,42 C -10,42 -18,34 -18,24 Z" fill="#FFFFFF" />
+      </g>
+    </g>
+  </g>
+
+  <!-- 4. SUB-DIVIDER: "— BARI —" -->
+  <g transform="translate(256, 396)">
+    <!-- Left Accent Line -->
+    <rect x="-142" y="-3.5" width="46" height="7" rx="3.5" fill="#5EEAD4" />
+    
+    <!-- BARI Typography -->
+    <text x="0" y="5" font-family="system-ui, -apple-system, sans-serif, 'Segoe UI'" font-size="28" font-weight="900" fill="#FFFFFF" letter-spacing="4" text-anchor="middle">BARI</text>
+    
+    <!-- Right Accent Line -->
+    <rect x="96" y="-3.5" width="46" height="7" rx="3.5" fill="#5EEAD4" />
+  </g>
+
+  <!-- 5. FOOTER SUBTITLES -->
+  <text x="256" y="438" font-family="system-ui, -apple-system, sans-serif, 'Segoe UI'" font-size="24" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">Pusat Informasi Obat</text>
+  <text x="256" y="468" font-family="system-ui, -apple-system, sans-serif, 'Segoe UI'" font-size="18" font-weight="700" fill="#CCFBF1" text-anchor="middle" letter-spacing="0.8">RSUD Palembang BARI</text>
+</svg>`;
+
+async function run() {
+  const publicDir = path.join(process.cwd(), 'public');
+  const distDir = path.join(process.cwd(), 'dist');
+
+  // Save SVG
+  fs.writeFileSync(path.join(publicDir, 'favicon.svg'), svgContent, 'utf-8');
+  console.log('Saved public/favicon.svg');
+
+  const svgBuffer = Buffer.from(svgContent);
+
+  // Generate resolutions
+  const targets = [
+    { file: 'favicon-16x16.png', size: 16 },
+    { file: 'favicon-32x32.png', size: 32 },
+    { file: 'favicon.png', size: 32 },
+    { file: 'apple-touch-icon.png', size: 180 },
+    { file: 'pwa-192x192.png', size: 192 },
+    { file: 'android-chrome-192x192.png', size: 192 },
+    { file: 'pwa-512x512.png', size: 512 },
+    { file: 'android-chrome-512x512.png', size: 512 },
+  ];
+
+  for (const t of targets) {
+    const outPub = path.join(publicDir, t.file);
+    await sharp(svgBuffer).resize(t.size, t.size).png().toFile(outPub);
+    console.log(`Generated public/${t.file} (${t.size}x${t.size})`);
+
+    if (fs.existsSync(distDir)) {
+      const outDist = path.join(distDir, t.file);
+      await sharp(svgBuffer).resize(t.size, t.size).png().toFile(outDist);
+    }
+  }
+
+  // Also create favicon.ico from 32x32 png
+  const favicon32Buf = await sharp(svgBuffer).resize(32, 32).png().toBuffer();
+  fs.writeFileSync(path.join(publicDir, 'favicon.ico'), favicon32Buf);
+  if (fs.existsSync(distDir)) {
+    fs.writeFileSync(path.join(distDir, 'favicon.ico'), favicon32Buf);
+    fs.writeFileSync(path.join(distDir, 'favicon.svg'), svgContent, 'utf-8');
+  }
+  console.log('Successfully generated all favicons and PWA icons!');
+}
+
+run().catch(console.error);

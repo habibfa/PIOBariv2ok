@@ -9,7 +9,6 @@ import {
   MapPin, 
   BookOpen, 
   Stethoscope, 
-  Search, 
   Heart, 
   Activity, 
   ChevronRight,
@@ -18,15 +17,13 @@ import {
 
 interface MedicalDashboardHeroProps {
   onNavigateTab: (tab: any) => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   totalDrugsCount?: number;
 }
 
 export default function MedicalDashboardHero({
   onNavigateTab,
-  searchQuery,
-  onSearchChange,
   totalDrugsCount = 930
 }: MedicalDashboardHeroProps) {
   return (
@@ -38,7 +35,7 @@ export default function MedicalDashboardHero({
         <div className="absolute -bottom-20 -left-12 w-64 h-64 rounded-full bg-rose-200/25 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
+          <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-200/60 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[11px] font-bold text-emerald-800 tracking-wide uppercase">
@@ -51,20 +48,6 @@ export default function MedicalDashboardHero({
             <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
               Panduan terintegrasi untuk Apoteker, Dokter, dan Tenaga Kesehatan. Dilengkapi kalkulator klirens ginjal, skrining polifarmasi, kompatibilitas IV, dan formularium Fornas.
             </p>
-          </div>
-
-          {/* Quick Search Pill */}
-          <div className="w-full md:w-80 shrink-0">
-            <div className="relative">
-              <Search className="w-4 h-4 text-teal-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Cari obat, indikasi, dosis..."
-                className="w-full bg-white/90 hover:bg-white focus:bg-white text-xs font-semibold text-slate-800 placeholder-slate-400 pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200/80 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-hidden transition-all shadow-[0_4px_16px_rgba(0,0,0,0.03)]"
-              />
-            </div>
           </div>
         </div>
       </div>
