@@ -14,11 +14,11 @@ export default defineConfig(() => {
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024 // 10MB
         },
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        includeAssets: ['favicon.ico', 'favicon.svg', 'favicon-32x32.png', 'favicon-16x16.png', 'apple-touch-icon.png'],
         manifest: {
-          name: 'Aplikasi Kefarmasian Klinis',
-          short_name: 'Farmasi Klinis',
-          description: 'Aplikasi lengkap untuk Apoteker dan Tenaga Kesehatan',
+          name: 'Pusat Informasi Obat RSUD Palembang BARI',
+          short_name: 'PIOBARI',
+          description: 'Aplikasi Pusat Informasi Obat RSUD Palembang BARI. Menyediakan kalkulator dosis obat, skrining interaksi, dan peta fasilitas kesehatan.',
           theme_color: '#ffffff',
           icons: [
             {

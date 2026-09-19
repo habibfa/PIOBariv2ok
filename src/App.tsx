@@ -12,6 +12,8 @@ import FornasDrugs from "./FornasDrugs";
 import ClinicalSOAP from "./ClinicalSOAP";
 import { generateMedicalReportPDF } from "./pdfUtils";
 import FloatingAIAssistant from "./components/FloatingAIAssistant";
+import MedicalDashboardHero from "./components/MedicalDashboardHero";
+import GlassSettingsModal from "./components/GlassSettingsModal";
 import CountUp from "./components/CountUp";
 import {
   Calculator,
@@ -23,6 +25,7 @@ import {
   User,
   Settings,
   RefreshCw,
+  Sliders,
   Droplets,
   Clock,
   ShieldAlert,
@@ -660,6 +663,23 @@ const getDrugMetadata = (preset: DrugPreset) => {
 export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUpdateDrugModalOpen, setIsUpdateDrugModalOpen] = useState(false);
+  const [isGlassSettingsOpen, setIsGlassSettingsOpen] = useState(false);
+  const [glassOpacity, setGlassOpacity] = useState<number>(() => {
+    const saved = localStorage.getItem("piobari_glass_opacity");
+    return saved ? parseFloat(saved) : 0.82;
+  });
+  const [glassBlur, setGlassBlur] = useState<number>(() => {
+    const saved = localStorage.getItem("piobari_glass_blur");
+    return saved ? parseInt(saved, 10) : 16;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("piobari_glass_opacity", glassOpacity.toString());
+    localStorage.setItem("piobari_glass_blur", glassBlur.toString());
+    document.documentElement.style.setProperty("--glass-opacity", glassOpacity.toString());
+    document.documentElement.style.setProperty("--glass-blur", `${glassBlur}px`);
+  }, [glassOpacity, glassBlur]);
+
   const [drugCsvFile, setDrugCsvFile] = useState<File | null>(null);
   const [drugCsvError, setDrugCsvError] = useState("");
 
@@ -1413,113 +1433,172 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen bg-slate-50 flex font-sans text-slate-900 selection:bg-emerald-100 overflow-hidden">
+    <div className="h-screen medical-ambient-bg flex font-sans text-slate-900 selection:bg-teal-100 overflow-hidden">
       
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
       
       {/* SIDEBAR (Desktop) */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex-col shrink-0 overflow-y-auto transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} flex`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 glass-sidebar shadow-[0_4px_30px_rgba(0,0,0,0.03)] flex-col shrink-0 overflow-y-auto transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} flex`}>
+        <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100/80 shrink-0">
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-rsud-green">
-              PIOBARI <span className="text-rsud-red">v2</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-black tracking-tight text-teal-700">
+                PIOBARI <span className="text-rose-600">v2</span>
+              </span>
+              <span className="text-[10px] bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded-full border border-teal-200/60">
+                Klinis
+              </span>
+            </div>
             <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider truncate">
               Pusat Informasi Obat
             </span>
-            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider truncate">
+            <span className="text-[10px] text-teal-600 font-semibold tracking-wider truncate">
               RSUD Palembang BARI
             </span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">
+          <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+
+        <div className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+          <div className="px-3 pb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Direktori & Skrining</span>
+          </div>
+
           <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between group ${
               activeTab === "desc"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <BookOpen className="w-4 h-4 shrink-0" />
-            Informasi Obat
+            <div className="flex items-center gap-2.5">
+              <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === "desc" ? "text-white" : "text-teal-600"}`} />
+              <span>Informasi Obat</span>
+            </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              activeTab === "desc" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+            }`}>
+              930+
+            </span>
           </button>
 
           <button
-            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("pharmacist"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
-              activeTab === "pharmacist"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }}
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between group ${
+              activeTab === "ddi"
+                ? "bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-md shadow-rose-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-rose-700 hover:shadow-2xs"
             }`}
           >
-            <User className="w-4 h-4 shrink-0" />
-            Konsultasi Apoteker
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTab === "ddi" ? "text-white" : "text-rose-600 animate-pulse"}`} />
+              <span>Skrining Interaksi</span>
+            </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              activeTab === "ddi" ? "bg-white/20 text-white" : "bg-rose-50 text-rose-600 border border-rose-200/60"
+            }`}>
+              Siaga
+            </span>
           </button>
 
           <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("fornas"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between group ${
               activeTab === "fornas"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <BookOpen className="w-4 h-4 shrink-0" />
-            Daftar Obat Fornas
+            <div className="flex items-center gap-2.5">
+              <BookOpen className={`w-4 h-4 shrink-0 ${activeTab === "fornas" ? "text-white" : "text-emerald-600"}`} />
+              <span>Daftar Obat Fornas</span>
+            </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              activeTab === "fornas" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700"
+            }`}>
+              2025
+            </span>
           </button>
+
+          <div className="px-3 pt-4 pb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Kalkulator & Klinis</span>
+          </div>
 
           <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
               activeTab === "medcalc"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <Calculator className="w-4 h-4 shrink-0" />
+            <Calculator className={`w-4 h-4 shrink-0 ${activeTab === "medcalc" ? "text-white" : "text-sky-600"}`} />
             Kalkulator Medis
           </button>
 
           <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("iv"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
               activeTab === "iv"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <Droplets className="w-4 h-4 shrink-0" />
+            <Droplets className={`w-4 h-4 shrink-0 ${activeTab === "iv" ? "text-white" : "text-cyan-600"}`} />
             Kompatibilitas IV
           </button>
 
           <button
-            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ai"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
-              activeTab === "ai"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Sparkles className="w-4 h-4 shrink-0" />
-            Konsultasi AI
-          </button>
-          <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("soap"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
               activeTab === "soap"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <FileText className="w-4 h-4 shrink-0" />
+            <FileText className={`w-4 h-4 shrink-0 ${activeTab === "soap" ? "text-white" : "text-indigo-600"}`} />
             Clinical SOAP
+          </button>
+
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ai"); }}
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between ${
+              activeTab === "ai"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-purple-700 hover:shadow-2xs"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Sparkles className={`w-4 h-4 shrink-0 ${activeTab === "ai" ? "text-white" : "text-purple-600"}`} />
+              <span>Konsultasi AI</span>
+            </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              activeTab === "ai" ? "bg-white/20 text-white" : "bg-purple-50 text-purple-600"
+            }`}>
+              Smart
+            </span>
+          </button>
+
+          <div className="px-3 pt-4 pb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Layanan & Edukasi</span>
+          </div>
+
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("pharmacist"); }}
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
+              activeTab === "pharmacist"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
+            }`}
+          >
+            <User className={`w-4 h-4 shrink-0 ${activeTab === "pharmacist" ? "text-white" : "text-teal-600"}`} />
+            Konsultasi Apoteker
           </button>
 
           <button
@@ -1527,73 +1606,70 @@ export default function App() {
               setIsMobileMenuOpen(false); setActiveTab("video");
               setActiveVideoStep(0);
             }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
               activeTab === "video"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <Image className="w-4 h-4 shrink-0" />
+            <Image className={`w-4 h-4 shrink-0 ${activeTab === "video" ? "text-white" : "text-amber-600"}`} />
             Panduan Alat
           </button>
 
           <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("diseases"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
               activeTab === "diseases"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <Stethoscope className="w-4 h-4 shrink-0" />
+            <Stethoscope className={`w-4 h-4 shrink-0 ${activeTab === "diseases" ? "text-white" : "text-teal-600"}`} />
             Penyakit & Kondisi
           </button>
 
           <button
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("map"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center gap-2.5 ${
               activeTab === "map"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
             }`}
           >
-            <MapPin className="w-4 h-4 shrink-0" />
+            <MapPin className={`w-4 h-4 shrink-0 ${activeTab === "map" ? "text-white" : "text-emerald-600"}`} />
             Peta Faskes
-          </button>
-
-          <button
-            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }}
-            className={`w-full text-left px-4 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
-              activeTab === "ddi"
-                ? "bg-emerald-600 text-white shadow-xs shadow-emerald-100"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTab !== 'ddi' ? 'animate-pulse text-orange-500' : ''}`} />
-            Skrining Interaksi
           </button>
         </div>
         
-        <div className="p-4 border-t border-slate-200 shrink-0 mt-auto flex flex-col gap-3">
+        <div className="p-4 border-t border-slate-100/80 shrink-0 mt-auto flex flex-col gap-2.5 bg-slate-50/40">
+          <button
+            type="button"
+            onClick={() => setIsGlassSettingsOpen(true)}
+            className="w-full text-center px-4 py-2.5 bg-white/80 hover:bg-white text-teal-700 text-[11px] font-bold rounded-xl transition-all border border-teal-200/80 uppercase tracking-wider shadow-2xs flex items-center justify-center gap-2"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Atur Transparansi ({Math.round(glassOpacity * 100)}%)</span>
+          </button>
+
           {isAdmin ? (
             <button
               onClick={() => setIsAdmin(false)}
-              className="w-full text-center px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded-lg transition-colors border border-rose-200 uppercase tracking-wider"
+              className="w-full text-center px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold rounded-xl transition-colors border border-rose-200 uppercase tracking-wider"
             >
               Logout Admin
             </button>
           ) : (
             <button
               onClick={() => setIsLoginModalOpen(true)}
-              className="w-full text-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors border border-slate-300 uppercase tracking-wider"
+              className="w-full text-center px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-bold rounded-xl transition-colors border border-slate-200 uppercase tracking-wider shadow-2xs"
             >
               Login Admin
             </button>
           )}
-          <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+          <div className="flex items-center gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
-            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider truncate">
-              Basis Data Aktif
+            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider truncate">
+              Basis Data Farmasi Aktif
             </span>
           </div>
         </div>
@@ -1603,23 +1679,24 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Header (Desktop and Mobile) */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 shadow-xs shrink-0">
+        <header className="h-18 glass-header flex items-center justify-between px-4 sm:px-6 shadow-2xs shrink-0">
           <div className="flex items-center gap-3 lg:hidden">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="p-2 -ml-2 text-slate-500 hover:text-emerald-600 transition-colors"
+              className="p-2.5 -ml-2 text-slate-600 hover:text-teal-600 hover:bg-white/80 rounded-xl transition-colors"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tight text-rsud-green">
-                PIOBARI <span className="text-rsud-red">v2</span>
+              <span className="text-xl font-black tracking-tight text-teal-700">
+                PIOBARI <span className="text-rose-600">v2</span>
               </span>
             </div>
           </div>
           
-          <div className="hidden lg:flex flex-col">
-             <span className="text-sm font-bold text-slate-800">
+          <div className="hidden lg:flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="text-base font-bold text-slate-800 tracking-tight">
                 {activeTab === "ddi" ? "Skrining Multi-Obat Aktif" : 
                  activeTab === "desc" ? "Informasi & Keamanan Obat" : 
                  activeTab === "diseases" ? "Penyakit & Kondisi" : 
@@ -1629,16 +1706,34 @@ export default function App() {
                  activeTab === "soap" ? "Clinical SOAP" : 
                  activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan" : 
                  activeTab === "iv" ? "Kompatibilitas Obat Intravena" : 
-                 activeTab === "pharmacist" ? "Konsultasi Apoteker" : 
+                 activeTab === "pharmacist" ? "Konsultasi Apoteker Siaga" : 
                  activeTab === "fornas" ? "Daftar Obat Fornas Kemenkes" : 
                  "Menu Kalkulator"}
-             </span>
-             <span className="text-[10px] text-slate-500">
-                RSUD Palembang BARI
-             </span>
+              </span>
+              <span className="text-[11px] text-teal-700 font-medium">
+                RSUD Palembang BARI • Layanan Informasi Obat Terpercaya
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-2.5 ml-auto">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 border border-teal-100">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[11px] font-semibold text-teal-800">Sistem Online</span>
+            </div>
+
+            {/* Glassmorphism Transparency Control Trigger */}
+            <button
+              id="btn-open-glass-settings"
+              type="button"
+              onClick={() => setIsGlassSettingsOpen(true)}
+              className="px-3.5 py-2 glass-card hover:bg-white text-slate-700 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border border-slate-200/80 shadow-2xs active:scale-95 group"
+              title="Atur Transparansi Kaca (Glassmorphism)"
+            >
+              <Sliders className="w-3.5 h-3.5 text-teal-600 group-hover:rotate-45 transition-transform shrink-0" />
+              <span className="hidden sm:inline">Transparansi ({Math.round(glassOpacity * 100)}%)</span>
+            </button>
+
             <button 
               onClick={() => {
                 setSelectedPreset(undefined);
@@ -1661,16 +1756,16 @@ export default function App() {
                 setAiReport("");
                 setAiError("");
               }}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-200"
+              className="px-3.5 py-2 glass-card hover:bg-white text-slate-700 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border border-slate-200/80 shadow-2xs active:scale-95"
             >
-              <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Atur Ulang Kustom</span>
+              <RefreshCw className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+              <span className="hidden sm:inline">Reset Form</span>
             </button>
           </div>
         </header>
 
         {/* Main Content scrollable area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 overflow-y-auto custom-scrollbar">
           <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         
         {activeTab === "single" ? (
@@ -2899,12 +2994,22 @@ export default function App() {
       </>
     ) : activeTab === "desc" ? (
       <>
+        {/* 3D HEALTHCARE MEDICAL HERO DASHBOARD OVERVIEW */}
+        <div className="lg:col-span-12 w-full">
+          <MedicalDashboardHero 
+            onNavigateTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
+            searchQuery={descSearchQuery}
+            onSearchChange={setDescSearchQuery}
+            totalDrugsCount={drugPresets.length}
+          />
+        </div>
+
         {/* DRUG DESCRIPTION TAB */}
         {/* Left Column: Filter and Category selector */}
         <section className="lg:col-span-3 space-y-6">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-5">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+          <div className="glass-card p-5 space-y-5">
+            <div className="flex items-center gap-2 border-b border-slate-100/80 pb-3">
+              <div className="p-2 bg-teal-50 text-teal-700 rounded-xl border border-teal-100">
                 <Settings className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-bold text-slate-800">Filter & Kategori</h3>
@@ -3047,12 +3152,12 @@ export default function App() {
 
         {/* Right Column: List of Drugs */}
         <section className="lg:col-span-9 space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex items-center justify-between flex-wrap gap-3">
+          <div className="glass-card p-5 flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-sm font-bold text-slate-800">Direktori & Deskripsi Obat</h2>
               <p className="text-xs text-slate-500 font-sans mt-0.5">Tinjau deskripsi, komposisi, indikasi, kontraindikasi, serta keamanan bagi ibu hamil & menyusui.</p>
             </div>
-            <span className="text-xs font-bold font-sans bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200">
+            <span className="text-xs font-bold font-sans bg-teal-50 text-teal-800 px-3 py-1.5 rounded-xl border border-teal-100/80">
               Menampilkan {
                 drugPresets.filter(p => {
                   // Search filter
@@ -3142,7 +3247,7 @@ export default function App() {
                       return (
                 <div
                   key={"desc_" + preset.id}
-                  className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-3xs hover:shadow-2xs transition-all duration-200"
+                  className="glass-card glass-card-hover rounded-3xl overflow-hidden hover:border-teal-200/80 transition-all duration-300"
                 >
                   {/* Card Header (Visible initially) */}
                   <div
@@ -4204,26 +4309,66 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around pb-[env(safe-area-inset-bottom,16px)] pt-1 px-2 z-30 shadow-[0_-4px_15px_-5px_rgba(0,0,0,0.05)]">
-        <button onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }} className={`flex flex-col items-center justify-center w-16 h-12 gap-1 ${activeTab === "desc" ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
-          <BookOpen className={`w-5 h-5 ${activeTab === "desc" ? "fill-emerald-50 text-emerald-600" : ""}`} />
-          <span className="text-[9px] font-bold">Informasi</span>
+      {/* 3D Glassmorphism Floating Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-3 left-4 right-4 glass-card rounded-3xl shadow-[0_12px_36px_rgba(15,23,42,0.12)] flex items-center justify-around py-1.5 px-3 z-40">
+        <button 
+          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }} 
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all ${
+            activeTab === "desc" ? "text-teal-700 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <BookOpen className={`w-5 h-5 ${activeTab === "desc" ? "text-teal-700" : ""}`} />
+          <span className="text-[9px] font-bold tracking-tight">Obat</span>
         </button>
-        <button onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }} className={`flex flex-col items-center justify-center w-16 h-12 gap-1 ${activeTab === "ddi" ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
-          <ShieldAlert className={`w-5 h-5 ${activeTab === "ddi" ? "fill-emerald-50 text-emerald-600" : ""}`} />
-          <span className="text-[9px] font-bold">Skrining</span>
+
+        <button 
+          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }} 
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all ${
+            activeTab === "ddi" ? "text-rose-600 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <ShieldAlert className={`w-5 h-5 ${activeTab === "ddi" ? "text-rose-600 animate-pulse" : ""}`} />
+          <span className="text-[9px] font-bold tracking-tight">Skrining</span>
         </button>
-        <button onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }} className={`flex flex-col items-center justify-center w-16 h-12 gap-1 ${activeTab === "medcalc" ? "text-emerald-600" : "text-slate-400 hover:text-slate-600"}`}>
-          <Calculator className={`w-5 h-5 ${activeTab === "medcalc" ? "fill-emerald-50 text-emerald-600" : ""}`} />
-          <span className="text-[9px] font-bold">Kalkulator</span>
+
+        {/* Elevated Center 3D Action Pill */}
+        <button
+          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ai"); }}
+          className="-translate-y-4 w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-600 to-teal-400 text-white shadow-[0_8px_20px_rgba(13,148,136,0.45)] border-4 border-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all group"
+          title="Tanya AI Asisten"
+        >
+          <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
         </button>
-        <button onClick={() => setIsMobileMenuOpen(true)} className="flex flex-col items-center justify-center w-16 h-12 gap-1 text-slate-400 hover:text-slate-600">
+
+        <button 
+          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }} 
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all ${
+            activeTab === "medcalc" ? "text-sky-600 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Calculator className={`w-5 h-5 ${activeTab === "medcalc" ? "text-sky-600" : ""}`} />
+          <span className="text-[9px] font-bold tracking-tight">Kalkulator</span>
+        </button>
+
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)} 
+          className="flex flex-col items-center justify-center w-14 h-11 gap-1 text-slate-400 hover:text-slate-600 transition-all"
+        >
           <Menu className="w-5 h-5" />
-          <span className="text-[9px] font-bold">Menu</span>
+          <span className="text-[9px] font-bold tracking-tight">Menu</span>
         </button>
       </div>
       <FloatingAIAssistant />
+      
+      {/* Glassmorphism Transparency & Blur Settings Modal */}
+      <GlassSettingsModal
+        isOpen={isGlassSettingsOpen}
+        onClose={() => setIsGlassSettingsOpen(false)}
+        opacity={glassOpacity}
+        onOpacityChange={setGlassOpacity}
+        blur={glassBlur}
+        onBlurChange={setGlassBlur}
+      />
 </div>
   );
 }

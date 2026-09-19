@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <style>
+      .green-fill { fill: #00A651; }
+      .red-stroke { stroke: #E12531; stroke-width: 4; stroke-linecap: round; }
+      .green-stroke { stroke: #00A651; stroke-width: 4; stroke-linecap: round; }
+      .capsule-outline { stroke: #00A651; stroke-width: 6; fill: #FFFFFF; }
+      .outline-text { fill: #FFFFFF; stroke: #00A651; stroke-width: 4.5; stroke-linejoin: round; stroke-linecap: round; }
+    </style>
+  </defs>
+
+  <!-- TOP ROW: PIO -->
+  <!-- Letter P -->
+  <path class="green-fill" d="M 12,14 L 38,14 C 50,14 58,21 58,33 C 58,45 50,52 38,52 L 26,52 L 26,68 L 12,68 Z M 26,26 L 26,40 L 37,40 C 43,40 46,37 46,33 C 46,29 43,26 37,26 Z" />
+
+  <!-- Letter I -->
+  <rect class="green-fill" x="66" y="14" width="14" height="54" rx="2" />
+
+  <!-- Letter O (Capsule / Health Symbol) -->
+  <ellipse class="capsule-outline" cx="106" cy="41" rx="18" ry="27" />
+  <!-- Medical symbol inside O -->
+  <line class="red-stroke" x1="102" y1="23" x2="102" y2="59" />
+  <line class="red-stroke" x1="97" y1="34" x2="107" y2="34" />
+  <line class="green-stroke" x1="110" y1="23" x2="110" y2="59" />
+  <line class="green-stroke" x1="105" y1="48" x2="115" y2="48" />
+
+  <!-- BOTTOM ROW: BARI (Outlined letters) -->
+  <g class="outline-text">
+    <!-- B -->
+    <path d="M 12,76 L 31,76 C 39,76 44,79 44,85 C 44,89 41,92 37,94 C 42,96 46,100 46,106 C 46,113 40,117 31,117 L 12,117 Z M 23,84 L 23,92 L 30,92 C 33.5,92 35.5,90.5 35.5,88 C 35.5,85.5 33.5,84 30,84 Z M 23,101 L 23,109 L 31,109 C 35,109 37,107 37,105 C 37,103 35,101 31,101 Z" />
+
+    <!-- A -->
+    <path d="M 49,117 L 62,76 L 72,76 L 85,117 L 74,117 L 71.5,107 L 62.5,107 L 60,117 Z M 64.5,100 L 69.5,100 L 67,88 Z" />
+
+    <!-- R -->
+    <path d="M 89,76 L 107,76 C 114,76 119,79.5 119,86 C 119,91 115,94.5 110,96 L 120,117 L 108,117 L 99.5,98 L 99,98 L 99,117 L 89,117 Z M 99,84 L 99,92 L 106,92 C 109.5,92 111.5,90.5 111.5,88 C 111.5,85.5 109.5,84 106,84 Z" />
+
+    <!-- I -->
+    <path d="M 122,76 L 126,76 L 126,117 L 122,117 Z" />
+  </g>
+</svg>

@@ -1,12 +1,101 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* RSUD BARI Brand Colors */
-  --color-rsud-green: #32BC81;
+  /* RSUD BARI Brand Colors & Modern Medical Palette */
+  --color-rsud-green: #0D9488;
   --color-rsud-red: #E12531;
-  --color-rsud-dark: #203D3F;
+  --color-rsud-dark: #1E293B;
 }
+
+:root {
+  --glass-opacity: 0.82;
+  --glass-blur: 16px;
+  --glass-bg: rgba(255, 255, 255, var(--glass-opacity));
+  --glass-border: rgba(255, 255, 255, calc(var(--glass-opacity) + 0.05));
+  --glass-header-bg: rgba(255, 255, 255, calc(var(--glass-opacity) * 0.92));
+  --glass-sidebar-bg: rgba(255, 255, 255, calc(var(--glass-opacity) * 1.02));
+}
+
+/* Glassmorphism and Ambient Medical 3D Styles */
+body {
+  font-family: var(--font-sans);
+  background-color: #F8FAFC;
+  color: #1E293B;
+  -webkit-font-smoothing: antialiased;
+}
+
+.medical-ambient-bg {
+  background-color: #F8FAFC;
+  background-image: 
+    radial-gradient(1000px circle at 10% 5%, rgba(45, 212, 191, 0.15), transparent 45%),
+    radial-gradient(900px circle at 90% 15%, rgba(254, 205, 211, 0.18), transparent 45%),
+    radial-gradient(800px circle at 50% 95%, rgba(186, 230, 253, 0.18), transparent 50%),
+    radial-gradient(600px circle at 80% 80%, rgba(254, 240, 138, 0.14), transparent 45%);
+  background-attachment: fixed;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.02);
+}
+
+.glass-card-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px -6px rgba(13, 148, 136, 0.1), 0 6px 16px -3px rgba(15, 23, 42, 0.04);
+}
+
+.glass-pill {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.glass-sidebar {
+  background: var(--glass-sidebar-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-right: 1px solid var(--glass-border);
+}
+
+.glass-header {
+  background: var(--glass-header-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.glass-nav-active {
+  background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 20px -2px rgba(13, 148, 136, 0.35);
+}
+
+/* Custom modern scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
