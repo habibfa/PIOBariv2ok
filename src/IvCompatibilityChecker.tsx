@@ -1136,7 +1136,8 @@ const INITIAL_MATRIX: CompatibilityRecord[] = [
   {
     "drug1": "Ceftriaxone",
     "drug2": "Ringer Laktat",
-    "status": "C"
+    "status": "I",
+    "notes": "Kandungan kalsium dalam RL bereaksi dengan ceftriaxone membentuk presipitat (endapan) kalsium-ceftriaxone yang tidak larut."
   },
   {
     "drug1": "Cefuroksim",
@@ -2019,12 +2020,24 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     return INITIAL_IV_DRUGS;
   });
 
-    const [matrixState, setMatrixState] = useState<CompatibilityRecord[]>(() => {
-    const saved = localStorage.getItem("ivMatrixData");
+  const [matrixState, setMatrixState] = useState<CompatibilityRecord[]>(() => {
+    const saved = localStorage.getItem("ivMatrixData_v2") || localStorage.getItem("ivMatrixData");
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.length > 0) return parsed;
+        const parsed: CompatibilityRecord[] = JSON.parse(saved);
+        if (parsed.length > 0) {
+          // Reconcile with INITIAL_MATRIX to apply updates (e.g. Ceftriaxone + Ringer Laktat -> I)
+          return parsed.map(item => {
+            const match = INITIAL_MATRIX.find(
+              m => (m.drug1.toLowerCase() === item.drug1.toLowerCase() && m.drug2.toLowerCase() === item.drug2.toLowerCase()) ||
+                   (m.drug1.toLowerCase() === item.drug2.toLowerCase() && m.drug2.toLowerCase() === item.drug1.toLowerCase())
+            );
+            if (match) {
+              return { ...item, status: match.status, notes: match.notes };
+            }
+            return item;
+          });
+        }
       } catch (e) {
         return INITIAL_MATRIX;
       }
@@ -2034,6 +2047,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
 
   useEffect(() => {
     localStorage.setItem("ivDrugsData_v2", JSON.stringify(ivDrugsState));
+    localStorage.setItem("ivMatrixData_v2", JSON.stringify(matrixState));
     localStorage.setItem("ivMatrixData", JSON.stringify(matrixState));
   }, [ivDrugsState, matrixState]);
 

@@ -166,6 +166,61 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
     evidence: "Heimark LD, et al. The mechanism of the interaction between rifampin and warfarin in man. Clin Pharmacol Ther. 1987;42(4):388-394. PMID: 3665140."
   },
   {
+    id: "warfarin_ciprofloxacin",
+    drugAId: "warfarin_adult",
+    drugBId: "ciprofloxacin_adult",
+    drugAName: "Warfarin",
+    drugBName: "Ciprofloxacin",
+    severity: "CRITICAL",
+    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
+    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
+    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition): 'Ciprofloxacin increases hypoprothrombinemic effect of warfarin via CYP450 inhibition and gut flora suppression.' Ellis RJ, et al. Interaction of warfarin and ciprofloxacin. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+  },
+  {
+    id: "warfarin_ciprofloxacin_auto",
+    drugAId: "auto_warfarin",
+    drugBId: "auto_ciprofloxacin",
+    drugAName: "Warfarin",
+    drugBName: "Ciprofloxacin",
+    severity: "CRITICAL",
+    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
+    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
+    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+  },
+  {
+    id: "warfarin_baquinor",
+    drugAId: "warfarin_adult",
+    drugBId: "baquinor_forte",
+    drugAName: "Warfarin",
+    drugBName: "Baquinor Forte (Ciprofloxacin)",
+    severity: "CRITICAL",
+    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
+    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
+    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+  },
+  {
+    id: "warfarin_ciprofloxacin_cross1",
+    drugAId: "warfarin_adult",
+    drugBId: "auto_ciprofloxacin",
+    drugAName: "Warfarin",
+    drugBName: "Ciprofloxacin",
+    severity: "CRITICAL",
+    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
+    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
+    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+  },
+  {
+    id: "warfarin_ciprofloxacin_cross2",
+    drugAId: "auto_warfarin",
+    drugBId: "ciprofloxacin_adult",
+    drugAName: "Warfarin",
+    drugBName: "Ciprofloxacin",
+    severity: "CRITICAL",
+    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
+    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
+    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+  },
+  {
     id: "clopidogrel_omeprazole",
     drugAId: "clopidogrel_adult",
     drugBId: "omeprazole_adult",
@@ -234,7 +289,7 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
   {
     id: "insulin_bb_bisoprolol",
     drugAId: "insulin_reg",
-    drugBId: "bisoprolol_adult",
+    drugBId: "bisoprolol",
     drugAName: "Insulin Reguler",
     drugBName: "Bisoprolol",
     severity: "WARNING",
@@ -461,28 +516,6 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
     mechanism: "Efektivitas balsalazide dapat berkurang jika diberikan bersamaan dengan antibiotik tertentu. Di saluran pencernaan bagian bawah, balsalazide mengalami proses azoreduksi oleh bakteri yang menghasilkan mesalamine, yaitu zat aktif yang memberikan efek terapeutik. Meskipun belum ada penelitian yang dilakukan, terdapat teori bahwa antibiotik oral dapat mengganggu proses reduksi menjadi mesalamine tersebut.",
     recommendation: "Jika pasien harus menerima antibiotik oral, perlu dipertimbangkan penggunaan 5-aminosalisilat lain seperti mesalamin.",
     evidence: "(2020) \"Product Information. Colazide (balsalazide).\" Fresenius Kabi Australia Pty Limited"
-  },
-  {
-    id: "amox_bifidobacterium_infantis",
-    drugAId: "amoxicillin_ped",
-    drugBId: "bifidobacterium infantis",
-    drugAName: "Amoxicillin",
-    drugBName: "Bifidobacterium infantis",
-    severity: "WARNING",
-    mechanism: "Pemberian sediaan probiotik oral secara bersamaan dengan antibiotik oral dapat mengurangi efikasi probiotik tersebut. Terdapat teori yang menyatakan bahwa penggunaan antibiotik secara bersamaan dapat mematikan organisme hidup yang terkandung dalam sediaan probiotik oral yang mengandung *Lactobacillus*, *Bacillus coagulans*, dan *Bifidobacteria*. Namun, signifikansi klinis dari interaksi ini belum dipastikan.",
-    recommendation: "Meskipun data masih terbatas, langkah yang bijak adalah menyarankan pasien untuk mengonsumsi probiotik oral setidaknya 1 hingga 2 jam sebelum atau sesudah antibiotik oral.",
-    evidence: "Clarion Brands, Inc. (2020) Florajen Probiotics. https://www.florajen.com/products/florajen-women\nXiao JZ, Takahashi S, Odamaki T, Yaeshima T, iwatsuki k (2010) \"Antibiotic susceptibility of bifidobacterial strains distributed in the Japanese market.\" Biosci Biotechnol Biochem, 74, p. 336-42\ndwyer a (2024) Taking probiotics with antibiotics https://www.optibacprobiotics.com/learning-lab/in-depth/general-health/probiotics-with-antibiotics"
-  },
-  {
-    id: "amox_bifidobacterium_longum",
-    drugAId: "amoxicillin_ped",
-    drugBId: "bifidobacterium_longum",
-    drugAName: "Amoxicillin",
-    drugBName: "Bifidobacterium longum",
-    severity: "WARNING",
-    mechanism: "Pemberian sediaan probiotik oral secara bersamaan dengan antibiotik oral dapat mengurangi efikasi probiotik tersebut. Terdapat teori yang menyatakan bahwa penggunaan antibiotik secara bersamaan dapat mematikan organisme hidup yang terkandung dalam sediaan probiotik oral yang mengandung *Lactobacillus*, *Bacillus coagulans*, dan *Bifidobacteria*. Namun, signifikansi klinis dari interaksi ini belum dipastikan.",
-    recommendation: "Meskipun data masih terbatas, langkah yang bijak adalah menyarankan pasien untuk mengonsumsi probiotik oral setidaknya 1 hingga 2 jam sebelum atau sesudah antibiotik oral.",
-    evidence: "Clarion Brands, Inc. (2020) Florajen Probiotics. https://www.florajen.com/products/florajen-women\nXiao JZ, Takahashi S, Odamaki T, Yaeshima T, iwatsuki k (2010) \"Antibiotic susceptibility of bifidobacterial strains distributed in the Japanese market.\" Biosci Biotechnol Biochem, 74, p. 336-42\ndwyer a (2024) Taking probiotics with antibiotics https://www.optibacprobiotics.com/learning-lab/in-depth/general-health/probiotics-with-antibiotics"
   },
   {
     id: "amox_cemi",

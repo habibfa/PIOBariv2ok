@@ -80,18 +80,184 @@ import { MedicalCalculators } from "./MedicalCalculators";
 
 // Helper function to extract Generic and Brand names
 const getGenericAndBrand = (name: string) => {
-  const cleanName = name.replace(/\s*-\s*.*$/, ""); // removes trailing "- Anak", "- Varisela", etc.
+  const cleanName = name.replace(/\s+-\s+.*$/, ""); // removes trailing " - Anak", " - Dewasa", etc. (only when surrounded by whitespace)
   const parenMatch = cleanName.match(/\(([^)]+)\)/);
   let brand = cleanName;
   let generic = cleanName;
   if (parenMatch) {
-    generic = parenMatch[1];
+    generic = parenMatch[1].trim();
     brand = cleanName.replace(/\s*\([^)]+\)/, "").trim();
   } else {
     brand = cleanName.trim();
     generic = cleanName.trim();
   }
   return { brand, generic };
+};
+
+// Helper to sanitize and deduplicate drug presets list (strictly unifies Doxorubicin, Azithromycin, Becom, Bisoprolol, and Budesonide into canonical entries)
+const sanitizeDrugPresets = (list: DrugPreset[]): DrugPreset[] => {
+  if (!Array.isArray(list)) return INITIAL_DRUG_PRESETS;
+
+  // Canonical entries from INITIAL_DRUG_PRESETS
+  const canonicalDoxo = INITIAL_DRUG_PRESETS.find(p => p.id === "doxorubicin_onc");
+  const canonicalAzithro = INITIAL_DRUG_PRESETS.find(p => p.id === "azithromycin");
+  const canonicalBecom = INITIAL_DRUG_PRESETS.find(p => p.id === "becom");
+  const canonicalBisoprolol = INITIAL_DRUG_PRESETS.find(p => p.id === "bisoprolol");
+  const canonicalBudesonide = INITIAL_DRUG_PRESETS.find(p => p.id === "budesonide");
+
+  const result: DrugPreset[] = [];
+  const existingIds = new Set<string>();
+  let doxoIncluded = false;
+  let azithroIncluded = false;
+  let becomIncluded = false;
+  let bisoprololIncluded = false;
+  let budesonideIncluded = false;
+
+  for (const item of list) {
+    if (!item || !item.id) continue;
+
+    const lowerId = (item.id || "").toLowerCase().trim();
+    const lowerName = (item.name || "").toLowerCase().trim();
+
+    // Remove explicitly excluded entries (e.g., Bifidobacterium)
+    if (lowerId.includes("bifidobacterium") || lowerName.includes("bifidobacterium")) {
+      continue;
+    }
+
+    // 1. Doxorubicin / Doksorubisin
+    const isDoxo =
+      lowerId === "doxorubicin_onc" ||
+      lowerId === "auto_doxorubicin" ||
+      lowerId.includes("doxorubicin") ||
+      lowerId.includes("doksorubisin") ||
+      lowerName === "doksorubisin" ||
+      lowerName === "doxorubicin" ||
+      lowerName.includes("doksorubisin (doxorubicin)") ||
+      lowerName.startsWith("doksorubisin");
+
+    if (isDoxo) {
+      if (!doxoIncluded) {
+        const itemToAdd = canonicalDoxo ? { ...canonicalDoxo } : item;
+        result.push(itemToAdd);
+        existingIds.add(itemToAdd.id);
+        doxoIncluded = true;
+      }
+      continue;
+    }
+
+    // 2. Azithromycin
+    const isAzithro =
+      lowerId === "azithromycin" ||
+      lowerId === "azithromycin_ped" ||
+      lowerId === "auto_azithromycin" ||
+      lowerId.includes("azithromycin") ||
+      lowerName === "azithromycin" ||
+      lowerName.startsWith("azithromycin");
+
+    if (isAzithro) {
+      if (!azithroIncluded) {
+        const itemToAdd = canonicalAzithro ? { ...canonicalAzithro } : item;
+        result.push(itemToAdd);
+        existingIds.add(itemToAdd.id);
+        azithroIncluded = true;
+      }
+      continue;
+    }
+
+    // 3. Becom (Becom-C & Becom-Zet)
+    const isBecom =
+      lowerId === "becom" ||
+      lowerId === "becom_c" ||
+      lowerId === "becom_zet" ||
+      lowerId.startsWith("becom") ||
+      lowerName === "becom" ||
+      lowerName.startsWith("becom");
+
+    if (isBecom) {
+      if (!becomIncluded) {
+        const itemToAdd = canonicalBecom ? { ...canonicalBecom } : item;
+        result.push(itemToAdd);
+        existingIds.add(itemToAdd.id);
+        becomIncluded = true;
+      }
+      continue;
+    }
+
+    // 4. Bisoprolol / Bisoprolol Fumarat
+    const isBisoprolol =
+      lowerId === "bisoprolol" ||
+      lowerId === "bisoprolol_adult" ||
+      lowerId.startsWith("bisoprolol") ||
+      lowerName === "bisoprolol" ||
+      lowerName.startsWith("bisoprolol");
+
+    if (isBisoprolol) {
+      if (!bisoprololIncluded) {
+        const itemToAdd = canonicalBisoprolol ? { ...canonicalBisoprolol } : item;
+        result.push(itemToAdd);
+        existingIds.add(itemToAdd.id);
+        bisoprololIncluded = true;
+      }
+      continue;
+    }
+
+    // 5. Budesonid / Budesonide
+    const isBudesonide =
+      lowerId === "budesonide" ||
+      lowerId === "budesonide_neb" ||
+      lowerId.includes("budesonid") ||
+      lowerName.includes("budesonid") ||
+      lowerName.includes("budesonide");
+
+    if (isBudesonide) {
+      if (!budesonideIncluded) {
+        const itemToAdd = canonicalBudesonide ? { ...canonicalBudesonide } : item;
+        result.push(itemToAdd);
+        existingIds.add(itemToAdd.id);
+        budesonideIncluded = true;
+      }
+      continue;
+    }
+
+    result.push(item);
+    existingIds.add(item.id);
+  }
+
+  if (!doxoIncluded && canonicalDoxo) {
+    result.push({ ...canonicalDoxo });
+    existingIds.add(canonicalDoxo.id);
+  }
+
+  if (!azithroIncluded && canonicalAzithro) {
+    result.push({ ...canonicalAzithro });
+    existingIds.add(canonicalAzithro.id);
+  }
+
+  if (!becomIncluded && canonicalBecom) {
+    result.push({ ...canonicalBecom });
+    existingIds.add(canonicalBecom.id);
+  }
+
+  if (!bisoprololIncluded && canonicalBisoprolol) {
+    result.push({ ...canonicalBisoprolol });
+    existingIds.add(canonicalBisoprolol.id);
+  }
+
+  if (!budesonideIncluded && canonicalBudesonide) {
+    result.push({ ...canonicalBudesonide });
+    existingIds.add(canonicalBudesonide.id);
+  }
+
+  // Ensure all canonical/default presets from INITIAL_DRUG_PRESETS (e.g. ciprofloxacin_adult, azithromycin)
+  // are included so existing localStorage data does not miss newly added presets
+  for (const defaultPreset of INITIAL_DRUG_PRESETS) {
+    if (!existingIds.has(defaultPreset.id)) {
+      result.push({ ...defaultPreset });
+      existingIds.add(defaultPreset.id);
+    }
+  }
+
+  return result;
 };
 
 // Helper to categorize each drug
@@ -127,7 +293,10 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("rifampicin") ||
     lowercaseId.includes("tetracycline") ||
     lowercaseId.includes("vancomycin") ||
+    lowercaseId.includes("cipro") ||
+    lowercaseId.includes("baquinor") ||
     lowercaseId.includes("zidovudine") ||
+    lowercaseName.includes("ciprofloxacin") ||
     lowercaseName.includes("antibiotik") ||
     lowercaseName.includes("antivirus") ||
     lowercaseName.includes("antifungal")
@@ -148,6 +317,8 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("indomethacin") ||
     lowercaseId.includes("aspirin") ||
     lowercaseId.includes("morphine") ||
+    lowercaseId.includes("noncort") ||
+    lowercaseName.includes("noncort") ||
     lowercaseName.includes("nyeri") ||
     lowercaseName.includes("demam")
   ) {
@@ -158,6 +329,8 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("propranolol") ||
     lowercaseId.includes("spironolactone") ||
     lowercaseId.includes("bisoprolol") ||
+    lowercaseId.includes("concor") ||
+    lowercaseName.includes("concor") ||
     lowercaseId.includes("digoxin") ||
     lowercaseId.includes("enalapril") ||
     lowercaseId.includes("furosemide") ||
@@ -219,7 +392,14 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     return { label: "Hormon & Kortikosteroid", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-100" };
   }
 
-  if (lowercaseId.includes("onc") || lowercaseId.includes("doxorubicin") || lowercaseId.includes("carboplatin")) {
+  if (
+    lowercaseId.includes("onc") || 
+    lowercaseId.includes("doxorubicin") || 
+    lowercaseId.includes("doksorubisin") || 
+    lowercaseName.includes("doxorubicin") || 
+    lowercaseName.includes("doksorubisin") || 
+    lowercaseId.includes("carboplatin")
+  ) {
     return { label: "Onkologi", color: "text-fuchsia-700", bg: "bg-fuchsia-50", border: "border-fuchsia-100" };
   }
 
@@ -233,6 +413,12 @@ const getDrugFormulation = (preset: DrugPreset) => {
   const idLower = preset.id.toLowerCase();
   const combined = `${nameLower} ${notesLower} ${idLower}`;
 
+  if ((combined.includes("injeksi") || combined.includes("infus") || combined.includes("iv ") || combined.includes("im ")) && (combined.includes("tablet") || combined.includes("kapsul") || combined.includes("sirup") || combined.includes("suspensi"))) {
+    return { label: "Multi-Sediaan (Oral & Injeksi)", icon: "💊", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-100" };
+  }
+  if ((combined.includes("tablet") || combined.includes("kapsul")) && (combined.includes("sirup") || combined.includes("suspensi") || preset.liquidConcentrationValue)) {
+    return { label: "Oral (Tablet & Sirup)", icon: "💧", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-100" };
+  }
   if (combined.includes("injeksi") || combined.includes("infus") || combined.includes("iv ") || combined.includes("im ")) {
     return { label: "Parenteral (Injeksi)", icon: "💉", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-100" };
   }
@@ -261,7 +447,15 @@ const getDrugMetadata = (preset: DrugPreset) => {
   const cleanGeneric = generic;
   
   let composition = "";
-  if (preset.liquidConcentrationValue && preset.liquidConcentrationVolume) {
+  if (preset.id.includes("azithromycin")) {
+    composition = `Tiap tablet mengandung ${cleanGeneric} 250 mg / 500 mg; sirup kering (suspensi) 200 mg/5 mL; vial serbuk injeksi/infus 500 mg`;
+  } else if (preset.id.includes("becom")) {
+    composition = `Kaplet Becom-C (Vitamin B Kompleks + Vitamin C 500 mg) & Becom-Zet (Vitamin B Kompleks, Vitamin C 750 mg, Vitamin E 30 IU, Asam Folat 400 mcg, Zinc 22.5 mg)`;
+  } else if (preset.id.includes("bisoprolol")) {
+    composition = `Tiap tablet salut selaput mengandung Bisoprolol Fumarat 2.5 mg, 5 mg, atau 10 mg`;
+  } else if (preset.id.includes("budesonid") || preset.id.includes("budesonide")) {
+    composition = `Tiap ampul Respules (2 mL) mengandung Budesonide cairan inhalasi suspensi 0.25 mg/mL (0.5 mg/ampul) atau 0.5 mg/mL (1 mg/ampul) untuk nebulizer`;
+  } else if (preset.liquidConcentrationValue && preset.liquidConcentrationVolume) {
     composition = `Tiap ${preset.liquidConcentrationVolume} mL sirup/suspensi mengandung ${cleanGeneric} ${preset.liquidConcentrationValue} ${preset.doseUnit}`;
   } else {
     let dose = preset.defaultDoseValue;
@@ -399,7 +593,7 @@ const getDrugMetadata = (preset: DrugPreset) => {
       status: "Aman",
       detail: "Aman. Metabolit aktifnya diekskresikan dalam konsentrasi yang sangat kecil ke dalam ASI dan dianggap tidak berbahaya bagi kesehatan bayi."
     };
-  } else if (id.includes("propranolol") || id.includes("bisoprolol")) {
+  } else if (id.includes("propranolol") || id.includes("bisoprolol") || id.includes("concor")) {
     contraindication = "Asma bronkial berat atau riwayat PPOK berat; bradikardia sinus (<50 bpm); blok AV derajat dua atau tiga; syok kardiogenik; gagal jantung akut.";
     pregnancySafety = {
       category: "C",
@@ -487,6 +681,28 @@ const getDrugMetadata = (preset: DrugPreset) => {
       status: "Aman",
       detail: "Aman. Diekskresikan ke dalam ASI dalam konsentrasi yang sangat rendah dan tidak menimbulkan risiko klinis pada bayi."
     };
+  } else if (id.includes("cipro") || id.includes("baquinor")) {
+    contraindication = "Hipersensitivitas terhadap siprofloksasin atau antibiotik fluoroquinolone lainnya; riwayat miastenia gravis; pemberian bersamaan dengan tizanidine.";
+    pregnancySafety = {
+      category: "C",
+      status: "Perlu Perhatian",
+      detail: "Category C (Gunakan jika manfaat lebih besar dari risiko). Studi hewan menunjukkan risiko artropati/kerusakan kartilago sendi imatur. Hindari sebagai lini pertama pada kehamilan kecuali tidak ada alternatif yang memadai."
+    };
+    breastfeedingSafety = {
+      status: "Perlu Perhatian",
+      detail: "Perlu Perhatian. Diekskresikan ke dalam ASI. Meskipun kadar terapeutik rendah pada bayi, pantau tanda diare, kandidiasis (thrush), atau gangguan flora normal usus pada bayi yang disusui."
+    };
+  } else if (id.includes("azithromycin")) {
+    contraindication = "Hipersensitivitas terhadap azitromisin, eritromisin, atau antibiotik golongan makrolida/ketolida lainnya; riwayat ikterus kolestatik atau disfungsi hepar akibat terapi azitromisin sebelumnya.";
+    pregnancySafety = {
+      category: "B",
+      status: "Aman",
+      detail: "Category B (Aman). Studi reproduksi hewan tidak menunjukkan bukti bahaya terhadap janin. Pilihan antibiotik makrolida lini aman untuk infeksi yang sensitif selama masa kehamilan."
+    };
+    breastfeedingSafety = {
+      status: "Aman",
+      detail: "Aman. Diekskresikan ke dalam ASI dalam konsentrasi yang sangat rendah. Tidak dilaporkan efek samping mayor pada bayi yang disusui; amati kemungkinan timbulnya diare ringan atau kandidiasis."
+    };
   } else if (id.includes("salbutamol")) {
     contraindication = "Hipersensitivitas terhadap agonis beta-2 adrenergik; komplikasi persalinan prematur (untuk sediaan sistemik).";
     pregnancySafety = {
@@ -520,12 +736,45 @@ const getDrugMetadata = (preset: DrugPreset) => {
       status: "Aman",
       detail: "Relatif Aman. Diekskresikan dalam jumlah yang sangat kecil ke dalam ASI (sekitar 1-10% dari kadar serum ibu). Dianggap aman digunakan dengan pemantauan ketat terhadap timbulnya memar atau gangguan hati bayi."
     };
-  } else if (id.includes("doxorubicin") || id.includes("carboplatin") || id.includes("onc")) {
-    contraindication = "Mielosupresi berat; gangguan ginjal atau pendengaran berat; gagal jantung berat (untuk doksorubisin); kehamilan; menyusui.";
+  } else if (id.includes("becom")) {
+    contraindication = "Hipersensitivitas terhadap salah satu komponen vitamin B kompleks, vitamin C, asam folat, atau zinc.";
+    pregnancySafety = {
+      category: "C",
+      status: "Aman",
+      detail: "Category C (Aman sesuai AKG). Multivitamin esensial untuk mendukung metabolisme dan nutrisi ibu hamil bila dikonsumsi sesuai Angka Kecukupan Gizi (AKG) yang dianjurkan."
+    };
+    breastfeedingSafety = {
+      status: "Aman",
+      detail: "Aman. Vitamin B kompleks, vitamin C, asam folat, dan zinc diekskresikan ke dalam ASI dan merupakan mikronutrien penting bagi kesehatan ibu dan bayi menyusui."
+    };
+  } else if (id.includes("bisoprolol")) {
+    contraindication = "Syok kardiogenik, blok AV derajat dua atau tiga tanpa pacu jantung, bradikardia sinus berat (<50 bpm), hipotensi simtomatik berat, asma bronkial berat atau PPOK berat, asidosis metabolik.";
+    pregnancySafety = {
+      category: "C",
+      status: "Perlu Perhatian",
+      detail: "Category C (Gunakan jika manfaat lebih besar dari risiko). Beta-blocker kardioselektif dapat menurunkan perfusi plasenta dan memicu bradikardia atau hipoglikemia pada janin. Gunakan hanya jika diindikasikan jelas dan dipantau oleh dokter spesialis."
+    };
+    breastfeedingSafety = {
+      status: "Aman",
+      detail: "Aman dengan Pemantauan. Diekskresikan dalam konsentrasi rendah ke dalam ASI. Dianggap aman dengan pemantauan denyut jantung (bradikardia) dan tekanan darah bayi."
+    };
+  } else if (id.includes("budesonid") || id.includes("budesonide")) {
+    contraindication = "Hipersensitivitas terhadap budesonid; status asmatikus akut atau episode bronkospasme berat yang memerlukan tindakan darurat bronkodilator kerja cepat (bukan obat pereda darurat / bukan reliever).";
+    pregnancySafety = {
+      category: "B",
+      status: "Aman",
+      detail: "Category B (Aman untuk Inhalasi). Budesonid inhalasi merupakan kortikosteroid pilihan utama selama kehamilan menurut pedoman GINA (Global Initiative for Asthma), tidak meningkatkan risiko malformasi janin."
+    };
+    breastfeedingSafety = {
+      status: "Aman",
+      detail: "Aman. Paparan sistemik dari rute inhalasi sangat rendah sehingga konsentrasi dalam ASI dapat diabaikan secara klinis bagi bayi."
+    };
+  } else if (id.includes("doxorubicin") || id.includes("doksorubisin") || id.includes("carboplatin") || id.includes("onc")) {
+    contraindication = "Mielosupresi berat; gangguan hati/ginjal berat; kardiomiopati atau gagal jantung dekompensasi berat (untuk Doksorubisin/Doxorubicin); riwayat telah mencapai batas kumulatif maksimal seumur hidup; kehamilan; menyusui.";
     pregnancySafety = {
       category: "D",
       status: "Kontraindikasi",
-      detail: "Category D (Kontraindikasi Mutlak). Merupakan zat sitotoksik kemoterapi yang merusak pembelahan sel dan sangat toksik terhadap perkembangan embrio/janin. Menyebabkan keguguran, malformasi multipel, dan toksisitas organ janin."
+      detail: "Category D (Kontraindikasi Mutlak). Merupakan zat sitotoksik kemoterapi antrasiklin yang merusak sintesis DNA/RNA sel dan sangat toksik terhadap perkembangan embrio/janin. Menyebabkan keguguran, malformasi multipel kongenital, dan toksisitas organ janin."
     };
     breastfeedingSafety = {
       status: "Kontraindikasi",
@@ -577,11 +826,22 @@ const getDrugMetadata = (preset: DrugPreset) => {
         status: "Aman",
         detail: "Aman. Obat analgetik umum seperti Paracetamol atau Ibuprofen sangat aman digunakan selama masa menyusui dengan paparan minimal pada bayi."
       };
+    } else if (cat.label === "Kardiovaskular & Diuretik") {
+      contraindication = "Hipotensi berat, syok kardiogenik, bradikardia sinus berat (<50 bpm), blok AV derajat dua atau tiga, gagal jantung dekompensasi akut.";
+      pregnancySafety = {
+        category: "C",
+        status: "Perlu Perhatian",
+        detail: "Category C (atau D pada trimester 2-3 untuk golongan ACE-i/ARB). Beta-blocker seperti Bisoprolol/Concor dapat menurunkan perfusi plasenta dan memicu bradikardia janin. Gunakan hanya jika diindikasikan jelas oleh dokter spesialis."
+      };
+      breastfeedingSafety = {
+        status: "Perlu Perhatian",
+        detail: "Perlu Perhatian. Diekskresikan dalam konsentrasi rendah hingga sedang ke dalam ASI. Pantau bayi terhadap potensi efek samping bradikardia dan hipotensi."
+      };
     }
   }
 
   let drugClass: "Obat Keras" | "Obat Bebas Terbatas" | "Obat Bebas" | "Jamu" | "Herbal" = "Obat Keras";
-  if (id.includes("paracetamol") || id.includes("acetaminophen") || id.includes("antacid") || id.includes("zinc") || id.includes("sucralfate")) {
+  if (id.includes("paracetamol") || id.includes("acetaminophen") || id.includes("antacid") || id.includes("zinc") || id.includes("sucralfate") || id.includes("becom")) {
     drugClass = "Obat Bebas";
   } else if (id.includes("ibuprofen") || id.includes("ambroxol") || id.includes("bromhexine") || id.includes("dextromethorphan") || id.includes("pseudoephedrine")) {
     drugClass = "Obat Bebas Terbatas";
@@ -623,10 +883,24 @@ const getDrugMetadata = (preset: DrugPreset) => {
     precautions = "Perhatikan interaksi obat, karena perubahan keasaman lambung dapat mengganggu penyerapan obat lain (misalnya antibiotik tertentu atau zat besi).";
     usageGuide = "Antasida dan PPI (seperti Omeprazole) sebaiknya diminum 30-60 menit sebelum makan. Pelapis lambung (Sukralfat) harus diminum dalam keadaan perut kosong.";
     sideEffects = "Konstipasi (sembelit), diare, perut kembung, sakit kepala, atau kelelahan ringan.";
+  } else if (categoryLabel.includes("kardiovaskular") || categoryLabel.includes("diuretik")) {
+    mechanism = "Bekerja menurunkan resistensi vaskular sistemik, mengontrol frekuensi denyut jantung (beta-bloker / antagonis kalsium), modulasi sistem renin-angiotensin-aldosteron (ACE-i/ARB), atau memicu ekskresi natrium dan air (diuretik).";
+    precautions = "Pantau tekanan darah, laju nadi secara rutin, dan fungsi ginjal/elektrolit berkala. Hindari penghentian mendadak tanpa konsultasi dokter karena risiko hipertensi berulang (rebound).";
+    usageGuide = "Diminum teratur pada jam yang sama setiap hari (biasanya pagi hari). Jangan menggandakan dosis jika terlupa.";
+    sideEffects = "Pusing/hipotensi ortostatik saat bangkit mendadak, rasa lelah, denyut jantung melambat (bradikardia), atau pembengkakan pergelangan kaki (edema perifer).";
+    references = "PIONAS, AHA/ACC Hypertension Guidelines, ESC Clinical Practice Guidelines, Panduan Tata Laksana Hipertensi PERKI, dan Brosur Resmi Obat.";
+  } else if (categoryLabel.includes("onkologi")) {
+    mechanism = "Bekerja menginterkalasi pasangan basa DNA, menghambat enzim topoisomerase II, dan membentuk radikal bebas intraseluler yang menyebabkan pemutusan untai ganda DNA serta induksi apoptosis sel tumor yang aktif membelah.";
+    precautions = "Wajib pemantauan hitung darah lengkap (CBC dengan hitung jenis & ANC), fungsi hepar (LFT), serta evaluasi fungsi ventrikel kiri (LVEF melalui ekokardiografi) sebelum dan berkala selama terapi. Perhatikan ketat batas akumulatif seumur hidup (maksimal 450-550 mg/m²). Obat merupakan vesikan poten, waspadai risiko ekstravasasi.";
+    usageGuide = "Diberikan melalui infus intravena lambat menggunakan akses vena sentral (PICC/CVC) atau infus perifer paten oleh tenaga medis terlatih dengan APD sitotoksik lengkap. Beritahu pasien bahwa urin dapat berwarna kemerahan selama 24-48 jam pertama pasca pemberian (merupakan warna eliminasi obat normal, bukan hematuria).";
+    sideEffects = "Mielosupresi berat (neutropenia, trombositopenia, anemia), alopesia total (reversibel), mual muntah (emetogenik sedang-tinggi), mukositis oral/stomatitis, kardiotoksisitas (aritmia hingga kardiomiopati kongestif), dan perubahan warna urin merah.";
+    references = "PIONAS BPOM RI, Formularium Nasional (Fornas) Kemenkes RI, NCCN Clinical Practice Guidelines in Oncology, dan Brosur Resmi Obat.";
   }
 
   let bud = "Tablet / Kapsul: Sesuai tanggal kedaluwarsa pada kemasan jika disimpan dengan baik.";
-  if (preset.id.includes("syr") || preset.id.includes("susp") || preset.id.includes("drop") || preset.id.includes("ped")) {
+  if (preset.id.includes("onc") || id.includes("doxorubicin") || id.includes("doksorubisin")) {
+    bud = "Injeksi Sitotoksik / Konsentrat Rekonstitusi: Setelah dilarutkan dalam NaCl 0.9% atau Dextrose 5%, stabil selama 24-48 jam pada suhu kulkas (2-8°C) terlindung dari cahaya, atau sesuai protokol rekonstitusi aseptis sitotoksik RS.";
+  } else if (preset.id.includes("syr") || preset.id.includes("susp") || preset.id.includes("drop") || preset.id.includes("ped")) {
     if (preset.id.includes("amoxicillin") || preset.id.includes("cefixime") || preset.id.includes("antibiotic") || preset.id.includes("cef")) {
       bud = "Sirup Kering (Antibiotik): 7 Hari pada suhu ruang, atau maksimal 14 hari bila disimpan di kulkas (2-8°C).";
     } else {
@@ -724,7 +998,7 @@ export default function App() {
         const newData = parsed as DrugPreset[];
         const prevFiltered = prev.filter(p => !newData.some(n => String(n.id) === String(p.id)));
         const combined = [...prevFiltered, ...newData];
-        return combined.sort((a, b) => a.name.localeCompare(b.name, "id"));
+        return sanitizeDrugPresets(combined).sort((a, b) => a.name.localeCompare(b.name, "id"));
       });
       setIsUpdateDrugModalOpen(false);
       setDrugCsvError("");
@@ -742,19 +1016,32 @@ export default function App() {
   };
 
     const [interactionDatabase, setInteractionDatabase] = useState<DrugInteraction[]>(() => {
-    const saved = localStorage.getItem("interactionDatabase_v4");
+    const saved = localStorage.getItem("interactionDatabase_v5") || localStorage.getItem("interactionDatabase_v4");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as DrugInteraction[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Reconcile: ensure newly added interactions in INITIAL_INTERACTION_DATABASE exist
+          const existingIds = new Set(parsed.map(item => item.id));
+          const missing = INITIAL_INTERACTION_DATABASE.filter(item => !existingIds.has(item.id));
+          const updated = parsed.map(item => {
+            const fresh = INITIAL_INTERACTION_DATABASE.find(f => f.id === item.id);
+            return fresh || item;
+          });
+          const merged = [...updated, ...missing];
+          localStorage.setItem("interactionDatabase_v5", JSON.stringify(merged));
+          return merged;
+        }
       } catch (e) {
         return INITIAL_INTERACTION_DATABASE;
       }
     }
+    localStorage.setItem("interactionDatabase_v5", JSON.stringify(INITIAL_INTERACTION_DATABASE));
     return INITIAL_INTERACTION_DATABASE;
   });
 
   useEffect(() => {
-    localStorage.setItem("interactionDatabase_v4", JSON.stringify(interactionDatabase));
+    localStorage.setItem("interactionDatabase_v5", JSON.stringify(interactionDatabase));
   }, [interactionDatabase]);
 
   const [isUpdateDdiModalOpen, setIsUpdateDdiModalOpen] = useState(false);
@@ -822,27 +1109,96 @@ export default function App() {
     if (!presetAId || !presetBId || presetAId === "custom" || presetBId === "custom") {
       return [];
     }
-    return interactionDatabase.filter(interaction => {
+    const directMatches = interactionDatabase.filter(interaction => {
       const matchDirect = interaction.drugAId === presetAId && interaction.drugBId === presetBId;
       const matchReverse = interaction.drugAId === presetBId && interaction.drugBId === presetAId;
       return matchDirect || matchReverse;
     });
-  };
 
-  const [drugPresets, setDrugPresets] = useState(() => {
-    const saved = localStorage.getItem("drugPresets_v4");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return INITIAL_DRUG_PRESETS;
+    if (directMatches.length > 0) {
+      const unique: DrugInteraction[] = [];
+      const seen = new Set<string>();
+      for (const item of directMatches) {
+        const key = [item.drugAName.toLowerCase(), item.drugBName.toLowerCase()].sort().join("_");
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(item);
+        }
+      }
+      return unique;
+    }
+
+    // Name-based & alias fallback matching across preset variations (e.g. Warfarin + Ciprofloxacin)
+    const pA = drugPresets.find(p => p.id === presetAId) || INITIAL_DRUG_PRESETS.find(p => p.id === presetAId);
+    const pB = drugPresets.find(p => p.id === presetBId) || INITIAL_DRUG_PRESETS.find(p => p.id === presetBId);
+    const nameA = (pA ? pA.name : presetAId).toLowerCase();
+    const nameB = (pB ? pB.name : presetBId).toLowerCase();
+
+    const isWarfarinA = nameA.includes("warfarin") || presetAId.includes("warfarin");
+    const isWarfarinB = nameB.includes("warfarin") || presetBId.includes("warfarin");
+    const isCiproA = nameA.includes("ciprofloxacin") || nameA.includes("baquinor") || presetAId.includes("cipro") || presetAId.includes("baquinor");
+    const isCiproB = nameB.includes("ciprofloxacin") || nameB.includes("baquinor") || presetBId.includes("cipro") || presetBId.includes("baquinor");
+
+    if ((isWarfarinA && isCiproB) || (isWarfarinB && isCiproA)) {
+      const ciproWarfInt = interactionDatabase.find(i => i.id.includes("warfarin_cipro")) ||
+        INITIAL_INTERACTION_DATABASE.find(i => i.id.includes("warfarin_cipro"));
+      if (ciproWarfInt) {
+        return [ciproWarfInt];
       }
     }
-    return INITIAL_DRUG_PRESETS;
+
+    const fallback = interactionDatabase.filter(interaction => {
+      const iA = interaction.drugAName.toLowerCase();
+      const iB = interaction.drugBName.toLowerCase();
+      return (
+        (nameA.includes(iA) || iA.includes(nameA)) && (nameB.includes(iB) || iB.includes(nameB))
+      ) || (
+        (nameA.includes(iB) || iB.includes(nameA)) && (nameB.includes(iA) || iA.includes(nameB))
+      );
+    });
+
+    if (fallback.length > 0) {
+      return [fallback[0]];
+    }
+
+    return [];
+  };
+
+  const [drugPresets, setDrugPresets] = useState<DrugPreset[]>(() => {
+    // 1. Try modern v5
+    const savedV5 = localStorage.getItem("drugPresets_v5");
+    if (savedV5) {
+      try {
+        const parsed = JSON.parse(savedV5);
+        const cleaned = sanitizeDrugPresets(parsed);
+        localStorage.setItem("drugPresets_v5", JSON.stringify(cleaned));
+        return cleaned;
+      } catch (e) {
+        // fallback
+      }
+    }
+
+    // 2. Try legacy v4, sanitize and migrate to v5
+    const savedV4 = localStorage.getItem("drugPresets_v4");
+    if (savedV4) {
+      try {
+        const parsed = JSON.parse(savedV4);
+        const cleaned = sanitizeDrugPresets(parsed);
+        localStorage.setItem("drugPresets_v5", JSON.stringify(cleaned));
+        localStorage.removeItem("drugPresets_v4");
+        return cleaned;
+      } catch (e) {
+        // fallback
+      }
+    }
+
+    const defaultCleaned = sanitizeDrugPresets(INITIAL_DRUG_PRESETS);
+    localStorage.setItem("drugPresets_v5", JSON.stringify(defaultCleaned));
+    return defaultCleaned;
   });
 
   useEffect(() => {
-    localStorage.setItem("drugPresets_v4", JSON.stringify(drugPresets));
+    localStorage.setItem("drugPresets_v5", JSON.stringify(drugPresets));
   }, [drugPresets]);
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -2311,6 +2667,7 @@ export default function App() {
                     { id: "spironolactone_ped", name: "Spironolakton" },
                     { id: "potassium_chloride_inf", name: "KCl Infus" },
                     { id: "warfarin_adult", name: "Warfarin" },
+                    { id: "ciprofloxacin_adult", name: "Ciprofloxacin" },
                     { id: "ibuprofen_ped", name: "Ibuprofen" },
                     { id: "clopidogrel_adult", name: "Klopidogrel" },
                     { id: "omeprazole_adult", name: "Omeprazol" },
@@ -2362,8 +2719,11 @@ export default function App() {
 
               <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                 {ddiSelectedIds.map((id, index) => {
-                  const preset = drugPresets.find(p => p.id === id);
-                  if (!preset) return null;
+                  const preset = drugPresets.find(p => p.id === id) || INITIAL_DRUG_PRESETS.find(p => p.id === id) || {
+                    id,
+                    name: id === "ciprofloxacin_adult" ? "Ciprofloxacin HCl" : id.replace(/_/g, " "),
+                    indication: "Obat aktif dalam keranjang terapi"
+                  };
                   return (
                     <div
                       key={id}
@@ -2376,7 +2736,7 @@ export default function App() {
                           </span>
                           <span className="text-xs font-bold text-slate-800 truncate">{preset.name.split(" - ")[0]}</span>
                         </div>
-                        <p className="text-[9px] text-slate-400 pl-6 truncate">{preset.indication}</p>
+                        <p className="text-[9px] text-slate-400 pl-6 truncate">{preset.indication || "Sediaan obat terpilih"}</p>
                       </div>
                       <button
                         onClick={() => setDdiSelectedIds(ddiSelectedIds.filter(x => x !== id))}
@@ -2415,6 +2775,12 @@ export default function App() {
               </div>
               <div className="flex flex-wrap justify-center gap-2.5 pt-2">
                 <button
+                  onClick={() => setDdiSelectedIds(["warfarin_adult", "ciprofloxacin_adult"])}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10.5px] font-bold rounded-lg border border-rose-200 transition-colors"
+                >
+                  Uji Warfarin + Ciprofloxacin (Mayor)
+                </button>
+                <button
                   onClick={() => setDdiSelectedIds(["propranolol_ped", "salbutamol_syr", "spironolactone_ped"])}
                   className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10.5px] font-bold rounded-lg border border-emerald-100 transition-colors"
                 >
@@ -2449,9 +2815,10 @@ export default function App() {
               for (let j = i + 1; j < ddiSelectedIds.length; j++) {
                 const idA = ddiSelectedIds[i];
                 const idB = ddiSelectedIds[j];
-                const pA = drugPresets.find(p => p.id === idA);
-                const pB = drugPresets.find(p => p.id === idB);
-                if (!pA || !pB) continue;
+                const pA = drugPresets.find(p => p.id === idA) || INITIAL_DRUG_PRESETS.find(p => p.id === idA);
+                const pB = drugPresets.find(p => p.id === idB) || INITIAL_DRUG_PRESETS.find(p => p.id === idB);
+                const nameA = pA ? pA.name.split(" - ")[0] : (idA === "ciprofloxacin_adult" ? "Ciprofloxacin" : idA);
+                const nameB = pB ? pB.name.split(" - ")[0] : (idB === "ciprofloxacin_adult" ? "Ciprofloxacin" : idB);
 
                 const pairInteractions = checkInteractions(idA, idB);
                 if (pairInteractions.length > 0) {
@@ -2461,8 +2828,8 @@ export default function App() {
                   checkedPairs.push({
                     idA,
                     idB,
-                    nameA: pA.name.split(" - ")[0],
-                    nameB: pB.name.split(" - ")[0],
+                    nameA,
+                    nameB,
                     status: pairInteractions[0].severity,
                     detail: pairInteractions[0]
                   });
@@ -2470,8 +2837,8 @@ export default function App() {
                   checkedPairs.push({
                     idA,
                     idB,
-                    nameA: pA.name.split(" - ")[0],
-                    nameB: pB.name.split(" - ")[0],
+                    nameA,
+                    nameB,
                     status: "SAFE"
                   });
                 }
@@ -2771,10 +3138,11 @@ export default function App() {
                           <tr className="bg-slate-50 border-b border-slate-150">
                             <th className="p-3 text-left font-bold text-slate-500 w-[180px] border-r border-slate-100">Daftar Obat</th>
                             {ddiSelectedIds.map((id, index) => {
-                              const p = drugPresets.find(x => x.id === id);
+                              const p = drugPresets.find(x => x.id === id) || INITIAL_DRUG_PRESETS.find(x => x.id === id);
+                              const drugLabel = p ? p.name.split(" - ")[0] : (id === "ciprofloxacin_adult" ? "Ciprofloxacin" : id);
                               return (
-                                <th key={id} className="p-3 font-extrabold text-slate-700 border-r border-slate-100 max-w-[120px] truncate" title={p?.name}>
-                                  [{index + 1}] {p?.name?.split(" - ")[0]}
+                                <th key={id} className="p-3 font-extrabold text-slate-700 border-r border-slate-100 max-w-[120px] truncate" title={drugLabel}>
+                                  [{index + 1}] {drugLabel}
                                 </th>
                               );
                             })}
@@ -2782,14 +3150,15 @@ export default function App() {
                         </thead>
                         <tbody>
                           {ddiSelectedIds.map((idRow, rowIndex) => {
-                            const pRow = drugPresets.find(x => x.id === idRow);
+                            const pRow = drugPresets.find(x => x.id === idRow) || INITIAL_DRUG_PRESETS.find(x => x.id === idRow);
+                            const rowLabel = pRow ? pRow.name.split(" - ")[0] : (idRow === "ciprofloxacin_adult" ? "Ciprofloxacin" : idRow);
                             return (
                               <tr key={idRow} className="border-b border-slate-100 hover:bg-slate-50/40 transition-colors">
                                 <td className="p-3 text-left font-bold text-slate-800 bg-slate-50/50 border-r border-slate-150">
                                   <span className="inline-block w-4.5 h-4.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-mono font-bold text-center leading-4.5 mr-1.5">
                                     {rowIndex + 1}
                                   </span>
-                                  {pRow?.name?.split(" - ")[0]}
+                                  {rowLabel}
                                 </td>
                                 {ddiSelectedIds.map((idCol, colIndex) => {
                                   if (rowIndex === colIndex) {
@@ -3157,43 +3526,49 @@ export default function App() {
               <h2 className="text-sm font-bold text-slate-800">Direktori & Deskripsi Obat</h2>
               <p className="text-xs text-slate-500 font-sans mt-0.5">Tinjau deskripsi, komposisi, indikasi, kontraindikasi, serta keamanan bagi ibu hamil & menyusui.</p>
             </div>
-            <span className="text-xs font-bold font-sans bg-teal-50 text-teal-800 px-3 py-1.5 rounded-xl border border-teal-100/80">
-              Menampilkan {
-                drugPresets.filter(p => {
-                  // Search filter
-                  const matchesSearch = p.name.toLowerCase().includes(descSearchQuery.toLowerCase()) || 
-                    p.indication.toLowerCase().includes(descSearchQuery.toLowerCase());
-                  
-                  if (!matchesSearch) return false;
+            {(() => {
+              const sanitizedPresets = sanitizeDrugPresets(drugPresets);
+              const count = sanitizedPresets.filter(p => {
+                // Search filter
+                const matchesSearch = p.name.toLowerCase().includes(descSearchQuery.toLowerCase()) || 
+                  p.indication.toLowerCase().includes(descSearchQuery.toLowerCase());
+                
+                if (!matchesSearch) return false;
 
-                  // Category filter
-                  if (descSelectedCategory !== "all") {
-                    const info = getDrugCategory(p.id, p.name);
-                    const label = info.label.toLowerCase();
-                    if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
-                    if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
-                    if (descSelectedCategory === "kardio" && !label.includes("kardiovaskular")) return false;
-                    if (descSelectedCategory === "pernapasan" && !label.includes("pernapasan")) return false;
-                    if (descSelectedCategory === "gastro" && !label.includes("gastrointestinal")) return false;
-                    if (descSelectedCategory === "hormon" && !label.includes("hormon")) return false;
-                    if (descSelectedCategory === "onkologi" && !label.includes("onkologi")) return false;
-                    if (descSelectedCategory === "lainnya" && !(label.includes("lain-lain") || label.includes("suplemen"))) return false;
-                  }
+                // Category filter
+                if (descSelectedCategory !== "all") {
+                  const info = getDrugCategory(p.id, p.name);
+                  const label = info.label.toLowerCase();
+                  if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
+                  if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
+                  if (descSelectedCategory === "kardio" && !label.includes("kardiovaskular")) return false;
+                  if (descSelectedCategory === "pernapasan" && !label.includes("pernapasan")) return false;
+                  if (descSelectedCategory === "gastro" && !label.includes("gastrointestinal")) return false;
+                  if (descSelectedCategory === "hormon" && !label.includes("hormon")) return false;
+                  if (descSelectedCategory === "onkologi" && !label.includes("onkologi")) return false;
+                  if (descSelectedCategory === "lainnya" && !(label.includes("lain-lain") || label.includes("suplemen"))) return false;
+                }
 
-                  // Alphabet filter
-                  if (descSelectedAlphabet !== "all") {
-                    if (p.name.charAt(0).toUpperCase() !== descSelectedAlphabet) return false;
-                  }
-                  
-                  return true;
-                }).length
-              } dari {drugPresets.length} Obat
-            </span>
+                // Alphabet filter
+                if (descSelectedAlphabet !== "all") {
+                  if (p.name.charAt(0).toUpperCase() !== descSelectedAlphabet) return false;
+                }
+                
+                return true;
+              }).length;
+
+              return (
+                <span className="text-xs font-bold font-sans bg-teal-50 text-teal-800 px-3 py-1.5 rounded-xl border border-teal-100/80">
+                  Menampilkan {count} dari {sanitizedPresets.length} Obat
+                </span>
+              );
+            })()}
           </div>
 
           <div className="space-y-6">
             {(() => {
-              const filteredList = drugPresets.filter(p => {
+              const sanitizedPresets = sanitizeDrugPresets(drugPresets);
+              const filteredList = sanitizedPresets.filter(p => {
                 // Search filter
                 const matchesSearch = p.name.toLowerCase().includes(descSearchQuery.toLowerCase()) || 
                   p.indication.toLowerCase().includes(descSearchQuery.toLowerCase());
@@ -3279,7 +3654,9 @@ export default function App() {
                         )}
 
                         {/* Generic & Brand Indicator */}
-                        {metadata.genericName.toLowerCase() === metadata.brandName.toLowerCase() ? (
+                        {metadata.genericName.toLowerCase() === metadata.brandName.toLowerCase() ||
+                        (metadata.brandName.toLowerCase().includes("doksorubisin") && metadata.genericName.toLowerCase().includes("doxorubicin")) ||
+                        (metadata.brandName.toLowerCase().includes("karboplatin") && metadata.genericName.toLowerCase().includes("carboplatin")) ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-white border border-slate-700 flex items-center gap-1 shadow-2xs">
                             <span className="text-[8px] bg-white text-slate-800 rounded-sm px-1 py-0.5 leading-none font-black uppercase">G</span>
                             Generik
@@ -4186,20 +4563,35 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
+            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-3">
               <button
-                onClick={() => setIsUpdateDrugModalOpen(false)}
-                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors"
+                type="button"
+                onClick={() => {
+                  const defaultList = sanitizeDrugPresets(INITIAL_DRUG_PRESETS);
+                  setDrugPresets(defaultList);
+                  localStorage.setItem("drugPresets_v5", JSON.stringify(defaultList));
+                  localStorage.removeItem("drugPresets_v4");
+                  setIsUpdateDrugModalOpen(false);
+                }}
+                className="px-3.5 py-2 font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors text-xs"
               >
-                Batal
+                Reset Database Default
               </button>
-              <button
-                onClick={handleUpdateDrugData}
-                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Simpan Data
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsUpdateDrugModalOpen(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleUpdateDrugData}
+                  className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Simpan Data
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -4253,20 +4645,34 @@ export default function App() {
                 </div>
               )}
             </div>
-            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
+            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex items-center justify-between gap-3">
               <button
-                onClick={() => setIsUpdateDdiModalOpen(false)}
-                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors"
+                type="button"
+                onClick={() => {
+                  setInteractionDatabase(INITIAL_INTERACTION_DATABASE);
+                  localStorage.setItem("interactionDatabase_v5", JSON.stringify(INITIAL_INTERACTION_DATABASE));
+                  localStorage.removeItem("interactionDatabase_v4");
+                  setIsUpdateDdiModalOpen(false);
+                }}
+                className="px-3.5 py-2 font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors text-xs"
               >
-                Batal
+                Reset Database Default
               </button>
-              <button
-                onClick={handleUpdateDdiData}
-                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Simpan Data
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsUpdateDdiModalOpen(false)}
+                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors text-xs"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleUpdateDdiData}
+                  className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2 text-xs"
+                >
+                  <Save className="w-4 h-4" />
+                  Simpan Data
+                </button>
+              </div>
             </div>
           </div>
         </div>
