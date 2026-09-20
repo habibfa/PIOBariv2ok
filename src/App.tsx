@@ -57,8 +57,11 @@ import {
   Volume2,
   Image,
   Stethoscope,
-  Pill
+  Pill,
+  Tag
 } from "lucide-react";
+import HighlightText from "./components/HighlightText";
+import { matchDrugSimultaneous, SearchScope } from "./utils/searchUtils";
 
 // @ts-ignore
 import suppositoriaImg from "./assets/images/suppositoria_guide_1782741722992.jpg";
@@ -1237,6 +1240,7 @@ export default function App() {
 
   // Drug Description States
   const [descSearchQuery, setDescSearchQuery] = useState<string>("");
+  const [descSearchScope, setDescSearchScope] = useState<SearchScope>("all");
   const [descSelectedCategory, setDescSelectedCategory] = useState<string>("all");
   const [descSelectedAlphabet, setDescSelectedAlphabet] = useState<string>("all");
   const [descExpandedId, setDescExpandedId] = useState<string | null>(null);
@@ -1547,10 +1551,10 @@ export default function App() {
     isFemale
   );
 
-  const filteredPresets = drugPresets.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.indication.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  const filteredPresets = drugPresets.filter((p) => {
+    const cat = getDrugCategory(p.id, p.name);
+    return matchDrugSimultaneous(p, cat.label, searchTerm, "all").isMatch;
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
   // Comparison Data Calculations
   const presetA = drugPresets.find((p) => p.id === comparePresetAId);
@@ -2144,9 +2148,18 @@ export default function App() {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Cari preset..."
-                    className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-xs rounded-lg border border-slate-200 outline-none focus:bg-white focus:ring-1 focus:ring-emerald-500"
+                    placeholder="Cari nama, indikasi, terapi..."
+                    className="w-full pl-8 pr-7 py-1.5 bg-slate-50 hover:bg-slate-100 text-xs rounded-lg border border-slate-200 outline-none focus:bg-white focus:ring-1 focus:ring-emerald-500"
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
@@ -2164,28 +2177,53 @@ export default function App() {
                     <span className="text-[10px] text-slate-500 truncate">Masukkan parameter dari awal</span>
                   </button>
 
-                  {filteredPresets.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectPreset(p)}
-                      className={`p-2.5 text-left rounded-xl border transition-all flex flex-col justify-between shrink-0 ${
-                        selectedPresetId === p.id
-                          ? "bg-emerald-50/60 border-emerald-500 ring-1 ring-emerald-500"
-                          : "bg-slate-50/50 border-slate-200 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-800 truncate">{p.name}</span>
-                        <span className="text-[10px] text-slate-500 line-clamp-2 mt-0.5 whitespace-normal">{p.indication}</span>
-                      </div>
-                      {p.requiresRenalAdjustment && (
-                        <span className="text-[9px] bg-orange-100 text-orange-800 font-bold px-1 py-0.2 rounded mt-1.5 self-start uppercase tracking-wider">
-                          Pengawasan Ginjal
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                  {filteredPresets.map((p) => {
+                    const cat = getDrugCategory(p.id, p.name);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleSelectPreset(p)}
+                        className={`p-2.5 text-left rounded-xl border transition-all flex flex-col justify-between shrink-0 ${
+                          selectedPresetId === p.id
+                            ? "bg-emerald-50/60 border-emerald-500 ring-1 ring-emerald-500"
+                            : "bg-slate-50/50 border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-bold text-slate-800 truncate">
+                              <HighlightText text={p.name} query={searchTerm} />
+                            </span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md border shrink-0 ${cat.bg} ${cat.color} ${cat.border}`}>
+                              <HighlightText text={cat.label.split(" ")[0]} query={searchTerm} />
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 line-clamp-2 whitespace-normal leading-relaxed">
+                            <HighlightText text={p.indication} query={searchTerm} />
+                          </span>
+                        </div>
+                        {p.requiresRenalAdjustment && (
+                          <span className="text-[9px] bg-orange-100 text-orange-800 font-bold px-1 py-0.2 rounded mt-1.5 self-start uppercase tracking-wider">
+                            Pengawasan Ginjal
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {filteredPresets.length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-400 space-y-2">
+                      <p>Tidak ada preset yang cocok.</p>
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm("")}
+                        className="text-emerald-600 hover:underline font-bold text-[11px]"
+                      >
+                        Reset pencarian
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -2600,24 +2638,34 @@ export default function App() {
 
             {/* Filtered Drug Selection List */}
             {ddiSearchQuery.trim() !== "" && (
-              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 max-h-[180px] overflow-y-auto space-y-1">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 max-h-[220px] overflow-y-auto space-y-1">
                 <div className="text-[9px] font-bold text-slate-400 uppercase pb-1 border-b border-slate-100 mb-1.5 px-1.5 flex justify-between">
-                  <span>Hasil Pencarian</span>
+                  <span>Hasil Pencarian (Nama, Indikasi, Terapi)</span>
                   <button onClick={() => setDdiSearchQuery("")} className="text-emerald-500 hover:underline hover:text-emerald-600 font-sans tracking-normal normal-case font-medium">Selesai</button>
                 </div>
-                {drugPresets.filter(p =>
-                  p.name.toLowerCase().includes(ddiSearchQuery.toLowerCase()) ||
-                  p.indication.toLowerCase().includes(ddiSearchQuery.toLowerCase())
-                ).slice(0, 8).map(preset => {
+                {drugPresets.filter(p => {
+                  const cat = getDrugCategory(p.id, p.name);
+                  return matchDrugSimultaneous(p, cat.label, ddiSearchQuery, "all").isMatch;
+                }).slice(0, 10).map(preset => {
                   const isAlreadyAdded = ddiSelectedIds.includes(preset.id);
+                  const cat = getDrugCategory(preset.id, preset.name);
                   return (
                     <div
                       key={preset.id}
                       className="flex items-center justify-between p-1.5 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-150 group"
                     >
                       <div className="space-y-0.5 max-w-[70%]">
-                        <p className="text-[11px] font-bold text-slate-800 truncate">{preset.name.split(" - ")[0]}</p>
-                        <p className="text-[9px] text-slate-400 truncate">{preset.indication}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-[11px] font-bold text-slate-800 truncate">
+                            <HighlightText text={preset.name.split(" - ")[0]} query={ddiSearchQuery} />
+                          </p>
+                          <span className={`text-[8px] font-bold px-1 rounded-sm border ${cat.bg} ${cat.color} ${cat.border} shrink-0`}>
+                            <HighlightText text={cat.label.split(" ")[0]} query={ddiSearchQuery} />
+                          </span>
+                        </div>
+                        <p className="text-[9px] text-slate-500 truncate">
+                          <HighlightText text={preset.indication} query={ddiSearchQuery} />
+                        </p>
                       </div>
                       <button
                         onClick={() => {
@@ -2647,10 +2695,10 @@ export default function App() {
                     </div>
                   );
                 })}
-                {drugPresets.filter(p =>
-                  p.name.toLowerCase().includes(ddiSearchQuery.toLowerCase()) ||
-                  p.indication.toLowerCase().includes(ddiSearchQuery.toLowerCase())
-                ).length === 0 && (
+                {drugPresets.filter(p => {
+                  const cat = getDrugCategory(p.id, p.name);
+                  return matchDrugSimultaneous(p, cat.label, ddiSearchQuery, "all").isMatch;
+                }).length === 0 && (
                   <p className="text-[10px] text-slate-400 text-center py-2">Obat tidak ditemukan.</p>
                 )}
               </div>
@@ -2667,7 +2715,7 @@ export default function App() {
                     { id: "spironolactone_ped", name: "Spironolakton" },
                     { id: "potassium_chloride_inf", name: "KCl Infus" },
                     { id: "warfarin_adult", name: "Warfarin" },
-                    { id: "ciprofloxacin_adult", name: "Ciprofloxacin" },
+                    { id: "ciprofloxacin", name: "Ciprofloxacin" },
                     { id: "ibuprofen_ped", name: "Ibuprofen" },
                     { id: "clopidogrel_adult", name: "Klopidogrel" },
                     { id: "omeprazole_adult", name: "Omeprazol" },
@@ -3384,18 +3432,119 @@ export default function App() {
               <h3 className="text-sm font-bold text-slate-800">Filter & Kategori</h3>
             </div>
 
-            {/* Search Input */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cari Obat / Indikasi</label>
+            {/* Search Input with Simultaneous Indication & Category Support */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Search className="w-3 h-3 text-emerald-600" />
+                  Pencarian Simultan
+                </label>
+                {descSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setDescSearchQuery("")}
+                    className="text-[10px] text-rose-500 hover:text-rose-700 font-medium flex items-center gap-0.5 hover:underline"
+                  >
+                    <X className="w-3 h-3" /> Reset
+                  </button>
+                )}
+              </div>
+
+              {/* Scope Selector Pills */}
+              <div className="grid grid-cols-3 gap-1 p-0.5 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setDescSearchScope("all")}
+                  className={`py-1 px-1.5 text-[10px] font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    descSearchScope === "all"
+                      ? "bg-white text-emerald-800 shadow-xs border border-slate-200/80"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Cari simultan di nama obat, indikasi, dan kategori terapi"
+                >
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
+                  Simultan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescSearchScope("indication")}
+                  className={`py-1 px-1.5 text-[10px] font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    descSearchScope === "indication"
+                      ? "bg-white text-emerald-800 shadow-xs border border-slate-200/80"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Fokus pencarian hanya pada indikasi penyakit"
+                >
+                  <Activity className="w-2.5 h-2.5 text-teal-500" />
+                  Indikasi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescSearchScope("category")}
+                  className={`py-1 px-1.5 text-[10px] font-bold rounded-lg transition-all text-center flex items-center justify-center gap-1 ${
+                    descSearchScope === "category"
+                      ? "bg-white text-emerald-800 shadow-xs border border-slate-200/80"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Fokus pencarian hanya pada kategori terapi"
+                >
+                  <Tag className="w-2.5 h-2.5 text-cyan-500" />
+                  Kategori
+                </button>
+              </div>
+
               <div className="relative">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Cari nama atau indikasi..."
+                  placeholder={
+                    descSearchScope === "indication"
+                      ? "Cari indikasi (cth: ISK, demam, asma)..."
+                      : descSearchScope === "category"
+                      ? "Cari kategori (cth: antibiotik, analgetik)..."
+                      : "Cari nama, indikasi, atau kategori terapi..."
+                  }
                   value={descSearchQuery}
                   onChange={(e) => setDescSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-8 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                 />
+                {descSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setDescSearchQuery("")}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Suggestion Chips for Simultaneous & Keyword Search */}
+              <div className="space-y-1 pt-1">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Contoh Pencarian Simultan:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { label: "Antibiotik ISK", query: "antibiotik saluran kemih" },
+                    { label: "Analgetik Demam", query: "analgetik demam" },
+                    { label: "Kardiovaskular Hipertensi", query: "kardiovaskular hipertensi" },
+                    { label: "Alergi / Rinitis", query: "alergi rinitis" },
+                    { label: "Asma / Batuk", query: "pernapasan batuk" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => {
+                        setDescSearchScope("all");
+                        setDescSearchQuery(chip.query);
+                      }}
+                      className="text-[10px] bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-2 py-0.5 rounded-lg border border-slate-200 hover:border-emerald-200 transition-colors font-medium text-left"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -3525,19 +3674,35 @@ export default function App() {
             <div>
               <h2 className="text-sm font-bold text-slate-800">Direktori & Deskripsi Obat</h2>
               <p className="text-xs text-slate-500 font-sans mt-0.5">Tinjau deskripsi, komposisi, indikasi, kontraindikasi, serta keamanan bagi ibu hamil & menyusui.</p>
+              {descSearchQuery.trim() && (
+                <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] text-slate-500 font-medium">Hasil pencarian kata kunci:</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold">
+                    <Search className="w-3 h-3 text-amber-700" />
+                    "{descSearchQuery}"
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                    Mode: {descSearchScope === "indication" ? "Fokus Indikasi" : descSearchScope === "category" ? "Fokus Kategori Terapi" : "Simultan (Nama, Indikasi, Kategori)"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setDescSearchQuery("")}
+                    className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline ml-1"
+                  >
+                    Hapus Filter
+                  </button>
+                </div>
+              )}
             </div>
             {(() => {
               const sanitizedPresets = sanitizeDrugPresets(drugPresets);
               const count = sanitizedPresets.filter(p => {
-                // Search filter
-                const matchesSearch = p.name.toLowerCase().includes(descSearchQuery.toLowerCase()) || 
-                  p.indication.toLowerCase().includes(descSearchQuery.toLowerCase());
-                
-                if (!matchesSearch) return false;
+                const info = getDrugCategory(p.id, p.name);
+                const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
+                if (!matchResult.isMatch) return false;
 
                 // Category filter
                 if (descSelectedCategory !== "all") {
-                  const info = getDrugCategory(p.id, p.name);
                   const label = info.label.toLowerCase();
                   if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
                   if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
@@ -3569,15 +3734,12 @@ export default function App() {
             {(() => {
               const sanitizedPresets = sanitizeDrugPresets(drugPresets);
               const filteredList = sanitizedPresets.filter(p => {
-                // Search filter
-                const matchesSearch = p.name.toLowerCase().includes(descSearchQuery.toLowerCase()) || 
-                  p.indication.toLowerCase().includes(descSearchQuery.toLowerCase());
-                
-                if (!matchesSearch) return false;
+                const info = getDrugCategory(p.id, p.name);
+                const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
+                if (!matchResult.isMatch) return false;
 
                 // Category filter
                 if (descSelectedCategory !== "all") {
-                  const info = getDrugCategory(p.id, p.name);
                   const label = info.label.toLowerCase();
                   if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
                   if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
@@ -3596,6 +3758,40 @@ export default function App() {
                 
                 return true;
               }).sort((a, b) => a.name.localeCompare(b.name));
+
+              if (filteredList.length === 0) {
+                return (
+                  <div className="glass-card p-10 text-center rounded-3xl space-y-4 border border-dashed border-slate-300">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
+                      <Search className="w-7 h-7" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-base font-bold text-slate-800">Obat Tidak Ditemukan</h3>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                        Tidak ada obat yang cocok dengan kata kunci <span className="font-bold text-slate-700">"{descSearchQuery}"</span> pada mode{" "}
+                        <span className="font-bold text-slate-700">
+                          {descSearchScope === "indication" ? "Indikasi" : descSearchScope === "category" ? "Kategori Terapi" : "Simultan (Semua)"}
+                        </span>.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDescSearchQuery("");
+                          setDescSearchScope("all");
+                          setDescSelectedCategory("all");
+                          setDescSelectedAlphabet("all");
+                        }}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-2 shadow-xs"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Reset Pencarian & Filter
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
 
               const groupedByAlphabet = filteredList.reduce((acc, preset) => {
                 const firstLetter = preset.name.charAt(0).toUpperCase();
@@ -3618,11 +3814,16 @@ export default function App() {
                       const formInfo = getDrugFormulation(preset);
                       const metadata = getDrugMetadata(preset);
                       const isExpanded = descExpandedId === preset.id;
+                      const matchResult = matchDrugSimultaneous(preset, categoryInfo.label, descSearchQuery, descSearchScope);
 
                       return (
                 <div
                   key={"desc_" + preset.id}
-                  className="glass-card glass-card-hover rounded-3xl overflow-hidden hover:border-teal-200/80 transition-all duration-300"
+                  className={`glass-card glass-card-hover rounded-3xl overflow-hidden transition-all duration-300 ${
+                    descSearchQuery.trim() && matchResult.isMatch
+                      ? "ring-1 ring-amber-300/90 border-amber-200/90 shadow-xs"
+                      : "hover:border-teal-200/80"
+                  }`}
                 >
                   {/* Card Header (Visible initially) */}
                   <div
@@ -3632,8 +3833,22 @@ export default function App() {
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${categoryInfo.bg} ${categoryInfo.color} ${categoryInfo.border}`}>
-                          {categoryInfo.label}
+                          <HighlightText text={categoryInfo.label} query={descSearchQuery} />
                         </span>
+
+                        {/* Match Indicators when Query Active */}
+                        {descSearchQuery.trim() && matchResult.matchedFields.category && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-2xs">
+                            <Tag className="w-2.5 h-2.5 text-emerald-600" />
+                            Cocok Kategori
+                          </span>
+                        )}
+                        {descSearchQuery.trim() && matchResult.matchedFields.indication && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1 shadow-2xs">
+                            <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                            Cocok Indikasi
+                          </span>
+                        )}
 
                         {/* Drug Classification Logo */}
                         {metadata.drugClass && (
@@ -3699,15 +3914,19 @@ export default function App() {
                       </div>
 
                       <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        {metadata.brandName}
+                        <HighlightText text={metadata.brandName} query={descSearchQuery} />
                         {metadata.genericName !== metadata.brandName && (
-                          <span className="text-xs text-slate-500 font-medium font-sans">({metadata.genericName})</span>
+                          <span className="text-xs text-slate-500 font-medium font-sans">
+                            (<HighlightText text={metadata.genericName} query={descSearchQuery} />)
+                          </span>
                         )}
                       </h3>
 
                       <p className="text-xs text-slate-600 font-sans leading-relaxed flex items-center gap-1.5">
                         <span className="font-bold text-slate-500 uppercase tracking-tight shrink-0 text-[10px]">Indikasi:</span>
-                        <span>{preset.indication}</span>
+                        <span>
+                          <HighlightText text={preset.indication} query={descSearchQuery} />
+                        </span>
                       </p>
                     </div>
 
@@ -3731,7 +3950,9 @@ export default function App() {
                           <div className="space-y-2.5">
                             <div className="space-y-0.5">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">Kategori Terapi:</span>
-                              <p className="text-slate-700 font-sans text-xs leading-relaxed font-semibold">{metadata.categoryInfo}</p>
+                              <p className="text-slate-700 font-sans text-xs leading-relaxed font-semibold">
+                                <HighlightText text={metadata.categoryInfo} query={descSearchQuery} />
+                              </p>
                             </div>
                             <div className="space-y-0.5">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">Mekanisme Kerja (Farmakodinamik):</span>
@@ -3748,7 +3969,7 @@ export default function App() {
                           </h4>
                           <div className="space-y-2.5">
                             <p className="text-slate-700 font-sans text-xs leading-relaxed font-medium bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
-                              {metadata.dosageRule}
+                              <HighlightText text={metadata.dosageRule} query={descSearchQuery} />
                             </p>
                             <div className="space-y-0.5 mt-2">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">Cara Penggunaan yang Benar:</span>

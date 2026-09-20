@@ -2801,24 +2801,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: SOLUTION, FOR INHALATION 120 MCG; 21 MCG"
 },
 {
-    id: "auto_concor_1_25_mg",
-    name: "Concor 1.25 mg",
-    indication: "Hipertensi, angina pektoris, dan gagal jantung kronis",
+    id: "concor",
+    name: "Concor (Bisoprolol)",
+    indication: "Hipertensi esensial, angina pektoris, dan gagal jantung kronik stabil",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
+    defaultDoseValue: 2.5,
+    doseUnit: "mg",
     frequency: "once",
-    notes: "Sediaan: TABLET"
-},
-{
-    id: "auto_concor",
-    name: "Concor",
-    indication: "Hipertensi, angina pektoris, dan gagal jantung kronis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 2.5 MG"
+    singleDoseLimitMax: 10,
+    dailyDoseLimitMax: 20,
+    weightMinKg: 30,
+    notes: "Sediaan: Tablet salut selaput 1.25 mg, 2.5 mg, 5 mg, dan 10 mg.\n• Hipertensi & Angina Pektoris: Dosis awal 5 mg 1x sehari (dapat dimulai 2.5 mg pada pasien sensitif/lansia). Dosis lazim 5–10 mg 1x sehari, maks 20 mg/hari.\n• Gagal Jantung Kronis Stabil: Titrasi bertahap diawali 1.25 mg 1x/hari selama 1-2 minggu, lalu 2.5 mg, 3.75 mg, 5 mg, 7.5 mg hingga target pemeliharaan 10 mg 1x/hari sesuai toleransi.\n• Beta-blocker kardioselektif (beta-1). Pantau laju denyut jantung dan tekanan darah secara berkala."
 },
 {
     id: "auto_cortidex",
