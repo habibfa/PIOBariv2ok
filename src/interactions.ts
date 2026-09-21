@@ -168,7 +168,7 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
   {
     id: "warfarin_ciprofloxacin",
     drugAId: "warfarin_adult",
-    drugBId: "ciprofloxacin_adult",
+    drugBId: "ciprofloxacin",
     drugAName: "Warfarin",
     drugBName: "Ciprofloxacin",
     severity: "CRITICAL",
@@ -177,48 +177,48 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
     evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition): 'Ciprofloxacin increases hypoprothrombinemic effect of warfarin via CYP450 inhibition and gut flora suppression.' Ellis RJ, et al. Interaction of warfarin and ciprofloxacin. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
   },
   {
-    id: "warfarin_ciprofloxacin_auto",
-    drugAId: "auto_warfarin",
-    drugBId: "auto_ciprofloxacin",
-    drugAName: "Warfarin",
-    drugBName: "Ciprofloxacin",
-    severity: "CRITICAL",
-    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
-    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
-    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
-  },
-  {
-    id: "warfarin_baquinor",
+    id: "warfarin_paracetamol",
     drugAId: "warfarin_adult",
-    drugBId: "baquinor_forte",
+    drugBId: "paracetamol_ped",
     drugAName: "Warfarin",
-    drugBName: "Baquinor Forte (Ciprofloxacin)",
-    severity: "CRITICAL",
-    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
-    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
-    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+    drugBName: "Parasetamol",
+    severity: "WARNING",
+    mechanism: "Penggunaan Parasetamol dosis reguler/tinggi (>1.5 - 2 gram/hari selama >3 hari berturut-turut) dapat menghambat metabolisme Warfarin serta mengganggu karboksilasi faktor pembekuan darah vitamin K-dependen oleh metabolit NAPQI, sehingga meningkatkan nilai INR dan risiko perdarahan.",
+    recommendation: "Pasien dengan terapi Warfarin stabil yang memerlukan antipiretik/analgesik dapat menggunakan Parasetamol dosis rendah (<1.5 g/hari) untuk jangka pendek. Jika diperlukan penggunaan jangka panjang, jadwalkan pemantauan INR lebih ketat.",
+    evidence: "Lopes RD, et al. Association between acetaminophen and warfarin: a systematic review. Thromb Haemost. 2011;105(4):618-629. Mahé I, et al. Interaction between paracetamol and warfarin in patients: a double-blind, randomized, placebo-controlled trial. Haematologica. 2006;91(12):1621-1627."
   },
   {
-    id: "warfarin_ciprofloxacin_cross1",
-    drugAId: "warfarin_adult",
-    drugBId: "auto_ciprofloxacin",
-    drugAName: "Warfarin",
-    drugBName: "Ciprofloxacin",
+    id: "ciprofloxacin_sucralfate",
+    drugAId: "ciprofloxacin",
+    drugBId: "sucralfate_syr",
+    drugAName: "Ciprofloxacin",
+    drugBName: "Sukralfat",
     severity: "CRITICAL",
-    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
-    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
-    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+    mechanism: "Aluminium hidroksida yang terkandung dalam Sukralfat membentuk kompleks kelat insoluble (kelasi kation polivalen) dengan fluorokuinolon (Ciprofloxacin) di saluran cerna. Hal ini menurunkan bioavailabilitas dan absorpsi Ciprofloxacin oral secara drastis hingga >85%, berisiko tinggi kegagalan terapi infeksi bakteri.",
+    recommendation: "Hindari pemberian bersamaan secara simultan. Berikan Ciprofloxacin minimal 2 jam sebelum atau 6 jam setelah konsumsi Sukralfat, atau pertimbangkan antibiotik parenteral / alternatif antasida pelindung mukosa.",
+    evidence: "Garrelts JC, et al. Sucralfate significantly reduces ciprofloxacin bioavailability. Antimicrob Agents Chemother. 1990;34(5):931-933. FDA Cipro label: 'Concurrent administration of ciprofloxacin with sucralfate causes marked reduction in oral bioavailability.'"
   },
   {
-    id: "warfarin_ciprofloxacin_cross2",
-    drugAId: "auto_warfarin",
-    drugBId: "ciprofloxacin_adult",
-    drugAName: "Warfarin",
-    drugBName: "Ciprofloxacin",
+    id: "methotrexate_ibuprofen",
+    drugAId: "auto_rheu_trex",
+    drugBId: "ibuprofen_ped",
+    drugAName: "Metotreksat (Rheu-Trex)",
+    drugBName: "Ibuprofen",
     severity: "CRITICAL",
-    mechanism: "Ciprofloxacin (antibiotik golongan fluoroquinolone) meningkatkan efek antikoagulan warfarin melalui dua mekanisme utama:\n\n1. Inhibisi Enzim: Ciprofloxacin menghambat enzim sitokrom P450 (terutama CYP1A2 dan CYP3A4), sehingga memperlambat metabolisme dan eliminasi warfarin dari dalam tubuh.\n2. Gangguan Flora Usus: Ciprofloxacin mengeliminasi bakteri usus yang memproduksi Vitamin K, sehingga menurunkan sintesis faktor pembekuan darah yang bergantung pada Vitamin K.\n\nEfek Klinis: Peningkatan nilai International Normalized Ratio (INR) secara signifikan, yang meningkatkan risiko perdarahan hebat (seperti perdarahan gastrointestinal atau intrakranial).",
-    recommendation: "1. Pemantauan INR: Lakukan pemeriksaan INR dalam 2–3 hari setelah memulai terapi ciprofloxacin, dan pantau secara berkala selama serta setelah terapi antibiotik selesai.\n2. Penyesuaian Dosis: Bersiaplah untuk menurunkan dosis warfarin (umumnya sebesar 10% hingga 20%) berdasarkan hasil pemantauan INR.\n3. Edukasi Pasien: Edukasi pasien untuk segera mencari bantuan medis jika mengalami tanda-tanda perdarahan (misalnya: mimisan, gusi berdarah, memar tanpa sebab, urin berwarna merah/gelap, atau feses berwarna hitam).\n4. Alternatif Terapi: Jika memungkinkan, pertimbangkan penggunaan antibiotik alternatif yang tidak berinteraksi dengan warfarin.",
-    evidence: "FDA Prescribing Information for Cipro (ciprofloxacin) & Coumadin (warfarin); Stockley's Drug Interactions (12th Edition); Ellis RJ, et al. Clin Pharm. 1993;12(10):764-768. PMID: 8258288."
+    mechanism: "NSAID (Ibuprofen) menghambat sintesis prostaglandin renal sehingga menurunkan aliran darah ginjal, serta bersaing pada sekresi tubulus ginjal untuk ekskresi Metotreksat. Hal ini meningkatkan kadar serum dan akumulasi toksik Metotreksat, memicu supresi sumsum tulang berat (pansitopenia) dan toksisitas gastrointestinal fatal.",
+    recommendation: "Kombinasi dengan Metotreksat dosis sedang-tinggi dikontraindikasikan. Pada Metotreksat dosis rendah untuk reumatoid artritis, gunakan dengan kehati-hatian ekstrem dan pemantauan hitung darah lengkap (CBC) serta fungsi ginjal secara berkala.",
+    evidence: "U.S. FDA Boxed Warning for Methotrexate: 'NSAIDs should not be administered prior to or concomitantly with high doses of methotrexate. Concomitant administration of some NSAIDs with methotrexate resulted in severe bone marrow suppression and gastrointestinal toxicity.'"
+  },
+  {
+    id: "digoxin_amiodarone",
+    drugAId: "digoxin",
+    drugBId: "auto_tiaryt",
+    drugAName: "Digoksin",
+    drugBName: "Amiodaron (Tiaryt)",
+    severity: "CRITICAL",
+    mechanism: "Amiodaron menghambat transporter membran P-glikoprotein (P-gp) di tubulus ginjal dan saluran cerna yang bertanggung jawab untuk eliminasi Digoksin. Akibatnya, kadar plasma serum Digoksin meningkat rata-rata 70% hingga 100%, secara masif meningkatkan risiko toksisitas fatal digoksin (aritmia ventrikel lethal, blok AV total, bradikardia berat).",
+    recommendation: "Ketika memulai terapi Amiodaron pada pasien yang telah mengonsumsi Digoksin, dosis harian Digoksin HARUS segera diturunkan sebesar 30% hingga 50%. Lakukan pemantauan ketat kadar digoksin serum (target rentang terapeutik 0.5-0.9 ng/mL) dan rekaman EKG.",
+    evidence: "Moysey JO, et al. Amiodarone-digoxin interaction. Br Med J (Clin Res Ed). 1981;282(6273):1360. Marcus FI. Pharmacokinetic interactions between digoxin and other drugs. J Am Coll Cardiol. 1985;5(5 Suppl A):102A-104A."
   },
   {
     id: "clopidogrel_omeprazole",
@@ -277,7 +277,7 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
   },
   {
     id: "digoxin_furosemide",
-    drugAId: "digoxin_ped",
+    drugAId: "digoxin",
     drugBId: "furosemide_ped",
     drugAName: "Digoksin",
     drugBName: "Furosemid",
@@ -540,7 +540,7 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
     evidence: "Shalit I, Marks MI (1984) \"Chloramphenicol in the 1980s.\" Drugs, 28, p. 281-91\nWallace JF, Smith RH, Garcia M, Petersdorf RG (1967) \"Studies on the pathogenesis of meningitis. VI: antagonism between penicillin and chloramphenicol in experimental pneumococcal meningitis.\" J Lab Clin Med, 70, p. 408-18\nGarrod L (1972) \"Causes of failure in antibiotic treatment.\" Br Med J, 4, p. 441\nJawetz E (1968) \"The use of combinations of antimicrobial drugs.\" Annu Rev Pharmacol, 8, p. 151\n(2008) \"Product Information. Amoxicillin (amoxicillin).\" Ranbaxy Pharmaceuticals\n(2023) \"Product Information. Ampicillin (AG) (ampicillin).\" Alphapharm Pty Ltd"
   },
   {
-    id: "amox_clarithromycin",
+    id: "amox_kolera",
     drugAId: "amoxicillin_ped",
     drugBId: "cholera",
     drugAName: "Amoxicillin",
@@ -551,11 +551,11 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
     evidence: "(2025) \"Product Information. Vaxchora (cholera vaccine, live).\" Bavarian Nordic, Inc.\n(2024) \"Product Information. Vaxchora (cholera vaccine, live).\" Accuristix\n(2025) \"Product Information. Vaxchora (cholera vaccine, live).\" Bavarian Nordic UK Ltd\n(2025) \"Product Information. VAXCHORA (vacuna frente al c lera, viva).\" BAVARIAN NORDIC A/S\n(2023) \"Product Information. Vaxchora (cholera vaccine, live).\" Biocelect Pty Ltd"
   },
   {
-    id: "amox_kolera",
+    id: "amox_clarithromycin",
     drugAId: "amoxicillin_ped",
-    drugBId: "clarithromycin",
+    drugBId: "clarithromycin_ped",
     drugAName: "Amoxicillin",
-    drugBName: "Clarithromycin",
+    drugBName: "Klaritromisin",
     severity: "INFO",
     mechanism: "Meskipun beberapa data *in vitro* menunjukkan adanya sinergisme antara antibiotik makrolida dan penisilin, data *in vitro* lainnya menunjukkan adanya antagonisme. Ketika obat-obat ini diberikan secara bersamaan, efikasi terapeutik keduanya tidak dapat diprediksi.",
     recommendation: "Data tersedia untuk eritromisin, meskipun secara teoretis interaksi ini dapat terjadi dengan makrolida apa pun. Selain pemantauan efektivitas terapi antibiotik, tampaknya tidak diperlukan tindakan pencegahan khusus.",
@@ -825,6 +825,58 @@ export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
 ];
 
 /**
+ * Maps a drug ID and name to a canonical active substance key.
+ * This guarantees consistent drug-drug interaction matching across generic,
+ * brand names (e.g. Baquinor, Concor, Sanmol, Tiaryt), formulations, and age-specific presets.
+ */
+export function getCanonicalSubstance(id: string, name: string): string {
+  const norm = `${id} ${name}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (norm.includes("amox") || norm.includes("amok")) return "amoxicillin";
+  if (norm.includes("cipro") || norm.includes("sipro") || norm.includes("baquinor")) return "ciprofloxacin";
+  if (norm.includes("warfarin") || norm.includes("simarc")) return "warfarin";
+  if (norm.includes("spirono") || norm.includes("spironolakton")) return "spironolactone";
+  if (norm.includes("enalapril") || norm.includes("tenivast")) return "enalapril";
+  if (norm.includes("captopril") || norm.includes("kaptopril")) return "captopril";
+  if (norm.includes("candesartan") || norm.includes("kandesartan")) return "candesartan";
+  if (norm.includes("aspirin") || norm.includes("aspilets") || norm.includes("asetilsalisilat")) return "aspirin";
+  if (norm.includes("ibuprofen") || norm.includes("proris")) return "ibuprofen";
+  if (norm.includes("mefenamat") || norm.includes("mefenamic") || norm.includes("ponstan")) return "mefenamic_acid";
+  if (norm.includes("diklofenak") || norm.includes("diclofenac") || norm.includes("voltaren") || norm.includes("voltadex")) return "diclofenac";
+  if (norm.includes("ketorolac") || norm.includes("ketorolak") || norm.includes("toradol")) return "ketorolac";
+  if (norm.includes("rifampi") || norm.includes("rifampisin") || norm.includes("rifampicin") || norm.includes("rifanh") || norm.includes("rifastar")) return "rifampicin";
+  if (norm.includes("clopidogrel") || norm.includes("klopidogrel") || norm.includes("plavix")) return "clopidogrel";
+  if (norm.includes("omeprazol") || norm.includes("omeprazole")) return "omeprazole";
+  if (norm.includes("lansoprazol") || norm.includes("lansoprazole")) return "lansoprazole";
+  if (norm.includes("simvastatin") || norm.includes("simva") || norm.includes("zocor")) return "simvastatin";
+  if (norm.includes("atorvastatin") || norm.includes("lipitor")) return "atorvastatin";
+  if (norm.includes("ketoconazole") || norm.includes("ketokonazol") || norm.includes("zoloral")) return "ketoconazole";
+  if (norm.includes("erythromycin") || norm.includes("eritromisin")) return "erythromycin";
+  if (norm.includes("clarithromycin") || norm.includes("klaritromisin")) return "clarithromycin";
+  if (norm.includes("digoxin") || norm.includes("digoksin") || norm.includes("fargoxin")) return "digoxin";
+  if (norm.includes("furosemid") || norm.includes("furosemide") || norm.includes("lasix")) return "furosemide";
+  if (norm.includes("propranolol") || norm.includes("farmadral")) return "propranolol";
+  if (norm.includes("bisoprolol") || norm.includes("concor")) return "bisoprolol";
+  if (norm.includes("salbutamol") || norm.includes("ventolin") || norm.includes("salbulin") || norm.includes("suprasma")) return "salbutamol";
+  if (norm.includes("insulin") || norm.includes("sansulin") || norm.includes("ryzodeg")) return "insulin";
+  if (norm.includes("gentamicin") || norm.includes("gentamisin") || norm.includes("sagestam")) return "gentamicin";
+  if (norm.includes("vancomycin") || norm.includes("vankomisin") || norm.includes("vancep")) return "vancomycin";
+  if (norm.includes("haloperidol") || norm.includes("haldol") || norm.includes("serenace")) return "haloperidol";
+  if (norm.includes("levofloxacin") || norm.includes("levofloksasin") || norm.includes("cravit")) return "levofloxacin";
+  if (norm.includes("tramadol")) return "tramadol";
+  if (norm.includes("quetiapin") || norm.includes("quetiapine") || norm.includes("seroquel")) return "quetiapine";
+  if (norm.includes("amlodipin") || norm.includes("amlodipine") || norm.includes("norvask")) return "amlodipine";
+  if (norm.includes("potassiumchloride") || norm.includes("kcl") || norm.includes("kaliumklorida")) return "potassium_chloride";
+  if (norm.includes("allopurinol") || norm.includes("alopurinol") || norm.includes("zyloric")) return "allopurinol";
+  if (norm.includes("doxycycline") || norm.includes("doksisiklin")) return "doxycycline";
+  if (norm.includes("amikacin") || norm.includes("amikasin")) return "amikacin";
+  if (norm.includes("chloramphenicol") || norm.includes("kloramfenikol") || norm.includes("bufacetin")) return "chloramphenicol";
+  if (norm.includes("kolera") || norm.includes("cholera") || norm.includes("vaxchora")) return "cholera";
+  if (norm.includes("paracetamol") || norm.includes("asetaminofen") || norm.includes("sanmol") || norm.includes("panadol")) return "paracetamol";
+  if (norm.includes("sucralfate") || norm.includes("sukralfat")) return "sucralfate";
+  if (norm.includes("methotrexate") || norm.includes("metotreksat") || norm.includes("rheutrex")) return "methotrexate";
+  if (norm.includes("amiodarone") || norm.includes("amiodaron") || norm.includes("tiaryt")) return "amiodarone";
+  return id.toLowerCase();
+}
 
 /**
  * Checks for food-drug interactions for a list of drug IDs.
@@ -836,13 +888,8 @@ export function checkFoodInteractions(drugIds: string[]): FoodInteraction[] {
   }
 
   return FOOD_INTERACTION_DATABASE.filter(interaction => {
-    // Check if the drug is in the selected list
-    // Support matching by comparing direct IDs, or we can handle pediatric equivalents
-    // For example, if we have paracetamol_ped, it should also match paracetamol_syr or other paracetamol equivalents if they share the base name
     return drugIds.some(id => {
-      // Direct exact match
       if (id === interaction.drugId) return true;
-      // Handle base drug matches if needed (e.g. "paracetamol" in "paracetamol_ped" / "paracetamol_syr")
       const baseA = id.split("_")[0];
       const baseB = interaction.drugId.split("_")[0];
       return baseA === baseB;
