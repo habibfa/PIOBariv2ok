@@ -20,6 +20,8 @@ const IvCompatibilityChecker = lazy(() => import("./IvCompatibilityChecker").the
 const DiseasesConditions = lazy(() => import("./DiseasesConditions").then(m => ({ default: m.DiseasesConditions })));
 const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => ({ default: m.MedicalCalculators })));
 const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
+const AdminWebAnalytics = lazy(() => import("./components/AdminWebAnalytics"));
+import { trackCustomEvent } from "./services/analyticsService";
 
 const TabLoadingFallback = () => (
   <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -75,7 +77,9 @@ import {
   CheckCheck,
   Zap,
   Vibrate,
-  BellRing
+  BellRing,
+  BarChart3,
+  Lock
 } from "lucide-react";
 import HighlightText from "./components/HighlightText";
 import { matchDrugSimultaneous, SearchScope } from "./utils/searchUtils";
@@ -1285,6 +1289,12 @@ export default function App() {
       setIsLoginModalOpen(false);
       setLoginPassword("");
       setLoginError("");
+      setActiveTab("analytics");
+      trackCustomEvent("admin_login", {
+        category: "conversion",
+        label: "Admin RSUD Palembang BARI berhasil masuk ke sistem",
+        metadata: { role: "Administrator PIOBARI" }
+      });
     } else {
       setLoginError("Password salah!");
     }
@@ -1300,7 +1310,7 @@ export default function App() {
   const [isFemale, setIsFemale] = useState<boolean>(false);
 
   // Tab Selection
-  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "ai" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap">("desc");
+  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "ai" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics">("desc");
 
   // Video Tab States
   const [activeVideoId, setActiveVideoId] = useState<string>("suppositoria");
@@ -1320,6 +1330,28 @@ export default function App() {
   useEffect(() => {
     setDescPage(1);
   }, [descSearchQuery, descSearchScope, descSelectedCategory, descSelectedAlphabet, descOnlyWithInteractions]);
+
+  // Telemetry: Auto-track page navigation
+  useEffect(() => {
+    trackCustomEvent("page_view", {
+      category: "navigation",
+      label: `Navigasi ke modul ${activeTab.toUpperCase()}`,
+      metadata: { tab: activeTab }
+    });
+  }, [activeTab]);
+
+  // Telemetry: Track drug formularium search (debounced)
+  useEffect(() => {
+    if (!descSearchQuery.trim() || descSearchQuery.trim().length < 3) return;
+    const timer = setTimeout(() => {
+      trackCustomEvent("drug_lookup", {
+        category: "clinical",
+        label: `Pencarian Formularium: "${descSearchQuery.trim()}"`,
+        metadata: { query: descSearchQuery.trim(), scope: descSearchScope, category: descSelectedCategory }
+      });
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [descSearchQuery, descSearchScope, descSelectedCategory]);
 
   // Multi-drug DDI Screening States
   const [ddiSelectedIds, setDdiSelectedIds] = useState<string[]>([
@@ -1521,6 +1553,15 @@ export default function App() {
 
   // Download report as PDF
   const handleDownloadPDF = () => {
+    trackCustomEvent("pdf_export", {
+      category: "conversion",
+      label: `Export PDF Lembar Dosis (${selectedPreset?.name || "Kustom"})`,
+      metadata: {
+        drug: selectedPreset?.name || "Kustom",
+        indication: selectedPreset?.indication || "Umum",
+        weightKg: inputs.weightKg
+      }
+    });
     generateMedicalReportPDF({
       inputs,
       calculated,
@@ -2116,6 +2157,52 @@ export default function App() {
             <MapPin className={`w-4 h-4 shrink-0 ${activeTab === "map" ? "text-white" : "text-emerald-600"}`} />
             Peta Faskes
           </button>
+
+          {/* Admin Web Analytics Menu Item */}
+          {isAdmin ? (
+            <div className="pt-2">
+              <div className="px-3 pt-2 pb-1.5 flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800">Manajemen & Data</span>
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                </span>
+              </div>
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); setActiveTab("analytics"); }}
+                className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between group ${
+                  activeTab === "analytics"
+                    ? "bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white shadow-md shadow-teal-900/25 border border-teal-700/40"
+                    : "bg-teal-50/90 hover:bg-teal-100 text-teal-950 border border-teal-200/80 shadow-2xs"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <BarChart3 className={`w-4 h-4 shrink-0 ${activeTab === "analytics" ? "text-teal-300 animate-pulse" : "text-teal-700"}`} />
+                  <span className="tracking-tight">Web Analytics</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  activeTab === "analytics" ? "bg-teal-500 text-slate-950 shadow-2xs" : "bg-teal-600 text-white"
+                }`}>
+                  Live
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2">
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); setIsLoginModalOpen(true); }}
+                className="w-full text-left px-4 py-2.5 text-xs font-semibold rounded-2xl text-slate-500 hover:text-teal-800 hover:bg-slate-100/80 transition-all flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <BarChart3 className="w-4 h-4 shrink-0 text-slate-400 group-hover:text-teal-600" />
+                  <span>Web Analytics</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                  Admin
+                </span>
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="p-4 border-t border-slate-100/80 shrink-0 mt-auto flex flex-col gap-2.5 bg-slate-50/40">
@@ -2159,7 +2246,7 @@ export default function App() {
         <header className="h-18 glass-header flex items-center justify-between px-4 sm:px-6 shadow-2xs shrink-0">
           <div className="flex items-center gap-3 lg:hidden">
             <button 
-              onClick={() => setIsMobileMenuOpen(true)}
+              onClick={() => setIsMobileMenuOpen(true)} 
               className="p-2.5 -ml-2 text-slate-600 hover:text-teal-600 hover:bg-white/80 rounded-xl transition-colors"
             >
               <Menu className="w-5 h-5" />
@@ -2185,6 +2272,7 @@ export default function App() {
                  activeTab === "iv" ? "Kompatibilitas Obat Intravena" : 
                  activeTab === "pharmacist" ? "Konsultasi Apoteker Siaga" : 
                  activeTab === "fornas" ? "Daftar Obat Fornas Kemenkes" : 
+                 activeTab === "analytics" ? "Web Analytics & Real-Time Insights" :
                  "Menu Kalkulator"}
               </span>
               <span className="text-[11px] text-teal-700 font-medium">
@@ -2194,6 +2282,21 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5 ml-auto">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("analytics")}
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                  activeTab === "analytics"
+                    ? "bg-teal-800 text-white border-teal-900 shadow-sm"
+                    : "bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100"
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
+                <span>Web Analytics</span>
+              </button>
+            )}
+
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 border border-teal-100">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="text-[11px] font-semibold text-teal-800">Sistem Online</span>
@@ -3972,6 +4075,37 @@ export default function App() {
           <Suspense fallback={<TabLoadingFallback />}>
             <ClinicalSOAP />
           </Suspense>
+        </section>
+      </>
+    ) : activeTab === "analytics" ? (
+      <>
+        {/* WEB ANALYTICS ADMIN TAB */}
+        <section className="lg:col-span-12 w-full">
+          {isAdmin ? (
+            <Suspense fallback={<TabLoadingFallback />}>
+              <AdminWebAnalytics />
+            </Suspense>
+          ) : (
+            <div className="glass-card max-w-md mx-auto my-12 p-8 rounded-3xl text-center space-y-4 border border-slate-200/80 shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center mx-auto border border-teal-200">
+                <BarChart3 className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold text-slate-800">Akses Web Analytics Terbatas</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Menu Web Analytics & Telemetri Real-Time hanya dapat diakses oleh Administrator Sistem RSUD Palembang BARI.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLoginModalOpen(true)}
+                className="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Login Sebagai Admin
+              </button>
+            </div>
+          )}
         </section>
       </>
     ) : activeTab === "desc" ? (
