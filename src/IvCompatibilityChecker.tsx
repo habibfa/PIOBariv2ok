@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, Save, X, Download, Trash2 } from 'lucide-react';
+import { Upload, Save, X, Download, Trash2, Sparkles, Layers, ArrowRight, Table } from 'lucide-react';
 import { Droplets, Info, Search, AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
+import { ChemoRegimensView } from './components/ChemoRegimensView';
 
 type CompatibilityStatus = "C" | "I" | "U"; // Compatible, Incompatible, Uncertain/Variable
 
@@ -868,6 +869,117 @@ const INITIAL_IV_DRUGS: IvDrug[] = [
   {
     "id": "Water for Injection",
     "name": "Water for Injection",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Docetaxel",
+    "name": "Docetaxel (Taxotere)",
+    "category": "Obat Sitostatika / Taxane",
+    "bud": "4 jam pada suhu ruang (20-25°C) dalam kantong non-PVC; gunakan filter in-line 0.22 mikron",
+    "storageTemp": "Kulkas (2-8°C) atau Suhu Ruang (<25°C); terlindung dari cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP) & Brosur Resmi Taxotere"
+  },
+  {
+    "id": "Carboplatin",
+    "name": "Carboplatin (Paraplatin)",
+    "category": "Obat Sitostatika / Platinum",
+    "bud": "24 jam pada suhu ruang (20-25°C) setelah pengenceran dalam D5W atau NaCl 0.9%",
+    "storageTemp": "Suhu Ruang (20-25°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Trastuzumab",
+    "name": "Trastuzumab (Herceptin)",
+    "category": "Obat Sitostatika / Antibodi Monoklonal Anti-HER2",
+    "bud": "24 jam pada suhu 2-8°C setelah diencerkan dalam NaCl 0.9% (Dilarang Dextrose)",
+    "storageTemp": "Kulkas (2-8°C); JANGAN dikocok (dapat memicu denaturasi protein)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP) & Brosur Resmi Herceptin"
+  },
+  {
+    "id": "Pertuzumab",
+    "name": "Pertuzumab (Perjeta)",
+    "category": "Obat Sitostatika / Antibodi Monoklonal Anti-HER2",
+    "bud": "24 jam pada suhu 2-8°C terlindung cahaya dalam NaCl 0.9%",
+    "storageTemp": "Kulkas (2-8°C); JANGAN dibekukan; JANGAN dikocok",
+    "reference": "Brosur Resmi Perjeta (Roche) & ASHP Injectable Drugs"
+  },
+  {
+    "id": "Leucovorin",
+    "name": "Leucovorin (Kalsium Folinat / Asam Folinat)",
+    "category": "Obat Onkologi / Penyelamat Folat",
+    "bud": "24 jam pada suhu ruang (20-25°C), 7 hari pada suhu kulkas (2-8°C)",
+    "storageTemp": "Suhu Ruang atau Kulkas (2-8°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Methylprednisolone",
+    "name": "Methylprednisolone Sodium Succinate",
+    "category": "Kortikosteroid / Premedikasi IV",
+    "bud": "48 jam setelah rekonstitusi pada suhu ruang 20-25°C",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Filgrastim",
+    "name": "Filgrastim (G-CSF - Neupogen)",
+    "category": "Faktor Pertumbuhan Koloni Hematopoietik",
+    "bud": "24 jam pada suhu ruang atau kulkas setelah diencerkan dalam D5W",
+    "storageTemp": "Kulkas (2-8°C); JANGAN dibekukan; JANGAN dikocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Palonosetron",
+    "name": "Palonosetron HCl",
+    "category": "Antiemetik Antagonis 5-HT3",
+    "bud": "48 jam suhu ruang, 14 hari di kulkas",
+    "storageTemp": "Suhu Ruang (20-25°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Pemetrexed",
+    "name": "Pemetrexed (Alimta)",
+    "category": "Obat Sitostatika Antifolat",
+    "bud": "24 jam pada suhu ruang atau kulkas setelah rekonstitusi dalam NaCl 0.9%",
+    "storageTemp": "Suhu Ruang (20-25°C)",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Capecitabine",
+    "name": "Capecitabine Oral (Prodrug 5-FU)",
+    "category": "Obat Kemoterapi Oral",
+    "bud": "Sesuai kemasan blister original pabrik; simpan suhu kamar",
+    "storageTemp": "Suhu Ruang (20-25°C); wadah tertutup rapat",
+    "reference": "Brosur Resmi Xeloda (Roche)"
+  },
+  {
+    "id": "Bortezomib",
+    "name": "Bortezomib (Velcade)",
+    "category": "Obat Sitostatika Inhibitor Proteasom",
+    "bud": "8 jam dalam vial setelah rekonstitusi suhu 25°C; stabil 3 jam dalam spuit",
+    "storageTemp": "Suhu Ruang (20-25°C); terlindung cahaya",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Pembrolizumab",
+    "name": "Pembrolizumab (Keytruda)",
+    "category": "Imunoterapi Anti-PD-1",
+    "bud": "24 jam pada suhu 2-8°C atau 6 jam suhu ruang setelah pengenceran",
+    "storageTemp": "Kulkas (2-8°C); JANGAN dikocok",
+    "reference": "Trissel's Handbook on Injectable Drugs (ASHP)"
+  },
+  {
+    "id": "Dextrose 5% in NaCl 0.9%",
+    "name": "Larutan Dextrose 5% + NaCl 0.9% (D5-NS)",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Dextrose 5% in NaCl 0.45%",
+    "name": "Larutan Dextrose 5% + NaCl 0.45% (D5-1/2NS)",
+    "category": "Cairan Pelarut"
+  },
+  {
+    "id": "Asering",
+    "name": "Larutan Asering (Ringer Asetat)",
     "category": "Cairan Pelarut"
   }
 ];
@@ -1972,6 +2084,504 @@ const INITIAL_MATRIX: CompatibilityRecord[] = [
     "drug1": "Vincristine",
     "drug2": "Larutan Dextrosa 5%",
     "status": "C"
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Pelarut standar WAJIB untuk Oxaliplatin. Stabil minimal 24 jam pada suhu ruang."
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "NaCl 0.9%",
+    "status": "I",
+    "notes": "INKOMPATIBEL MUTLAK: Terdegradasi cepat membentuk senyawa turunan klorida tidak aktif dan toksik. HANYA larutkan dalam Dextrose 5% (D5W)!"
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Ringer Laktat",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Mengandung klorida dan kalsium yang memicu hidrolisis dan inaktivasi cepat senyawa platinum."
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Folinic Acid",
+    "status": "C",
+    "notes": "Kompatibel via Y-site dalam D5W saat infus simultan 2 jam pada protokol FOLFOX (mFOLFOX6)."
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Leucovorin",
+    "status": "C",
+    "notes": "Kompatibel via Y-site dalam D5W selama infus 2 jam protokol FOLFOX."
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Fluorourasil",
+    "status": "I",
+    "notes": "Jangan dicampur bersama dalam satu wadah infus. Berikan secara sekuensial (Oxaliplatin infus 2 jam selesai terlebih dahulu, baru disusul bolus dan infus kontinu 5-FU)."
+  },
+  {
+    "drug1": "Oxaliplatin",
+    "drug2": "Ondansentron",
+    "status": "C",
+    "notes": "Kompatibel via Y-site pada jalur D5W."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar untuk injeksi bolus dan infus kontinu 46-48 jam (elastomeric pump). Stabil hingga 72 jam."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Stabil 72 jam suhu ruang terlindung dari cahaya."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Folinic Acid",
+    "status": "C",
+    "notes": "Kompatibel via Y-site. Leucovorin menstabilkan ikatan 5-FU ke timidilat sintase dan meningkatkan efikasi sitotoksik."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Leucovorin",
+    "status": "C",
+    "notes": "Kompatibel via Y-site dalam NaCl 0.9% atau D5W."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Dexamethason",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Ondansentron",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Carboplastin",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Carboplatin",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Fluorourasil",
+    "drug2": "Cisplatin",
+    "status": "I",
+    "notes": "Jangan dicampur bersama dalam satu kantong infus karena presipitasi garam platinum; berikan sekuensial (Cisplatin didahului hidrasi, lalu 5-FU)."
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Pelarut pilihan utama untuk Irinotecan karena pH sedikit asam menjaga kestabilan bentuk lakton aktif."
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Dapat digunakan, namun Dextrose 5% lebih disukai. Stabil 24 jam suhu ruang, 48 jam kulkas."
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "Folinic Acid",
+    "status": "C",
+    "notes": "Kompatibel via Y-site pada protokol FOLFIRI."
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "Leucovorin",
+    "status": "C",
+    "notes": "Kompatibel via Y-site pada protokol FOLFIRI."
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "Ondansentron",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Irinotecan",
+    "drug2": "Dexamethason",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Berikan via infus saline yang mengalir bebas. Stabil 48 jam terlindung cahaya."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel dan stabil."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Heparin",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Terjadi presipitasi merah keruh instan antara molekul bermuatan berlawanan. Bilas jalur dengan saline jika terpasang heparin lock."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Furosemide",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Furosemid bersifat basa (pH 9), memicu dekomposisi cepat dan pengendapan Doxorubicin."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Dexamethason",
+    "status": "I",
+    "notes": "Inkompatibel bila dicampur dalam satu wadah; berikan terpisah dengan pembilasan saline."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Cyclophosphamid",
+    "status": "C",
+    "notes": "Kompatibel Y-site selama protokol AC dan FAC; berikan Doxorubicin push pelan, bilas saline, lalu infus Cyclophosphamide."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Bleomycin Sulfat",
+    "status": "C",
+    "notes": "Kompatibel pada pemberian protokol ABVD melalui jalur intravena bertahap dengan pembilasan saline."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Vinblastin",
+    "status": "C",
+    "notes": "Kompatibel pada protokol ABVD; berikan terpisah berurutan dengan pembilasan saline."
+  },
+  {
+    "drug1": "Doxorubicin",
+    "drug2": "Dacarbazine",
+    "status": "C",
+    "notes": "Kompatibel Y-site; pastikan infus Dacarbazine terlindung dari paparan cahaya langsung."
+  },
+  {
+    "drug1": "Bleomycin Sulfat",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Stabil 24 jam suhu ruang, 48 jam kulkas."
+  },
+  {
+    "drug1": "Bleomycin Sulfat",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel dan stabil."
+  },
+  {
+    "drug1": "Bleomycin Sulfat",
+    "drug2": "Vinblastin",
+    "status": "C",
+    "notes": "Kompatibel via Y-site pada protokol ABVD."
+  },
+  {
+    "drug1": "Bleomycin Sulfat",
+    "drug2": "Dacarbazine",
+    "status": "C",
+    "notes": "Kompatibel via Y-site pada protokol ABVD."
+  },
+  {
+    "drug1": "Vinblastin",
+    "drug2": "Furosemide",
+    "status": "I",
+    "notes": "Perbedaan pH ekstrem dapat memicu instabilitas alkaloid vinca."
+  },
+  {
+    "drug1": "Dacarbazine",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Wajib ditutup aluminium foil / kantong amber karena fotosensitif tinggi."
+  },
+  {
+    "drug1": "Dacarbazine",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel terlindung cahaya."
+  },
+  {
+    "drug1": "Dacarbazine",
+    "drug2": "Heparin",
+    "status": "I",
+    "notes": "Inkompatibel: Risiko presipitasi langsung pada jalur Y-site."
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar pilihan untuk infus Rituximab. Konsentrasi larutan 1-4 mg/mL."
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel jika NaCl tidak tersedia."
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "Cyclophosphamid",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol R-CHOP; berikan Rituximab pertama, bilas jalur saline, lalu Cyclophosphamide."
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "Doxorubicin",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol R-CHOP."
+  },
+  {
+    "drug1": "Rituximab",
+    "drug2": "Vincristine",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol R-CHOP."
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Stabil 24 jam suhu ruang, 6 hari kulkas."
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel dan stabil."
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "Mesna (Uromitexan)",
+    "status": "C",
+    "notes": "SANGAT KOMPATIBEL: Dapat dicampur dalam satu kantong infus yang sama atau Y-site untuk uroproteksi terhadap akrolein."
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "Ondansentron",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Cyclophosphamid",
+    "drug2": "Dexamethason",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Docetaxel",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Gunakan kantong non-PVC (bebas DEHP) dan filter in-line 0.22 mikron. Infus dalam 1 jam."
+  },
+  {
+    "drug1": "Docetaxel",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel dalam wadah non-PVC."
+  },
+  {
+    "drug1": "Docetaxel",
+    "drug2": "Carboplatin",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol TCHP; berikan Docetaxel terlebih dahulu, bilas saline, lalu Carboplatin."
+  },
+  {
+    "drug1": "Docetaxel",
+    "drug2": "Carboplastin",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol TCHP."
+  },
+  {
+    "drug1": "Docetaxel",
+    "drug2": "Trastuzumab",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol TCHP; berikan antibodi monoklonal terlebih dahulu."
+  },
+  {
+    "drug1": "Docetaxel",
+    "drug2": "Pertuzumab",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol TCHP."
+  },
+  {
+    "drug1": "Carboplatin",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Stabil 24 jam suhu ruang (25°C)."
+  },
+  {
+    "drug1": "Carboplatin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Pelarut standar. Stabil 24 jam suhu ruang."
+  },
+  {
+    "drug1": "Carboplatin",
+    "drug2": "Water for Injection",
+    "status": "C",
+    "notes": "Untuk rekonstitusi serbuk kering Carboplatin."
+  },
+  {
+    "drug1": "Carboplatin",
+    "drug2": "Ondansentron",
+    "status": "C",
+    "notes": "Kompatibel via Y-site."
+  },
+  {
+    "drug1": "Carboplatin",
+    "drug2": "Mesna (Uromitexan)",
+    "status": "I",
+    "notes": "Mesna dapat menginaktivasi aktivitas antitumor Carboplatin secara in vitro; jangan dicampur bersama."
+  },
+  {
+    "drug1": "Trastuzumab",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar WAJIB (250 mL NaCl 0.9%). JANGAN dikocok (dapat merusak struktur tersier antibodi). Stabil 24 jam suhu 2-8°C."
+  },
+  {
+    "drug1": "Trastuzumab",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Larutan glukosa / Dekstrosa memicu agregasi protein antibodi monoklonal dan kehilangan aktivitas biologis."
+  },
+  {
+    "drug1": "Trastuzumab",
+    "drug2": "Pertuzumab",
+    "status": "C",
+    "notes": "Kompatibel sekuensial pada protokol TCHP (Pertuzumab diinfus terlebih dahulu dalam 250 mL NS, bilas jalur, lalu Trastuzumab)."
+  },
+  {
+    "drug1": "Pertuzumab",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar WAJIB (250 mL NaCl 0.9%). JANGAN dikocok kuat. Stabil 24 jam pada suhu 2-8°C."
+  },
+  {
+    "drug1": "Pertuzumab",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Larutan dekstrosa menyebabkan degradasi konformasi protein antibodi monoklonal."
+  },
+  {
+    "drug1": "Pertuzumab",
+    "drug2": "Ringer Laktat",
+    "status": "I",
+    "notes": "Inkompatibel untuk pelarutan Pertuzumab."
+  },
+  {
+    "drug1": "Leucovorin",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Pelarut standar. Stabil 24 jam suhu ruang, 7 hari kulkas."
+  },
+  {
+    "drug1": "Leucovorin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Pelarut standar untuk infus simultan FOLFOX / FOLFIRI."
+  },
+  {
+    "drug1": "Paclitaxel",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "Wajib menggunakan wadah dan set infus non-PVC (bebas DEHP) serta filter in-line 0.22 mikron."
+  },
+  {
+    "drug1": "Paclitaxel",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "C",
+    "notes": "Kompatibel dalam wadah non-PVC."
+  },
+  {
+    "drug1": "Paclitaxel",
+    "drug2": "Cisplatin",
+    "status": "C",
+    "notes": "SEKUENS PENTING: Paclitaxel HARUS diberikan SEBELUM Cisplatin untuk mencegah penurunan klirens paclitaxel dan mielosupresi berat."
+  },
+  {
+    "drug1": "Paclitaxel",
+    "drug2": "Carboplatin",
+    "status": "C",
+    "notes": "Berikan Paclitaxel terlebih dahulu sebelum Carboplatin."
+  },
+  {
+    "drug1": "Paclitaxel",
+    "drug2": "Doxorubicin",
+    "status": "C",
+    "notes": "Berikan Doxorubicin terlebih dahulu, lalu beri jeda minimal 1-4 jam sebelum Paclitaxel untuk meminimalkan risiko kardiotoksisitas aditif."
+  },
+  {
+    "drug1": "Cisplatin",
+    "drug2": "NaCl 0.9%",
+    "status": "C",
+    "notes": "WAJIB dilarutkan dalam cairan mengandung minimal 0.2% - 0.9% ion klorida untuk menjaga kestabilan molekul platinum."
+  },
+  {
+    "drug1": "Cisplatin",
+    "drug2": "Water for Injection",
+    "status": "I",
+    "notes": "INKOMPATIBEL tanpa ion klorida: Hidrolisis cepat menjadi metabolit aquated yang sangat nefrotoksik dan tidak stabil."
+  },
+  {
+    "drug1": "Cisplatin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "I",
+    "notes": "Jangan gunakan D5W murni tanpa garam klorida. Harus dikombinasikan dengan minimal NaCl 0.45% atau NaCl 0.9%."
+  },
+  {
+    "drug1": "Cisplatin",
+    "drug2": "Mannitol",
+    "status": "C",
+    "notes": "Kompatibel; sering ditambahkan dalam protokol hidrasi cisplatin untuk memicu diuresis osmotik proteksi tubulus ginjal."
+  },
+  {
+    "drug1": "Ceftriaxone",
+    "drug2": "Calcium Gluconate",
+    "status": "I",
+    "notes": "KONTRAINDIKASI FATAL: Terbentuk presipitat garam kalsium-seftriakson tidak larut yang dapat menyumbat mikrovaskular paru dan ginjal. Dilarang keras dicampur atau diberikan pada jalur yang sama!"
+  },
+  {
+    "drug1": "Ceftriaxone",
+    "drug2": "Ringer Laktat",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Ringer Laktat mengandung ion kalsium yang memicu presipitasi kristal kalsium-seftriakson."
+  },
+  {
+    "drug1": "Phenytoin",
+    "drug2": "Larutan Dextrosa 5%",
+    "status": "I",
+    "notes": "KONTRAINDIKASI KRITIS: Penurunan pH larutan glukosa menyebabkan kristalisasi dan presipitasi instan kristal fenitoin bebas. HANYA kompatibel dengan NaCl 0.9%!"
+  },
+  {
+    "drug1": "Vancomycin",
+    "drug2": "Piperacillin-Tazobactam",
+    "status": "I",
+    "notes": "INKOMPATIBEL Y-SITE: Memicu presipitasi partikulat sub-visual dan sinergi risiko nefrotoksisitas akut (AKI). Gunakan jalur intravena terpisah."
+  },
+  {
+    "drug1": "Midazolam",
+    "drug2": "Furosemide",
+    "status": "I",
+    "notes": "INKOMPATIBEL: Perbedaan pH ekstrem (Midazolam asam pH 3-3.6, Furosemid basa pH 9) menyebabkan presipitasi putih keruh seketika pada jalur Y-site."
+  },
+  {
+    "drug1": "Dobutamine",
+    "drug2": "Sodium Bicarbonat",
+    "status": "I",
+    "notes": "INKOMPATIBEL: pH alkali Sodium Bikarbonat menginaktivasi dan mengoksidasi katekolamin Dobutamin menjadi larutan berwarna merah muda/cokelat."
   }
 ];
 
@@ -1987,11 +2597,12 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvError, setCsvError] = useState("");
 
+  const [mainViewMode, setMainViewMode] = useState<"iv_checker" | "chemo_regimens">("iv_checker");
   const [activeTab, setActiveTab] = useState<"drugs" | "matrix">("drugs");
 
   const [selectedDrugs, setSelectedDrugs] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-      const [ivDrugsState, setIvDrugsState] = useState<IvDrug[]>(() => {
+  const [ivDrugsState, setIvDrugsState] = useState<IvDrug[]>(() => {
     const saved = localStorage.getItem("ivDrugsData_v2");
     if (saved) {
       try {
@@ -2027,7 +2638,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
         const parsed: CompatibilityRecord[] = JSON.parse(saved);
         if (parsed.length > 0) {
           // Reconcile with INITIAL_MATRIX to apply updates (e.g. Ceftriaxone + Ringer Laktat -> I)
-          return parsed.map(item => {
+          const updated = parsed.map(item => {
             const match = INITIAL_MATRIX.find(
               m => (m.drug1.toLowerCase() === item.drug1.toLowerCase() && m.drug2.toLowerCase() === item.drug2.toLowerCase()) ||
                    (m.drug1.toLowerCase() === item.drug2.toLowerCase() && m.drug2.toLowerCase() === item.drug1.toLowerCase())
@@ -2037,6 +2648,16 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
             }
             return item;
           });
+
+          // Also append any new pairs from INITIAL_MATRIX that are not present in parsed
+          const missing = INITIAL_MATRIX.filter(init =>
+            !updated.some(u => 
+              (u.drug1.toLowerCase() === init.drug1.toLowerCase() && u.drug2.toLowerCase() === init.drug2.toLowerCase()) ||
+              (u.drug1.toLowerCase() === init.drug2.toLowerCase() && u.drug2.toLowerCase() === init.drug1.toLowerCase())
+            )
+          );
+
+          return [...updated, ...missing];
         }
       } catch (e) {
         return INITIAL_MATRIX;
@@ -2044,6 +2665,26 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     }
     return INITIAL_MATRIX;
   });
+
+  const handleSelectRegimenForIvCheck = (drugIds: string[]) => {
+    const validIds: string[] = [];
+    drugIds.forEach(targetId => {
+      const match = ivDrugsState.find(d => 
+        d.id.toLowerCase() === targetId.toLowerCase() || 
+        d.name.toLowerCase().includes(targetId.toLowerCase()) ||
+        targetId.toLowerCase().includes(d.id.toLowerCase())
+      );
+      if (match && !validIds.includes(match.id)) {
+        validIds.push(match.id);
+      }
+    });
+
+    if (validIds.length > 0) {
+      setSelectedDrugs(validIds.slice(0, 8));
+    }
+    setMainViewMode("iv_checker");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     localStorage.setItem("ivDrugsData_v2", JSON.stringify(ivDrugsState));
@@ -2157,10 +2798,10 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     if (selectedDrugs.includes(id)) {
       setSelectedDrugs(prev => prev.filter(d => d !== id));
     } else {
-      if (selectedDrugs.length < 5) {
+      if (selectedDrugs.length < 10) {
         setSelectedDrugs(prev => [...prev, id]);
       } else {
-        alert("Maksimal 5 obat/cairan yang dapat dipilih untuk perbandingan.");
+        alert("Maksimal 10 obat/cairan yang dapat dipilih untuk perbandingan.");
       }
     }
   };
@@ -2175,7 +2816,57 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
-      
+
+      {/* TOP NAVIGATION: IV COMPATIBILITY vs CHEMO REGIMENS */}
+      <div className="col-span-12 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setMainViewMode("iv_checker")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              mainViewMode === "iv_checker"
+                ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Droplets className="w-4 h-4 text-emerald-600" />
+            <span>Kompatibilitas IV (Y-Site & Pelarut)</span>
+            {selectedDrugs.length > 0 && (
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full ml-1">
+                {selectedDrugs.length} Dipilih
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMainViewMode("chemo_regimens")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              mainViewMode === "chemo_regimens"
+                ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>Regimen Kemoterapi & Protokol Kanker</span>
+            <span className="hidden sm:inline-flex bg-indigo-100 text-indigo-800 text-[10px] font-black px-2 py-0.5 rounded-full ml-1">
+              ABVD • R-CHOP • FOLFOX • TCHP • FAC
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 px-2 text-xs text-slate-500 font-sans">
+          <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span>Clinical Decision Support System Apoteker & Tenaga Medis</span>
+        </div>
+      </div>
+
+      {mainViewMode === "chemo_regimens" ? (
+        <div className="col-span-12 w-full">
+          <ChemoRegimensView onSelectRegimenForIvCheck={handleSelectRegimenForIvCheck} />
+        </div>
+      ) : (
+        <>
       {/* LEFT COLUMN: Drug Selection */}
       <section className="lg:col-span-4 space-y-6">
         {isAdmin && (
@@ -2423,6 +3114,8 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
           </div>
         </div>
       </section>
+      </>
+      )}
 
       {isConfirmClearOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">

@@ -1,6 +1,6 @@
 {
   "name": "Pusat Informasi Obat RSUD Palembang BARI",
-  "description": "Aplikasi Pusat Informasi Obat RSUD Palembang BARI. Menyediakan kalkulator dosis obat, skrining interaksi, dan peta persebaran fasilitas kesehatan.",
+  "description": "Aplikasi Pusat Informasi Obat RSUD Palembang BARI. Menyediakan informasi obat, kompatibilitas IV, regimen kemoterapi kanker, kalkulator dosis & BSA, serta skrining interaksi obat.",
   "requestFramePermissions": [
     "geolocation"
   ],
