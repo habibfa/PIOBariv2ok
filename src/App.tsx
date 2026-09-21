@@ -62,7 +62,9 @@ import {
   Tag,
   Copy,
   CheckCheck,
-  Zap
+  Zap,
+  Vibrate,
+  BellRing
 } from "lucide-react";
 import HighlightText from "./components/HighlightText";
 import { matchDrugSimultaneous, SearchScope } from "./utils/searchUtils";
