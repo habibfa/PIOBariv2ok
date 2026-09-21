@@ -3,6 +3,7 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Upload, Save, Menu } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
+import { getDrugSafetyReview } from "./data/drugSafetyMetadata";
 import { DRUG_PRESETS as INITIAL_DRUG_PRESETS } from "./presets";
 import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction } from "./interactions";
 import { calculateDosage, calculateMostellerBsa, calculateCockcroftGault } from "./mathUtils";
@@ -82,7 +83,7 @@ import { DiseasesConditions } from "./DiseasesConditions";
 import { MedicalCalculators } from "./MedicalCalculators";
 
 // Helper function to extract Generic and Brand names
-const getGenericAndBrand = (name: string) => {
+const getGenericAndBrand = (name: string, presetId?: string) => {
   const cleanName = name.replace(/\s+-\s+.*$/, ""); // removes trailing " - Anak", " - Dewasa", etc. (only when surrounded by whitespace)
   const parenMatch = cleanName.match(/\(([^)]+)\)/);
   let brand = cleanName;
@@ -94,170 +95,290 @@ const getGenericAndBrand = (name: string) => {
     brand = cleanName.trim();
     generic = cleanName.trim();
   }
+
+  const idLower = (presetId || "").toLowerCase();
+  const brandLower = brand.toLowerCase();
+
+  // Canonical Brand to Generic associations for known clinical drugs
+  if (idLower === "cinolon" || brandLower.startsWith("cinolon")) {
+    brand = "Cinolon (Cinolon / Cinolon-N)";
+    generic = "Fluocinolone Acetonide & Neomycin Sulfate";
+  } else if (idLower === "concor" || brandLower.startsWith("concor")) {
+    brand = "Concor";
+    generic = "Bisoprolol Fumarat";
+  } else if (idLower === "cortidex" || brandLower.startsWith("cortidex")) {
+    brand = "Cortidex";
+    generic = "Dexamethasone";
+  } else if (idLower === "vectrine" || brandLower.startsWith("vectrine")) {
+    brand = "Vectrine";
+    generic = "Erdosteine";
+  } else if (idLower === "viccillin" || brandLower.startsWith("viccillin")) {
+    brand = "Viccillin";
+    generic = "Ampisilin / Sulbaktam";
+  } else if (idLower === "zinkid" || brandLower.startsWith("zinkid")) {
+    brand = "Zinkid";
+    generic = "Zinc Sulfat";
+  } else if (idLower === "thrombophob" || brandLower.startsWith("thrombophob")) {
+    brand = "Thrombophob";
+    generic = "Heparin Sodium & Benzil Nikotinat";
+  } else if (idLower === "uperio" || brandLower.startsWith("uperio")) {
+    brand = "Uperio";
+    generic = "Sakubitril / Valsartan";
+  } else if (idLower === "valisanbe" || brandLower.startsWith("valisanbe")) {
+    brand = "Valisanbe";
+    generic = "Diazepam";
+  } else if (idLower === "becom" || brandLower.startsWith("becom")) {
+    brand = "Becom (Becom-C / Becom-Zet)";
+    generic = "Vitamin B Kompleks + Vitamin C";
+  } else if (idLower === "digoxin" || brandLower.startsWith("digoksin") || brandLower.startsWith("digoxin")) {
+    brand = "Digoksin";
+    generic = "Digoxin";
+  } else if (idLower === "chloramphenicol" || brandLower.startsWith("kloramfenikol") || brandLower.startsWith("chloramphenicol")) {
+    brand = "Kloramfenikol";
+    generic = "Chloramphenicol";
+  } else if (idLower === "dobutamin" || brandLower.startsWith("dobutamin") || brandLower.startsWith("dobutamine")) {
+    brand = "Dobutamin";
+    generic = "Dobutamine";
+  } else if (idLower === "domperidone_ped" || brandLower.startsWith("domperidon") || brandLower.startsWith("domperidone")) {
+    brand = "Domperidon";
+    generic = "Domperidone";
+  } else if (idLower === "doxorubicin_onc" || brandLower.startsWith("doksorubisin") || brandLower.startsWith("doxorubicin")) {
+    brand = "Doksorubisin";
+    generic = "Doxorubicin";
+  } else if (idLower === "carboplatin" || brandLower.startsWith("karboplatin") || brandLower.startsWith("carboplatin")) {
+    brand = "Karboplatin";
+    generic = "Carboplatin";
+  } else if (idLower === "triamcinolone" || brandLower.startsWith("triamcinolone") || brandLower.startsWith("triamsinolon")) {
+    brand = "Triamcinolone";
+    generic = "Triamsinolon Asetonid";
+  }
+
   return { brand, generic };
 };
 
-// Helper to sanitize and deduplicate drug presets list (strictly unifies Doxorubicin, Azithromycin, Becom, Bisoprolol, and Budesonide into canonical entries)
-const sanitizeDrugPresets = (list: DrugPreset[]): DrugPreset[] => {
-  if (!Array.isArray(list)) return INITIAL_DRUG_PRESETS;
+// Helper to determine whether a drug is a Proprietary Brand (Obat Bermerek / Paten) or Generic (Generik)
+const isBrandDrug = (preset: DrugPreset, brandName: string, genericName: string): boolean => {
+  const brandLower = brandName.toLowerCase();
+  const genericLower = genericName.toLowerCase();
+  const idLower = preset.id.toLowerCase();
+  const nameLower = preset.name.toLowerCase();
 
-  // Canonical entries from INITIAL_DRUG_PRESETS
-  const canonicalDoxo = INITIAL_DRUG_PRESETS.find(p => p.id === "doxorubicin_onc");
-  const canonicalAzithro = INITIAL_DRUG_PRESETS.find(p => p.id === "azithromycin");
-  const canonicalBecom = INITIAL_DRUG_PRESETS.find(p => p.id === "becom");
-  const canonicalBisoprolol = INITIAL_DRUG_PRESETS.find(p => p.id === "bisoprolol");
-  const canonicalBudesonide = INITIAL_DRUG_PRESETS.find(p => p.id === "budesonide");
+  // Known proprietary trade brands
+  const knownBrandKeywords = [
+    "concor", "cortidex", "cinolon", "vectrine", "viccillin", "zinkid", 
+    "valisanbe", "uperio", "thrombophob", "becom", "sanmol", "pamol", 
+    "panadol", "tempra", "biogesic", "dumin", "proris", "amoxsan", "baquinor", 
+    "ciproxin", "bufacetin", "colme", "kemicetine", "lanoxin", "fargoxin", 
+    "herbesser", "farmabes", "dobutrex", "cardiotone", "motilium", "vometa", 
+    "vomisert", "inpepsa", "neciblok", "stesolid", "valdimex", "ventolin", 
+    "astharol", "pulmicort", "obucort", "symbicort", "seretide", "lasix", 
+    "farsix", "norvask", "divask", "lipitor", "crestor", "plavix", "bioplacenton", 
+    "burnazin", "tremenza", "rhinos", "lapifed", "ryvel", "tiriz", "cerini"
+  ];
+
+  if (knownBrandKeywords.some(b => idLower.includes(b) || brandLower.includes(b) || nameLower.includes(b))) {
+    return true;
+  }
+
+  // Pure generic pairs (translations of the same generic INN substance)
+  const isGenericTranslation =
+    brandLower === genericLower ||
+    (brandLower.includes("digoksin") && genericLower.includes("digoxin")) ||
+    (brandLower.includes("domperidon") && genericLower.includes("domperidone")) ||
+    (brandLower.includes("kloramfenikol") && genericLower.includes("chloramphenicol")) ||
+    (brandLower.includes("chloramphenicol") && genericLower.includes("kloramfenikol")) ||
+    (brandLower.includes("doksorubisin") && genericLower.includes("doxorubicin")) ||
+    (brandLower.includes("karboplatin") && genericLower.includes("carboplatin")) ||
+    (brandLower.includes("triamcinolone") && genericLower.includes("triamsinolon")) ||
+    (brandLower.includes("dobutamin") && genericLower.includes("dobutamine")) ||
+    (brandLower.includes("amoksisilin") && genericLower.includes("amoxicillin")) ||
+    (brandLower.includes("azitromisin") && genericLower.includes("azithromycin")) ||
+    (brandLower.includes("sefiksim") && genericLower.includes("cefixime")) ||
+    (brandLower.includes("setirizin") && genericLower.includes("cetirizine")) ||
+    (brandLower.includes("siprofloksasin") && genericLower.includes("ciprofloxacin"));
+
+  if (isGenericTranslation) {
+    return false;
+  }
+
+  if (brandLower !== genericLower && !idLower.startsWith("auto_")) {
+    return true;
+  }
+
+  return false;
+};
+
+// Canonical key helper to identify duplicate drugs and variants
+const getDrugCanonicalMergeKey = (p: { id: string; name: string }): string => {
+  let clean = p.name.replace(/\s*-\s*.*$/, "").trim();
+  const parenMatch = clean.match(/^(.*?)\s*\((.*?)\)$/);
+  let base = parenMatch ? parenMatch[2].trim() : clean;
+  let norm = base.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (norm.startsWith("esomeprazol")) return "esomeprazole";
+  if (norm.startsWith("pseudoefedrin") || norm.startsWith("pseudoephedrine")) return "pseudoephedrine";
+  if (norm.startsWith("dextromethorphan")) return "dextromethorphan";
+
+  if (norm === "asetaminofen" || norm.includes("paracetamol")) return "paracetamol";
+  if (norm.includes("ibuprofen")) return "ibuprofen";
+  if (norm.includes("dexamethasone") || norm.includes("deksametason")) return "dexamethasone";
+  if (norm === "gg" || norm.includes("guaifenesin") || norm.includes("gliserilguaiakolat")) return "guaifenesin";
+  if (norm.includes("candesartan") || norm.includes("kandesartan")) return "candesartan";
+  if (norm.includes("captopril") || norm.includes("kaptopril")) return "captopril";
+  if (norm.includes("cefadroxil") || norm.includes("sefadroksil")) return "cefadroxil";
+  if (norm.includes("ceftriaxone") || norm.includes("seftriakson")) return "ceftriaxone";
+  if (norm.includes("clarithromycin") || norm.includes("klaritromisin")) return "clarithromycin";
+  if (norm.includes("clindamycin") || norm.includes("klindamisin")) return "clindamycin";
+  if (norm.includes("clopidogrel") || norm.includes("klopidogrel")) return "clopidogrel";
+  if (norm.includes("cotrimoxazole") || norm.includes("kotrimoksazol")) return "cotrimoxazole";
+  if (norm.includes("diphenhydramine") || norm.includes("difenhidramin")) return "diphenhydramine";
+  if (norm.includes("erythromycin") || norm.includes("eritromisin")) return "erythromycin";
+  if (norm.includes("fluconazole") || norm.includes("flukonazol")) return "fluconazole";
+  if (norm.includes("furosemid") || norm.includes("furosemide")) return "furosemide";
+  if (norm.includes("gliclazide") || norm.includes("gliklazid")) return "gliclazide";
+  if (norm.includes("griseofulvin")) return "griseofulvin";
+  if (norm.includes("haloperidol")) return "haloperidol";
+  if (norm.includes("ketoconazol") || norm.includes("ketokonazol")) return "ketoconazole";
+  if (norm.includes("lansoprazol") || norm.includes("lansoprazole")) return "lansoprazole";
+  if (norm.includes("loperamid") || norm.includes("loperamide")) return "loperamide";
+  if (norm.includes("loratadin") || norm.includes("loratadine")) return "loratadine";
+  if (norm.includes("meloksikam") || norm.includes("meloxicam")) return "meloxicam";
+  if (norm.includes("metformin")) return "metformin";
+  if (norm.includes("metilprednisolon") || norm.includes("methylprednisolone")) return "methylprednisolone";
+  if (norm.includes("metronidazol") || norm.includes("metronidazole")) return "metronidazole";
+  if (norm.includes("morfin") || norm.includes("morphine")) return "morphine";
+  if (norm.includes("diklofenak") || norm.includes("diclofenac")) return "diclofenac";
+  if (norm.includes("nifedipin") || norm.includes("nifedipine")) return "nifedipine";
+  if (norm.includes("omeprazol") || norm.includes("omeprazole")) return "omeprazole";
+  if (norm.includes("ondansetron")) return "ondansetron";
+  if (norm.includes("oseltamivir")) return "oseltamivir";
+  if (norm.includes("oksitosin") || norm.includes("oxytocin")) return "oxytocin";
+  if (norm.includes("pirantel") || norm.includes("pyrantel")) return "pyrantel";
+  if (norm.includes("prednison") || norm.includes("prednisone")) return "prednisone";
+  if (norm.includes("propranolol")) return "propranolol";
+  if (norm.includes("ranitidin") || norm.includes("ranitidine")) return "ranitidine";
+  if (norm.includes("rifampisin") || norm.includes("rifampicin")) return "rifampicin";
+  if (norm.includes("salbutamol")) return "salbutamol";
+  if (norm.includes("simvastatin")) return "simvastatin";
+  if (norm.includes("spiramisin") || norm.includes("spiramycin")) return "spiramycin";
+  if (norm.includes("spironolakton") || norm.includes("spironolactone")) return "spironolactone";
+  if (norm.includes("warfarin")) return "warfarin";
+  if (norm.includes("atorvastatin")) return "atorvastatin";
+  if (norm.includes("ctm") || norm.includes("klorfeniramin")) return "chlorpheniramine";
+  if (norm.includes("isoniazid") || norm === "inh") return "isoniazid";
+  if (norm.includes("nasetilsistein") || norm === "nace") return "acetylcysteine";
+  if (norm.includes("thiamphenicol") || norm.includes("tiamfenikol") || norm.includes("biothicol")) return "thiamphenicol";
+  if (norm.includes("carbamazepine") || norm.includes("karbamazepin") || norm.includes("bamgetol")) return "carbamazepine";
+  if (norm.includes("favipiravir") || norm.includes("avigan")) return "favipiravir";
+  if (norm.includes("doxorubicin") || norm.includes("doksorubisin")) return "doxorubicin";
+  if (norm.includes("azithromycin") || norm.includes("azitromisin")) return "azithromycin";
+  if (norm.includes("bisoprolol") || norm.includes("concor")) return "bisoprolol";
+  if (norm.includes("budesonid") || norm.includes("budesonide")) return "budesonide";
+  if (norm.includes("tramadol")) return "tramadol";
+  if (norm.includes("vancomycin") || norm.includes("vankomisin")) return "vancomycin";
+  if (norm.includes("thiamazole") || norm.includes("tiamazol") || norm.includes("metimazol")) return "thiamazole";
+  if (norm.includes("thrombophob")) return "thrombophob";
+  if (norm.includes("triamcinolone") || norm.includes("triamsinolon")) return "triamcinolone";
+  if (norm.includes("uperio")) return "uperio";
+  if (norm.includes("valisanbe") || (norm.includes("diazepam") && p.id.includes("valisanbe"))) return "diazepam";
+  if (norm.includes("vectrine") || norm.includes("erdosteine")) return "erdosteine";
+  if (norm.includes("viccillin")) return "viccillin";
+  if (norm.includes("zinkid") || (norm.includes("zinc") && p.id.includes("zinkid"))) return "zinc";
+  if (norm.includes("cefixime") || norm.includes("sefiksim")) return "cefixime";
+  if (norm.includes("cetirizine") || norm.includes("setirizin")) return "cetirizine";
+  if (norm.includes("chloramphenicol") || norm.includes("kloramfenikol") || norm.includes("bufacetin")) return "chloramphenicol";
+  if (norm.includes("cinolon")) return "cinolon";
+  if (norm.includes("ciprofloxacin") || norm.includes("siprofloksasin") || norm.includes("baquinor")) return "ciprofloxacin";
+  if (norm.includes("cortidex")) return "dexamethasone";
+  if (norm.includes("digoxin") || norm.includes("digoksin")) return "digoxin";
+  if (norm.includes("diltiazem")) return "diltiazem";
+  if (norm.includes("dobutamin") || norm.includes("dobutamine")) return "dobutamine";
+  if (norm.includes("domperidon") || norm.includes("domperidone")) return "domperidone";
+
+  if (norm.length > 2) return "name_" + norm;
+  return p.id;
+};
+
+// Helper to sanitize and deduplicate drug presets list by merging data for duplicate drug entries
+const sanitizeDrugPresets = (list: DrugPreset[]): DrugPreset[] => {
+  const sourceList = Array.isArray(list) && list.length > 0 ? list : INITIAL_DRUG_PRESETS;
+
+  // Group by canonical merge key
+  const groups = new Map<string, DrugPreset[]>();
+  for (const item of sourceList) {
+    if (!item || !item.id || !item.name) continue;
+    const key = getDrugCanonicalMergeKey(item);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+  }
+
+  // Also ensure all canonical INITIAL_DRUG_PRESETS are represented
+  for (const initItem of INITIAL_DRUG_PRESETS) {
+    const key = getDrugCanonicalMergeKey(initItem);
+    if (!groups.has(key)) {
+      groups.set(key, [{ ...initItem }]);
+    }
+  }
 
   const result: DrugPreset[] = [];
-  const existingIds = new Set<string>();
-  let doxoIncluded = false;
-  let azithroIncluded = false;
-  let becomIncluded = false;
-  let bisoprololIncluded = false;
-  let budesonideIncluded = false;
+  const processedKeys = new Set<string>();
 
-  for (const item of list) {
-    if (!item || !item.id) continue;
+  for (const [key, items] of groups.entries()) {
+    if (processedKeys.has(key)) continue;
+    processedKeys.add(key);
 
-    const lowerId = (item.id || "").toLowerCase().trim();
-    const lowerName = (item.name || "").toLowerCase().trim();
-
-    // Remove explicitly excluded entries (e.g., Bifidobacterium)
-    if (lowerId.includes("bifidobacterium") || lowerName.includes("bifidobacterium")) {
+    if (items.length === 1) {
+      result.push({ ...items[0] });
       continue;
     }
 
-    // 1. Doxorubicin / Doksorubisin
-    const isDoxo =
-      lowerId === "doxorubicin_onc" ||
-      lowerId === "auto_doxorubicin" ||
-      lowerId.includes("doxorubicin") ||
-      lowerId.includes("doksorubisin") ||
-      lowerName === "doksorubisin" ||
-      lowerName === "doxorubicin" ||
-      lowerName.includes("doksorubisin (doxorubicin)") ||
-      lowerName.startsWith("doksorubisin");
+    // Pick primary item (favor non-auto ID or item with detailed dosing parameters)
+    const primary = items.find(x => !x.id.startsWith("auto_")) || items[0];
 
-    if (isDoxo) {
-      if (!doxoIncluded) {
-        const itemToAdd = canonicalDoxo ? { ...canonicalDoxo } : item;
-        result.push(itemToAdd);
-        existingIds.add(itemToAdd.id);
-        doxoIncluded = true;
+    // Combine notes (formulations, strengths, sediaan) without duplicates
+    const rawNotes = items
+      .map(x => x.notes?.trim())
+      .filter((n): n is string => Boolean(n && n.length > 0));
+    const uniqueNotes: string[] = [];
+    for (const note of rawNotes) {
+      if (!uniqueNotes.some(existing => existing.toLowerCase().includes(note.toLowerCase()) || note.toLowerCase().includes(existing.toLowerCase()))) {
+        uniqueNotes.push(note);
       }
-      continue;
     }
+    const mergedNotes = uniqueNotes.join(" | ") || primary.notes;
 
-    // 2. Azithromycin
-    const isAzithro =
-      lowerId === "azithromycin" ||
-      lowerId === "azithromycin_ped" ||
-      lowerId === "auto_azithromycin" ||
-      lowerId.includes("azithromycin") ||
-      lowerName === "azithromycin" ||
-      lowerName.startsWith("azithromycin");
-
-    if (isAzithro) {
-      if (!azithroIncluded) {
-        const itemToAdd = canonicalAzithro ? { ...canonicalAzithro } : item;
-        result.push(itemToAdd);
-        existingIds.add(itemToAdd.id);
-        azithroIncluded = true;
+    // Combine indications cleanly
+    const rawIndications = items
+      .map(x => x.indication?.trim())
+      .filter((ind): ind is string => Boolean(ind && ind !== "-" && ind.length > 0));
+    const uniqueIndications: string[] = [];
+    for (const ind of rawIndications) {
+      if (!uniqueIndications.some(existing => existing.toLowerCase().includes(ind.toLowerCase()))) {
+        uniqueIndications.push(ind);
       }
-      continue;
+    }
+    const mergedIndication = uniqueIndications.join("; ") || primary.indication;
+
+    // Combine adjustments
+    const requiresRenalAdjustment = items.some(x => x.requiresRenalAdjustment);
+
+    // Standardized merged drug name
+    let mergedName = primary.name;
+    if (key === "paracetamol" && !mergedName.includes("Dewasa")) {
+      mergedName = "Paracetamol (Asetaminofen) - Anak & Dewasa";
+    } else if (key === "ibuprofen" && !mergedName.includes("Dewasa")) {
+      mergedName = "Ibuprofen - Anak & Dewasa";
+    } else if (key === "omeprazole" && !mergedName.includes("Anak")) {
+      mergedName = "Omeprazol (Omeprazole) - PPI Dewasa & Anak";
     }
 
-    // 3. Becom (Becom-C & Becom-Zet)
-    const isBecom =
-      lowerId === "becom" ||
-      lowerId === "becom_c" ||
-      lowerId === "becom_zet" ||
-      lowerId.startsWith("becom") ||
-      lowerName === "becom" ||
-      lowerName.startsWith("becom");
-
-    if (isBecom) {
-      if (!becomIncluded) {
-        const itemToAdd = canonicalBecom ? { ...canonicalBecom } : item;
-        result.push(itemToAdd);
-        existingIds.add(itemToAdd.id);
-        becomIncluded = true;
-      }
-      continue;
-    }
-
-    // 4. Bisoprolol / Bisoprolol Fumarat
-    const isBisoprolol =
-      lowerId === "bisoprolol" ||
-      lowerId === "bisoprolol_adult" ||
-      lowerId.startsWith("bisoprolol") ||
-      lowerName === "bisoprolol" ||
-      lowerName.startsWith("bisoprolol");
-
-    if (isBisoprolol) {
-      if (!bisoprololIncluded) {
-        const itemToAdd = canonicalBisoprolol ? { ...canonicalBisoprolol } : item;
-        result.push(itemToAdd);
-        existingIds.add(itemToAdd.id);
-        bisoprololIncluded = true;
-      }
-      continue;
-    }
-
-    // 5. Budesonid / Budesonide
-    const isBudesonide =
-      lowerId === "budesonide" ||
-      lowerId === "budesonide_neb" ||
-      lowerId.includes("budesonid") ||
-      lowerName.includes("budesonid") ||
-      lowerName.includes("budesonide");
-
-    if (isBudesonide) {
-      if (!budesonideIncluded) {
-        const itemToAdd = canonicalBudesonide ? { ...canonicalBudesonide } : item;
-        result.push(itemToAdd);
-        existingIds.add(itemToAdd.id);
-        budesonideIncluded = true;
-      }
-      continue;
-    }
-
-    result.push(item);
-    existingIds.add(item.id);
-  }
-
-  if (!doxoIncluded && canonicalDoxo) {
-    result.push({ ...canonicalDoxo });
-    existingIds.add(canonicalDoxo.id);
-  }
-
-  if (!azithroIncluded && canonicalAzithro) {
-    result.push({ ...canonicalAzithro });
-    existingIds.add(canonicalAzithro.id);
-  }
-
-  if (!becomIncluded && canonicalBecom) {
-    result.push({ ...canonicalBecom });
-    existingIds.add(canonicalBecom.id);
-  }
-
-  if (!bisoprololIncluded && canonicalBisoprolol) {
-    result.push({ ...canonicalBisoprolol });
-    existingIds.add(canonicalBisoprolol.id);
-  }
-
-  if (!budesonideIncluded && canonicalBudesonide) {
-    result.push({ ...canonicalBudesonide });
-    existingIds.add(canonicalBudesonide.id);
-  }
-
-  // Ensure all canonical/default presets from INITIAL_DRUG_PRESETS (e.g. ciprofloxacin_adult, azithromycin)
-  // are included so existing localStorage data does not miss newly added presets
-  for (const defaultPreset of INITIAL_DRUG_PRESETS) {
-    if (!existingIds.has(defaultPreset.id)) {
-      result.push({ ...defaultPreset });
-      existingIds.add(defaultPreset.id);
-    }
+    result.push({
+      ...primary,
+      name: mergedName,
+      indication: mergedIndication,
+      notes: mergedNotes,
+      requiresRenalAdjustment,
+    });
   }
 
   return result;
@@ -296,15 +417,35 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("rifampicin") ||
     lowercaseId.includes("tetracycline") ||
     lowercaseId.includes("vancomycin") ||
+    lowercaseId.includes("viccillin") ||
+    lowercaseId.includes("ampicillin") ||
     lowercaseId.includes("cipro") ||
     lowercaseId.includes("baquinor") ||
     lowercaseId.includes("zidovudine") ||
     lowercaseName.includes("ciprofloxacin") ||
     lowercaseName.includes("antibiotik") ||
     lowercaseName.includes("antivirus") ||
-    lowercaseName.includes("antifungal")
+    lowercaseName.includes("antifungal") ||
+    lowercaseName.includes("viccillin") ||
+    lowercaseName.includes("vancomycin")
   ) {
     return { label: "Antibiotik & Anti-infeksi", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
+  }
+
+  if (
+    lowercaseId.includes("valisanbe") ||
+    lowercaseId.includes("diazepam") ||
+    lowercaseId.includes("clobazam") ||
+    lowercaseId.includes("lorazepam") ||
+    lowercaseId.includes("alprazolam") ||
+    lowercaseId.includes("phenobarbital") ||
+    lowercaseId.includes("phenytoin") ||
+    lowercaseId.includes("carbamazepine") ||
+    lowercaseId.includes("gabapentin") ||
+    lowercaseName.includes("valisanbe") ||
+    lowercaseName.includes("diazepam")
+  ) {
+    return { label: "Sistem Saraf & Sedatif", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-100" };
   }
 
   if (
@@ -323,7 +464,8 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("noncort") ||
     lowercaseName.includes("noncort") ||
     lowercaseName.includes("nyeri") ||
-    lowercaseName.includes("demam")
+    lowercaseName.includes("demam") ||
+    lowercaseName.includes("tramadol")
   ) {
     return { label: "Analgetik & Antipiretik", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-100" };
   }
@@ -335,6 +477,13 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("concor") ||
     lowercaseName.includes("concor") ||
     lowercaseId.includes("digoxin") ||
+    lowercaseId.includes("digoksin") ||
+    lowercaseName.includes("digoksin") ||
+    lowercaseId.includes("diltiazem") ||
+    lowercaseName.includes("diltiazem") ||
+    lowercaseId.includes("dobutamin") ||
+    lowercaseName.includes("dobutamin") ||
+    lowercaseId.includes("dobutamine") ||
     lowercaseId.includes("enalapril") ||
     lowercaseId.includes("furosemide") ||
     lowercaseId.includes("heparin") ||
@@ -343,7 +492,13 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("warfarin") ||
     lowercaseId.includes("amlodipine") ||
     lowercaseId.includes("candesartan") ||
-    lowercaseId.includes("captopril")
+    lowercaseId.includes("captopril") ||
+    lowercaseId.includes("uperio") ||
+    lowercaseId.includes("sacubitril") ||
+    lowercaseId.includes("valsartan") ||
+    lowercaseId.includes("thrombophob") ||
+    lowercaseName.includes("uperio") ||
+    lowercaseName.includes("thrombophob")
   ) {
     return { label: "Kardiovaskular & Diuretik", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
   }
@@ -362,8 +517,13 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("bromhexine") ||
     lowercaseId.includes("budesonide") ||
     lowercaseId.includes("xylometazoline") ||
+    lowercaseId.includes("vectrine") ||
+    lowercaseId.includes("erdosteine") ||
+    lowercaseId.includes("cetirizine") ||
+    lowercaseName.includes("cetirizine") ||
     lowercaseName.includes("asma") ||
-    lowercaseName.includes("batuk")
+    lowercaseName.includes("batuk") ||
+    lowercaseName.includes("vectrine")
   ) {
     return { label: "Pernapasan & Alergi", color: "text-cyan-700", bg: "bg-cyan-50", border: "border-cyan-100" };
   }
@@ -372,7 +532,10 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("metoclopramide") ||
     lowercaseId.includes("ranitidine") ||
     lowercaseId.includes("domperidone") ||
+    lowercaseId.includes("domperidon") ||
+    lowercaseName.includes("domperidon") ||
     lowercaseId.includes("zinc") ||
+    lowercaseId.includes("zinkid") ||
     lowercaseId.includes("lactulose") ||
     lowercaseId.includes("omeprazole") ||
     lowercaseId.includes("ondansetron") ||
@@ -380,7 +543,8 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("loperamide") ||
     lowercaseId.includes("hyoscine") ||
     lowercaseId.includes("ursodeoxycholic") ||
-    lowercaseId.includes("lansoprazole")
+    lowercaseId.includes("lansoprazole") ||
+    lowercaseName.includes("zinkid")
   ) {
     return { label: "Gastrointestinal", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-100" };
   }
@@ -390,7 +554,15 @@ const getDrugCategory = (id: string, name: string): { label: string; color: stri
     lowercaseId.includes("dexamethasone") ||
     lowercaseId.includes("methylprednisolone") ||
     lowercaseId.includes("oxytocin") ||
-    lowercaseId.includes("insulin")
+    lowercaseId.includes("insulin") ||
+    lowercaseId.includes("thiamazole") ||
+    lowercaseId.includes("triamcinolone") ||
+    lowercaseId.includes("cinolon") ||
+    lowercaseName.includes("cinolon") ||
+    lowercaseId.includes("cortidex") ||
+    lowercaseName.includes("cortidex") ||
+    lowercaseName.includes("thiamazole") ||
+    lowercaseName.includes("triamcinolone")
   ) {
     return { label: "Hormon & Kortikosteroid", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-100" };
   }
@@ -416,41 +588,161 @@ const getDrugFormulation = (preset: DrugPreset) => {
   const idLower = preset.id.toLowerCase();
   const combined = `${nameLower} ${notesLower} ${idLower}`;
 
-  if ((combined.includes("injeksi") || combined.includes("infus") || combined.includes("iv ") || combined.includes("im ")) && (combined.includes("tablet") || combined.includes("kapsul") || combined.includes("sirup") || combined.includes("suspensi"))) {
-    return { label: "Multi-Sediaan (Oral & Injeksi)", icon: "💊", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-100" };
+  // 1. Check for Topical (Krim / Salep / Gel)
+  const isTopical = 
+    idLower.includes("cinolon") ||
+    nameLower.includes("cinolon") ||
+    idLower.includes("thrombophob") ||
+    nameLower.includes("thrombophob") ||
+    idLower.includes("bioplacenton") ||
+    idLower.includes("burnazin") ||
+    combined.includes("krim") ||
+    combined.includes("cream") ||
+    combined.includes("salep") ||
+    combined.includes("ointment") ||
+    combined.includes("gel") ||
+    combined.includes("topikal") ||
+    combined.includes("lotion");
+
+  // 2. Check for Inhalation
+  const isInhalation =
+    idLower.includes("budesonide") ||
+    idLower.includes("budesonid") ||
+    combined.includes("inhaler") ||
+    combined.includes("inhalasi") ||
+    combined.includes("nebulizer") ||
+    combined.includes("respules") ||
+    combined.includes("spray") ||
+    combined.includes("semprot hidung");
+
+  // 3. Check for Suppository / Rectal
+  const isSuppository =
+    combined.includes("suppositoria") ||
+    combined.includes("supositoria") ||
+    combined.includes("enema") ||
+    combined.includes("rektal");
+
+  // 4. Check for Parenteral / Injection using word boundaries
+  const hasInjection =
+    combined.includes("injeksi") ||
+    combined.includes("injection") ||
+    combined.includes("infus") ||
+    combined.includes("infusion") ||
+    combined.includes("ampul") ||
+    combined.includes("vial") ||
+    /\b(iv|im|sc|intravena|intramuskular|subkutan)\b/i.test(combined);
+
+  // 5. Check for Solid Oral (Tablet, Kapsul, Kaplet)
+  const hasSolidOral =
+    combined.includes("tablet") ||
+    combined.includes("kapsul") ||
+    combined.includes("kaplet") ||
+    combined.includes("caplet") ||
+    combined.includes("capsule") ||
+    combined.includes("dispersible") ||
+    idLower.includes("concor") ||
+    idLower.includes("cilostazol") ||
+    idLower.includes("becom") ||
+    idLower.includes("uperio") ||
+    idLower.includes("thiamazole");
+
+  // 6. Check for Liquid Oral (Sirup, Suspensi, Drops)
+  const hasLiquidOral =
+    combined.includes("sirup") ||
+    combined.includes("suspensi") ||
+    combined.includes("drops") ||
+    combined.includes("eliksir") ||
+    combined.includes("cairan oral") ||
+    (preset.liquidConcentrationValue != null && preset.liquidConcentrationVolume != null);
+
+  // Resolution order:
+  // If explicitly topical and not oral/injeksi:
+  if (isTopical && !hasSolidOral && !hasInjection) {
+    return { label: "Krim / Salep", icon: "🧴", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" };
   }
-  if ((combined.includes("tablet") || combined.includes("kapsul")) && (combined.includes("sirup") || combined.includes("suspensi") || preset.liquidConcentrationValue)) {
-    return { label: "Oral (Tablet & Sirup)", icon: "💧", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-100" };
+
+  // Inhalation
+  if (isInhalation && !hasSolidOral) {
+    return { label: "Inhalasi", icon: "🌬️", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-200" };
   }
-  if (combined.includes("injeksi") || combined.includes("infus") || combined.includes("iv ") || combined.includes("im ")) {
-    return { label: "Parenteral (Injeksi)", icon: "💉", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-100" };
+
+  // Suppository
+  if (isSuppository && !hasSolidOral) {
+    return { label: "Suppositoria", icon: "💊", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" };
   }
-  if (combined.includes("sirup") || combined.includes("suspensi") || combined.includes("drops") || preset.liquidConcentrationValue) {
-    return { label: "Cairan Oral", icon: "💧", color: "text-cyan-700", bg: "bg-cyan-50", border: "border-cyan-100" };
+
+  // Multi-Sediaan (Oral & Injeksi)
+  if (hasInjection && (hasSolidOral || hasLiquidOral)) {
+    return { label: "Multi-Sediaan (Oral & Injeksi)", icon: "💉", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200" };
   }
-  if (combined.includes("suppositoria") || combined.includes("supositoria")) {
-    return { label: "Suppositoria", icon: "💊", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-100" };
+
+  // Solely Injection
+  if (hasInjection && !hasSolidOral && !hasLiquidOral) {
+    return { label: "Injeksi", icon: "💉", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-200" };
   }
-  if (combined.includes("salep") || combined.includes("krim") || combined.includes("gel") || combined.includes("topikal") || combined.includes("powder")) {
-    return { label: "Topikal", icon: "🧴", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-100" };
+
+  // Oral (Tablet & Sirup)
+  if (hasSolidOral && hasLiquidOral) {
+    return { label: "Oral (Tablet & Sirup)", icon: "💊", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200" };
   }
-  if (combined.includes("spray") || combined.includes("inhaler") || combined.includes("nebulizer")) {
-    return { label: "Inhalasi", icon: "🌬️", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-100" };
+
+  // Solely Liquid Oral
+  if (hasLiquidOral && !hasSolidOral) {
+    return { label: "Sirup / Suspensi", icon: "💧", color: "text-cyan-700", bg: "bg-cyan-50", border: "border-cyan-200" };
   }
-  
-  // Default to solid oral
-  return { label: "Oral Padat (Tablet/Kapsul)", icon: "💊", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
+
+  // If topical with other attributes
+  if (isTopical) {
+    return { label: "Krim / Salep", icon: "🧴", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" };
+  }
+
+  // Default: Tablet
+  return { label: "Tablet", icon: "💊", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" };
 };
 
 // Helper to provide clinical drug metadata
 const getDrugMetadata = (preset: DrugPreset) => {
-  const { brand, generic } = getGenericAndBrand(preset.name);
+  const { brand, generic } = getGenericAndBrand(preset.name, preset.id);
   
   const cleanBrand = brand;
   const cleanGeneric = generic;
+  const isBrand = isBrandDrug(preset, cleanBrand, cleanGeneric);
   
   let composition = "";
-  if (preset.id.includes("azithromycin")) {
+  const genericLower = cleanGeneric.toLowerCase();
+  const idLowerPreset = preset.id.toLowerCase();
+
+  if (idLowerPreset.includes("paracetamol") || genericLower.includes("paracetamol") || idLowerPreset.includes("asetaminofen")) {
+    composition = `Tiap 0.6 mL drop mengandung Paracetamol 60 mg; tiap 1 mL drop mengandung 100 mg; sirup 120 mg/5 mL; sirup forte 250 mg/5 mL; tablet/kaplet 500 mg & 650 mg; infus IV 10 mg/mL (1000 mg/100 mL); suppositoria rektal 125 mg & 250 mg`;
+  } else if (idLowerPreset.includes("ibuprofen") || genericLower.includes("ibuprofen")) {
+    composition = `Tiap 5 mL sirup suspensi mengandung Ibuprofen 100 mg; sirup forte 200 mg/5 mL; tablet salut selaput 200 mg & 400 mg`;
+  } else if (idLowerPreset.includes("captopril") || genericLower.includes("captopril") || genericLower.includes("kaptopril")) {
+    composition = `Tiap tablet mengandung Kaptopril 12.5 mg, 25 mg, atau 50 mg`;
+  } else if (idLowerPreset.includes("candesartan") || genericLower.includes("candesartan") || genericLower.includes("kandesartan")) {
+    composition = `Tiap tablet mengandung Kandesartan Sileksetil 8 mg atau 16 mg`;
+  } else if (idLowerPreset.includes("omeprazol") || genericLower.includes("omeprazol")) {
+    composition = `Tiap kapsul lepas tunda mengandung Omeprazole 20 mg; vial serbuk steril injeksi/infus IV 40 mg`;
+  } else if (idLowerPreset.includes("lansoprazol") || genericLower.includes("lansoprazol")) {
+    composition = `Tiap kapsul lepas tunda mengandung Lansoprazole 30 mg; vial serbuk injeksi IV 30 mg`;
+  } else if (idLowerPreset.includes("simvastatin") || genericLower.includes("simvastatin")) {
+    composition = `Tiap tablet salut selaput mengandung Simvastatin 10 mg atau 20 mg`;
+  } else if (idLowerPreset.includes("atorvastatin") || genericLower.includes("atorvastatin")) {
+    composition = `Tiap tablet salut selaput mengandung Atorvastatin Kalsium Trihidrat 10 mg, 20 mg, atau 40 mg`;
+  } else if (idLowerPreset.includes("metformin") || genericLower.includes("metformin")) {
+    composition = `Tiap tablet mengandung Metformin HCl 500 mg atau 850 mg; tablet lepas lambat (XR) 500 mg & 750 mg`;
+  } else if (idLowerPreset.includes("furosemid") || genericLower.includes("furosemid")) {
+    composition = `Tiap tablet mengandung Furosemid 40 mg; tiap ampul injeksi IV/IM 20 mg/2 mL (10 mg/mL)`;
+  } else if (idLowerPreset.includes("salbutamol") || genericLower.includes("salbutamol")) {
+    composition = `Tiap ampul cairan inhalasi (Respules) mengandung Salbutamol 2.5 mg dalam 2.5 mL untuk nebulizer; sirup 2 mg/5 mL; tablet 2 mg & 4 mg; MDI inhaler 100 mcg/semprot`;
+  } else if (idLowerPreset.includes("ondansetron") || genericLower.includes("ondansetron")) {
+    composition = `Tiap tablet salut selaput mengandung Ondansetron HCl 4 mg atau 8 mg; sirup 4 mg/5 mL; ampul injeksi 4 mg/2 mL dan 8 mg/4 mL`;
+  } else if (idLowerPreset.includes("ceftriaxon") || genericLower.includes("ceftriaxon") || genericLower.includes("seftriakson")) {
+    composition = `Tiap vial serbuk steril mengandung Seftriakson Sodium setara Seftriakson 1 g untuk injeksi/infus IV atau IM`;
+  } else if (idLowerPreset.includes("cefadroxil") || genericLower.includes("cefadroxil") || genericLower.includes("sefadroksil")) {
+    composition = `Tiap kapsul mengandung Sefadroksil Monohidrat 500 mg; sirup kering 125 mg/5 mL & 250 mg/5 mL (botol 60 mL)`;
+  } else if (idLowerPreset.includes("metronidazol") || genericLower.includes("metronidazol")) {
+    composition = `Tiap tablet mengandung Metronidazole 250 mg atau 500 mg; sirup suspensi 125 mg/5 mL; botol infus IV 500 mg/100 mL`;
+  } else if (preset.id.includes("azithromycin")) {
     composition = `Tiap tablet mengandung ${cleanGeneric} 250 mg / 500 mg; sirup kering (suspensi) 200 mg/5 mL; vial serbuk injeksi/infus 500 mg`;
   } else if (preset.id.includes("becom")) {
     composition = `Kaplet Becom-C (Vitamin B Kompleks + Vitamin C 500 mg) & Becom-Zet (Vitamin B Kompleks, Vitamin C 750 mg, Vitamin E 30 IU, Asam Folat 400 mcg, Zinc 22.5 mg)`;
@@ -458,6 +750,48 @@ const getDrugMetadata = (preset: DrugPreset) => {
     composition = `Tiap tablet salut selaput mengandung Bisoprolol Fumarat 2.5 mg, 5 mg, atau 10 mg`;
   } else if (preset.id.includes("budesonid") || preset.id.includes("budesonide")) {
     composition = `Tiap ampul Respules (2 mL) mengandung Budesonide cairan inhalasi suspensi 0.25 mg/mL (0.5 mg/ampul) atau 0.5 mg/mL (1 mg/ampul) untuk nebulizer`;
+  } else if (preset.id.includes("tramadol")) {
+    composition = `Tiap kapsul/tablet mengandung Tramadol HCl 50 mg; tiap ampul injeksi (2 mL) mengandung Tramadol HCl 100 mg (50 mg/mL)`;
+  } else if (preset.id.includes("vancomycin")) {
+    composition = `Tiap vial mengandung Vankomisin Hidroklorida serbuk steril 500 mg atau 1 g untuk larutan infus intravena`;
+  } else if (preset.id.includes("thiamazole")) {
+    composition = `Tiap tablet salut selaput mengandung Thiamazole (Metimazol) 5 mg atau 10 mg`;
+  } else if (preset.id.includes("thrombophob")) {
+    composition = `Gel: Heparin Sodium 20.000 IU per 100 g (tube 10 g & 20 g); Ointment: Heparin Sodium 5.000 IU + Benzil Nikotinat 250 mg (tube 20 g)`;
+  } else if (preset.id.includes("triamcinolone")) {
+    composition = `Tiap tablet oral mengandung Triamcinolone 4 mg; tiap vial (5 mL) mengandung suspensi injeksi Triamcinolone Acetonide 10 mg/mL (50 mg/vial) atau 40 mg/mL`;
+  } else if (preset.id.includes("uperio")) {
+    composition = `Tiap tablet salut selaput mengandung kombinasi Sakubitril / Valsartan: 50 mg (24.3/25.7 mg), 100 mg (48.6/51.4 mg), atau 200 mg (97.2/102.8 mg)`;
+  } else if (preset.id.includes("valisanbe")) {
+    composition = `Tiap tablet mengandung Diazepam 2 mg atau 5 mg; tiap ampul injeksi (2 mL) mengandung Diazepam 10 mg (5 mg/mL)`;
+  } else if (preset.id.includes("vectrine")) {
+    composition = `Tiap kapsul mengandung Erdosteine 300 mg; tiap 5 mL sirup kering (suspensi setelah rekonstitusi) mengandung Erdosteine 175 mg (botol 60 mL)`;
+  } else if (preset.id.includes("viccillin")) {
+    composition = `Viccillin Vial: Ampisilin murni 1 g; Viccillin-SX Vial: Ampisilin 1 g + Sulbaktam 0.5 g (total 1.5 g) serbuk injeksi IV/IM`;
+  } else if (preset.id.includes("zinkid")) {
+    composition = `Tiap tablet dispersibel mengandung Zinc Sulfat setara Seng elemental 20 mg; tiap 5 mL sirup mengandung Zinc Sulfat setara Seng elemental 10 mg (botol 100 mL)`;
+  } else if (preset.id.includes("cefixime")) {
+    composition = `Tiap kapsul/tablet mengandung Cefixime Trihydrate 100 mg atau 200 mg; tiap 5 mL sirup kering (suspensi setelah rekonstitusi) mengandung Cefixime 100 mg (botol 30 mL)`;
+  } else if (preset.id.includes("cetirizine")) {
+    composition = `Tiap tablet salut selaput mengandung Cetirizine 10 mg; tiap 5 mL sirup mengandung Cetirizine 5 mg (botol 60 mL); tiap mL drops mengandung Cetirizine 10 mg`;
+  } else if (preset.id.includes("chloramphenicol") || preset.id.includes("kloramfenikol")) {
+    composition = `Tiap kapsul mengandung Kloramfenikol 250 mg atau 500 mg; tiap 5 mL suspensi oral mengandung Kloramfenikol Palmitat setara 125 mg Kloramfenikol (botol 60 mL); vial serbuk injeksi IV 1 g`;
+  } else if (preset.id.includes("cinolon")) {
+    composition = `Cinolon Krim: Fluocinolone Acetonide 0.025% (tube 10 g); Cinolon-N Krim: Fluocinolone Acetonide 0.025% + Neomycin Sulfate 0.5% (tube 5 g & 10 g)`;
+  } else if (preset.id.includes("ciprofloxacin") || preset.id.includes("cipro")) {
+    composition = `Tiap tablet salut selaput mengandung Ciprofloxacin HCl 250 mg atau 500 mg; tiap 100 mL infus IV mengandung Ciprofloxacin 200 mg (2 mg/mL)`;
+  } else if (preset.id.includes("concor")) {
+    composition = `Tiap tablet salut selaput mengandung Bisoprolol Fumarat 1.25 mg, 2.5 mg, 5 mg, atau 10 mg`;
+  } else if (preset.id.includes("cortidex")) {
+    composition = `Tiap tablet mengandung Dexamethasone mikronisasi 0.5 mg; tiap ampul injeksi (1 mL) mengandung Dexamethasone Sodium Phosphate 5 mg (5 mg/mL)`;
+  } else if (preset.id.includes("digoxin") || preset.id.includes("digoksin")) {
+    composition = `Tiap tablet mengandung Digoxin 0.25 mg; tiap mL sirup/eliksir mengandung Digoxin 0.05 mg (botol 60 mL); tiap ampul injeksi (2 mL) mengandung Digoxin 0.5 mg (0.25 mg/mL)`;
+  } else if (preset.id.includes("diltiazem")) {
+    composition = `Tiap tablet mengandung Diltiazem HCl 30 mg; kapsul lepas lambat (SR) 100 mg & 200 mg; vial serbuk injeksi/infus 10 mg & 50 mg`;
+  } else if (preset.id.includes("dobutamin") || preset.id.includes("dobutamine")) {
+    composition = `Tiap ampul/vial konsentrat steril untuk infus mengandung Dobutamine HCl setara Dobutamine 250 mg dalam 5 mL (50 mg/mL)`;
+  } else if (preset.id.includes("domperidon") || preset.id.includes("domperidone")) {
+    composition = `Tiap tablet mengandung Domperidone 10 mg; tiap 5 mL suspensi oral mengandung Domperidone 5 mg (botol 60 mL); tiap mL drops oral mengandung 5 mg (botol 10 mL)`;
   } else if (preset.liquidConcentrationValue && preset.liquidConcentrationVolume) {
     composition = `Tiap ${preset.liquidConcentrationVolume} mL sirup/suspensi mengandung ${cleanGeneric} ${preset.liquidConcentrationValue} ${preset.doseUnit}`;
   } else {
@@ -484,370 +818,61 @@ const getDrugMetadata = (preset: DrugPreset) => {
 
   const indication = preset.indication;
 
-  let contraindication = "Hipersensitivitas terhadap komponen obat atau golongan kimia obat ini.";
-  let pregnancySafety: { category: "A" | "B" | "C" | "D" | "X"; status: "Aman" | "Perlu Perhatian" | "Kontraindikasi"; detail: string } = {
-    category: "C",
-    status: "Perlu Perhatian",
-    detail: "Category C. Belum ada studi terkontrol yang memadai pada manusia. Hanya boleh digunakan apabila potensi manfaat terapeutik pada ibu hamil membenarkan potensi risiko terhadap janin."
-  };
-  let breastfeedingSafety: { status: "Aman" | "Perlu Perhatian" | "Kontraindikasi"; detail: string } = {
-    status: "Perlu Perhatian",
-    detail: "Perlu Perhatian. Dapat diekskresikan ke dalam ASI dalam kadar rendah. Pantau bayi terhadap potensi efek samping (perubahan pola makan, kantuk berlebih) dan gunakan di bawah pengawasan medis."
-  };
+  const categoryInfoObj = getDrugCategory(preset.id, preset.name);
+  const safetyReview = getDrugSafetyReview(preset, cleanGeneric, cleanBrand, categoryInfoObj.label);
+  const contraindication = safetyReview.contraindication;
+  const pregnancySafety = safetyReview.pregnancySafety;
+  const breastfeedingSafety = safetyReview.breastfeedingSafety;
 
-  const id = preset.id.toLowerCase();
-  
-  if (id.includes("paracetamol") || id.includes("acetaminophen")) {
-    contraindication = "Gangguan fungsi hati yang parah, gagal hati akut aktif, atau riwayat hipersensitivitas parah.";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman). Merupakan obat pilihan pertama analgetik dan antipiretik pada seluruh trimester kehamilan. Profil keamanannya sangat mapan, namun tetap dianjurkan menggunakan dosis efektif terkecil dan jangka waktu sesingkat mungkin."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Sangat Aman. Diekskresikan ke dalam ASI dalam jumlah yang sangat kecil dan aman untuk bayi menyusui. Tidak memerlukan penghentian pemberian ASI."
-    };
-  } else if (id.includes("ibuprofen")) {
-    contraindication = "Riwayat tukak peptikum aktif atau perdarahan lambung; gangguan ginjal berat; asma bronkial akibat aspirin; kehamilan trimester ketiga (kontraindikasi penuh).";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C (Trimester 1 & 2) / Category D (Trimester 3). Hindari penggunaan pada trimester ketiga kehamilan karena dapat menyebabkan penutupan dini duktus arteriosus janin, disfungsi ginjal janin (oligohidramnion), serta memperpanjang masa persalinan."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Sangat Aman. Ekskresi ke dalam ASI sangat kecil dan tidak terdeteksi pada serum bayi. Merupakan pilihan obat golongan NSAID paling aman untuk ibu menyusui."
-    };
-  } else if (id.includes("amoxicillin") || id.includes("amove")) {
-    contraindication = "Riwayat reaksi alergi tipe cepat yang parah (seperti anafilaksis, angioedema) terhadap Amoksisilin, Penisilin, atau antibiotik golongan Beta-Laktam lainnya.";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman). Sangat sering digunakan dan dianggap aman untuk mengobati infeksi bakteri yang sensitif selama masa kehamilan."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Diekskresikan dalam jumlah minimal ke dalam ASI. Secara umum sangat aman, namun tetap pantau bayi dari kemungkinan timbulnya diare ringan, sariawan, atau ruam popok."
-    };
-  } else if (id.includes("cefixime") || id.includes("cefadroxil") || id.includes("ceftriaxone") || id.includes("cefaclor")) {
-    contraindication = "Hipersensitivitas terhadap antibiotik golongan Sefalosporin atau riwayat reaksi anafilaksis silang terhadap Penisilin.";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman). Dianggap aman dan tidak menunjukkan efek buruk pada perkembangan janin pada studi terkontrol."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Konsentrasi obat dalam ASI sangat rendah dan aman digunakan oleh ibu yang menyusui. Amati adanya perubahan kebiasaan pencernaan bayi."
-    };
-  } else if (id.includes("gentamicin") || id.includes("neomycin")) {
-    contraindication = "Riwayat reaksi alergi aminoglikosida; gangguan pendengaran; gangguan ginjal berat tanpa kontrol kadar darah (TDM).";
-    pregnancySafety = {
-      category: "D",
-      status: "Kontraindikasi",
-      detail: "Category D (Kontraindikasi). Dapat menembus sawar plasenta dan menyebabkan kerusakan saraf pendengaran janin (ototoksisitas kongenital ireversibel). Hanya boleh digunakan pada infeksi bakteri sangat parah yang mengancam jiwa ibu."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Obat ini diekskresikan ke dalam ASI dalam kadar yang sangat rendah. Karena tidak diserap dengan baik melalui sistem pencernaan bayi, risiko efek sistemik pada bayi diabaikan."
-    };
-  } else if (id.includes("tetracycline")) {
-    contraindication = "Anak usia di bawah 8 tahun; kehamilan; menyusui; gangguan fungsi ginjal berat.";
-    pregnancySafety = {
-      category: "D",
-      status: "Kontraindikasi",
-      detail: "Category D (Kontraindikasi). Penggunaan pada trimester kedua dan ketiga dapat memicu perubahan warna gigi janin secara permanen (kuning-cokelat), menyebabkan hipoplasia email, serta menghambat pertumbuhan tulang panjang janin."
-    };
-    breastfeedingSafety = {
-      status: "Kontraindikasi",
-      detail: "Kontraindikasi. Diekskresikan ke dalam ASI. Dapat memicu pewarnaan gigi bayi yang disusui dan berpotensi memengaruhi osteogenesis bayi. Sebaiknya hindari penggunaan obat ini saat menyusui."
-    };
-  } else if (id.includes("metoclopramide")) {
-    contraindication = "Kondisi perdarahan, obstruksi mekanis, atau perforasi lambung/usus; epilepsi; riwayat gangguan ekstrapiramidal atau diskinesia tardif akibat obat.";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman). Tidak ada bukti risiko pada janin manusia. Merupakan terapi pilihan kedua yang aman untuk mual muntah kehamilan parah (hiperemesis gravidarum) setelah lini pertama gagal."
-    };
-    breastfeedingSafety = {
-      status: "Perlu Perhatian",
-      detail: "Perlu Perhatian. Diekskresikan ke dalam ASI. Penggunaan jangka pendek aman, namun hindari penggunaan jangka panjang karena risiko efek samping neurologis (reaksi ekstrapiramidal) pada bayi."
-    };
-  } else if (id.includes("domperidone")) {
-    contraindication = "Prolaktinoma hipofisis; obstruksi atau perdarahan saluran cerna; gangguan fungsi hati sedang-berat; perpanjangan interval QT jantung.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C. Studi pada manusia sangat terbatas. Hanya boleh diberikan jika potensi manfaat klinis pada ibu membenarkan risiko teoretis terhadap janin."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Relatif Aman. Jumlah obat yang diekskresikan ke dalam ASI sangat kecil. Kadang digunakan sebagai perangsang produksi ASI (laktagog) dalam dosis rendah dan durasi pendek di bawah pengawasan medis."
-    };
-  } else if (id.includes("spironolactone")) {
-    contraindication = "Kondisi anuria; gagal ginjal akut; gangguan ginjal berat; hiperkalemia; penyakit Addison.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C. Memiliki aktivitas anti-androgenik sehingga berpotensi memengaruhi diferensiasi seksual janin laki-laki (risiko feminisasi). Hindari penggunaan kecuali pada kondisi sangat mendesak."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Metabolit aktifnya diekskresikan dalam konsentrasi yang sangat kecil ke dalam ASI dan dianggap tidak berbahaya bagi kesehatan bayi."
-    };
-  } else if (id.includes("propranolol") || id.includes("bisoprolol") || id.includes("concor")) {
-    contraindication = "Asma bronkial berat atau riwayat PPOK berat; bradikardia sinus (<50 bpm); blok AV derajat dua atau tiga; syok kardiogenik; gagal jantung akut.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C. Dapat memicu penurunan aliran darah plasenta, meningkatkan risiko berat lahir rendah, hambatan pertumbuhan intrauterin, hipoglikemia, dan bradikardia pada neonatus. Disarankan untuk memantau tumbuh kembang janin secara ketat."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Diekskresikan dalam kadar sangat rendah ke dalam ASI. Dianggap aman untuk ibu menyusui, namun tetap amati denyut jantung bayi."
-    };
-  } else if (id.includes("warfarin")) {
-    contraindication = "Perdarahan aktif; diatesis hemoragik; hipertensi berat tidak terkontrol; kehamilan (terutama trimester pertama dan ketiga).";
-    pregnancySafety = {
-      category: "X",
-      status: "Kontraindikasi",
-      detail: "Category X (Kontraindikasi Mutlak). Sangat teratogenik. Menyebabkan Sindrom Warfarin Janin (hipoplasia hidung, kelainan skeletal, atrofi optik, mikrosefali, keterlambatan tumbuh kembang) serta risiko perdarahan janin yang mengancam nyawa."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Warfarin tidak diekskresikan ke dalam ASI dalam jumlah klinis yang signifikan. Hasil koagulasi (waktu protrombin) pada bayi menyusui tetap normal. Dianggap aman."
-    };
-  } else if (id.includes("heparin")) {
-    contraindication = "Trombositopenia akibat heparin (HIT); perdarahan aktif tidak terkontrol; gangguan pembekuan darah parah.";
-    pregnancySafety = {
-      category: "C",
-      status: "Aman",
-      detail: "Category C (Aman). Heparin memiliki bobot molekul besar sehingga tidak menembus plasenta. Tidak memicu perdarahan janin atau malformasi. Merupakan antikoagulan pilihan utama selama kehamilan."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Sangat Aman. Karena molekulnya yang sangat besar, heparin tidak diekskresikan ke dalam ASI dan tidak dapat diserap secara oral oleh bayi."
-    };
-  } else if (id.includes("omeprazole") || id.includes("lansoprazole")) {
-    contraindication = "Riwayat hipersensitivitas terhadap PPI; penggunaan bersama obat antivirus rilpivirin.";
-    pregnancySafety = {
-      category: "C", // Omeprazole is C, Lansoprazole is B
-      status: "Aman",
-      detail: "Category C / B. Data epidemiologi luas membuktikan keamanan obat ini dan tidak menunjukkan peningkatan risiko malformasi janin. Boleh digunakan jika perubahan gaya hidup gagal meredakan gejala refluks asam."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Relatif Aman. Diekskresikan dalam jumlah yang sangat kecil ke dalam ASI dan segera didegradasi oleh asam lambung bayi, sehingga tidak memengaruhi bayi."
-    };
-  } else if (id.includes("furosemide")) {
-    contraindication = "Kondisi anuria; gagal ginjal akibat nefrotoksik; koma hepatikum sirosis hati; hipokalemia atau hiponatremia berat; deplesi cairan tubuh yang parah.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C. Dapat menembus plasenta dan memicu diuresis pada janin. Berisiko menurunkan volume darah ibu hamil sehingga mengganggu perfusi plasenta. Pantau kecukupan cairan ibu dan pertumbuhan janin."
-    };
-    breastfeedingSafety = {
-      status: "Perlu Perhatian",
-      detail: "Perlu Perhatian. Diekskresikan ke dalam ASI. Dapat menurunkan produksi ASI (laktasi tertekan). Gunakan dengan dosis efektif terkecil dan pantau kecukupan suplai ASI."
-    };
-  } else if (id.includes("prednisone") || id.includes("dexamethasone") || id.includes("methylprednisolone")) {
-    contraindication = "Infeksi jamur sistemik aktif; infeksi sistemik berat yang tidak diobati; pemberian vaksin hidup.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C. Prednison lebih disukai karena dimetabolisme secara intensif oleh plasenta sehingga paparan janin sangat minim. Kortikosteroid dosis tinggi dapat memicu bibir sumbing ringan bila digunakan pada trimester pertama."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Diekskresikan dalam jumlah sangat minimal. Untuk dosis tinggi (>20 mg prednison sehari), disarankan untuk menunda menyusui selama 3-4 jam setelah minum obat guna meminimalkan paparan bayi."
-    };
-  } else if (id.includes("simvastatin") || id.includes("atorvastatin")) {
-    contraindication = "Penyakit hati aktif; peningkatan enzim transaminase yang tidak dapat dijelaskan; kehamilan; menyusui.";
-    pregnancySafety = {
-      category: "X",
-      status: "Kontraindikasi",
-      detail: "Category X (Kontraindikasi Mutlak). Kolesterol dan produk turunannya sangat penting untuk perkembangan organ dan dinding sel janin. Penghentian statin selama kehamilan tidak membahayakan kesehatan jantung ibu secara akut."
-    };
-    breastfeedingSafety = {
-      status: "Kontraindikasi",
-      detail: "Kontraindikasi. Terdapat risiko teoretis gangguan metabolisme lipid pada bayi yang disusui karena statin dapat diekskresikan ke dalam ASI. Jangan menyusui saat terapi statin."
-    };
-  } else if (id.includes("digoxin")) {
-    contraindication = "Aritmia fibrilasi ventrikel; takikardia ventrikel; blok AV derajat dua atau tiga tanpa pacu jantung.";
-    pregnancySafety = {
-      category: "C",
-      status: "Aman",
-      detail: "Category C (Aman). Telah digunakan secara luas untuk aritmia ibu maupun takiaritmia janin (via transfer transplasenta). Memerlukan pemantauan berkala kadar obat dalam darah ibu hamil."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Diekskresikan ke dalam ASI dalam konsentrasi yang sangat rendah dan tidak menimbulkan risiko klinis pada bayi."
-    };
-  } else if (id.includes("cipro") || id.includes("baquinor")) {
-    contraindication = "Hipersensitivitas terhadap siprofloksasin atau antibiotik fluoroquinolone lainnya; riwayat miastenia gravis; pemberian bersamaan dengan tizanidine.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C (Gunakan jika manfaat lebih besar dari risiko). Studi hewan menunjukkan risiko artropati/kerusakan kartilago sendi imatur. Hindari sebagai lini pertama pada kehamilan kecuali tidak ada alternatif yang memadai."
-    };
-    breastfeedingSafety = {
-      status: "Perlu Perhatian",
-      detail: "Perlu Perhatian. Diekskresikan ke dalam ASI. Meskipun kadar terapeutik rendah pada bayi, pantau tanda diare, kandidiasis (thrush), atau gangguan flora normal usus pada bayi yang disusui."
-    };
-  } else if (id.includes("azithromycin")) {
-    contraindication = "Hipersensitivitas terhadap azitromisin, eritromisin, atau antibiotik golongan makrolida/ketolida lainnya; riwayat ikterus kolestatik atau disfungsi hepar akibat terapi azitromisin sebelumnya.";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman). Studi reproduksi hewan tidak menunjukkan bukti bahaya terhadap janin. Pilihan antibiotik makrolida lini aman untuk infeksi yang sensitif selama masa kehamilan."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Diekskresikan ke dalam ASI dalam konsentrasi yang sangat rendah. Tidak dilaporkan efek samping mayor pada bayi yang disusui; amati kemungkinan timbulnya diare ringan atau kandidiasis."
-    };
-  } else if (id.includes("salbutamol")) {
-    contraindication = "Hipersensitivitas terhadap agonis beta-2 adrenergik; komplikasi persalinan prematur (untuk sediaan sistemik).";
-    pregnancySafety = {
-      category: "C",
-      status: "Aman",
-      detail: "Category C (Aman untuk rute Inhalasi). Rute inhalasi memiliki paparan sistemik yang diabaikan. Penggunaan sediaan oral/injeksi dosis tinggi harus diawasi karena efek relaksasi otot rahim (tokolitik) dan takikardia."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Penggunaan salbutamol via inhalasi menghasilkan kadar dalam ASI yang tidak signifikan secara klinis. Aman bagi bayi menyusui."
-    };
-  } else if (id.includes("acyclovir")) {
-    contraindication = "Riwayat hipersensitivitas terhadap asiklovir atau valasiklovir.";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman). Studi klinis luas membuktikan keamanan asiklovir pada ibu hamil untuk penanganan herpes simpleks dan cacar air tanpa risiko kelainan bawaan."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Diekskresikan ke dalam ASI, namun jumlah yang diterima bayi sangat kecil (hanya 1-2% dari dosis terapeutik bayi). Sangat aman digunakan."
-    };
-  } else if (id.includes("valproate") || id.includes("valproic")) {
-    contraindication = "Penyakit hati aktif atau gangguan hati berat; gangguan siklus urea; kehamilan untuk profilaksis migren (kontraindikasi penuh).";
-    pregnancySafety = {
-      category: "D",
-      status: "Kontraindikasi",
-      detail: "Category D (Kontraindikasi). Sangat teratogenik. Berisiko tinggi menyebabkan cacat lahir mayor seperti defek tabung saraf (spina bifida), malformasi jantung, kraniofasial, serta gangguan kognitif pasca lahir. Hindari penggunaan kecuali tidak ada alternatif terapi epilepsi lain."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Relatif Aman. Diekskresikan dalam jumlah yang sangat kecil ke dalam ASI (sekitar 1-10% dari kadar serum ibu). Dianggap aman digunakan dengan pemantauan ketat terhadap timbulnya memar atau gangguan hati bayi."
-    };
-  } else if (id.includes("becom")) {
-    contraindication = "Hipersensitivitas terhadap salah satu komponen vitamin B kompleks, vitamin C, asam folat, atau zinc.";
-    pregnancySafety = {
-      category: "C",
-      status: "Aman",
-      detail: "Category C (Aman sesuai AKG). Multivitamin esensial untuk mendukung metabolisme dan nutrisi ibu hamil bila dikonsumsi sesuai Angka Kecukupan Gizi (AKG) yang dianjurkan."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Vitamin B kompleks, vitamin C, asam folat, dan zinc diekskresikan ke dalam ASI dan merupakan mikronutrien penting bagi kesehatan ibu dan bayi menyusui."
-    };
-  } else if (id.includes("bisoprolol")) {
-    contraindication = "Syok kardiogenik, blok AV derajat dua atau tiga tanpa pacu jantung, bradikardia sinus berat (<50 bpm), hipotensi simtomatik berat, asma bronkial berat atau PPOK berat, asidosis metabolik.";
-    pregnancySafety = {
-      category: "C",
-      status: "Perlu Perhatian",
-      detail: "Category C (Gunakan jika manfaat lebih besar dari risiko). Beta-blocker kardioselektif dapat menurunkan perfusi plasenta dan memicu bradikardia atau hipoglikemia pada janin. Gunakan hanya jika diindikasikan jelas dan dipantau oleh dokter spesialis."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman dengan Pemantauan. Diekskresikan dalam konsentrasi rendah ke dalam ASI. Dianggap aman dengan pemantauan denyut jantung (bradikardia) dan tekanan darah bayi."
-    };
-  } else if (id.includes("budesonid") || id.includes("budesonide")) {
-    contraindication = "Hipersensitivitas terhadap budesonid; status asmatikus akut atau episode bronkospasme berat yang memerlukan tindakan darurat bronkodilator kerja cepat (bukan obat pereda darurat / bukan reliever).";
-    pregnancySafety = {
-      category: "B",
-      status: "Aman",
-      detail: "Category B (Aman untuk Inhalasi). Budesonid inhalasi merupakan kortikosteroid pilihan utama selama kehamilan menurut pedoman GINA (Global Initiative for Asthma), tidak meningkatkan risiko malformasi janin."
-    };
-    breastfeedingSafety = {
-      status: "Aman",
-      detail: "Aman. Paparan sistemik dari rute inhalasi sangat rendah sehingga konsentrasi dalam ASI dapat diabaikan secara klinis bagi bayi."
-    };
-  } else if (id.includes("doxorubicin") || id.includes("doksorubisin") || id.includes("carboplatin") || id.includes("onc")) {
-    contraindication = "Mielosupresi berat; gangguan hati/ginjal berat; kardiomiopati atau gagal jantung dekompensasi berat (untuk Doksorubisin/Doxorubicin); riwayat telah mencapai batas kumulatif maksimal seumur hidup; kehamilan; menyusui.";
-    pregnancySafety = {
-      category: "D",
-      status: "Kontraindikasi",
-      detail: "Category D (Kontraindikasi Mutlak). Merupakan zat sitotoksik kemoterapi antrasiklin yang merusak sintesis DNA/RNA sel dan sangat toksik terhadap perkembangan embrio/janin. Menyebabkan keguguran, malformasi multipel kongenital, dan toksisitas organ janin."
-    };
-    breastfeedingSafety = {
-      status: "Kontraindikasi",
-      detail: "Kontraindikasi Mutlak. Agen sitotoksik dapat diekskresikan ke dalam ASI, menyebabkan penekanan sumsum tulang (mielosupresi) yang parah, penekanan imun, dan risiko karsinogenik pada bayi. Ibu menyusui harus menghentikan pemberian ASI sepenuhnya."
-    };
-  } else {
-    const cat = getDrugCategory(preset.id, preset.name);
-    if (cat.label === "Antibiotik & Anti-infeksi") {
-      contraindication = "Riwayat hipersensitivitas parah terhadap komponen obat atau golongan antibiotik sejenis.";
-      pregnancySafety = {
-        category: "B",
-        status: "Aman",
-        detail: "Category B. Penelitian klinis tidak menunjukkan adanya bukti risiko merugikan pada kehamilan manusia. Gunakan sesuai indikasi klinis infeksi bakteri/virus yang jelas di bawah pengawasan medis."
-      };
-      breastfeedingSafety = {
-        status: "Aman",
-        detail: "Aman. Diekskresikan dalam jumlah sangat minimal ke dalam ASI. Pantau bayi terhadap kemungkinan timbulnya diare ringan atau sariawan."
-      };
-    } else if (cat.label === "Pernapasan & Alergi") {
-      contraindication = "Hipersensitivitas terhadap komponen sediaan atau zat aktif.";
-      pregnancySafety = {
-        category: "C",
-        status: "Perlu Perhatian",
-        detail: "Category C. Sediaan lokal (seperti inhaler atau semprot hidung) lebih disukai karena absorpsi sistemik sangat minimal. Gunakan antihistamin non-sedatif oral dengan hati-hati hanya jika sangat diperlukan."
-      };
-      breastfeedingSafety = {
-        status: "Aman",
-        detail: "Aman. Kadar dalam ASI sangat rendah, terutama untuk sediaan hirup atau dosis lazim antihistamin non-sedatif (seperti Cetirizine atau Loratadine). Amati jika bayi tampak lesu atau mengantuk."
-      };
-    } else if (cat.label === "Kortikosteroid & Hormon") {
-      contraindication = "Infeksi jamur sistemik aktif; infeksi bakteri atau virus tidak terkontrol; hipersensitivitas.";
-      pregnancySafety = {
-        category: "C",
-        status: "Perlu Perhatian",
-        detail: "Category C. Penggunaan kortikosteroid sistemik jangka panjang dikaitkan dengan risiko ringan insufisiensi adrenal janin dan bibir sumbing bila digunakan pada trimester pertama. Gunakan dosis efektif terkecil."
-      };
-      breastfeedingSafety = {
-        status: "Aman",
-        detail: "Aman. Prednison dan metilprednisolon diekskresikan dalam jumlah sangat minimal. Disarankan menunda menyusui 3-4 jam setelah konsumsi dosis tinggi."
-      };
-    } else if (cat.label === "Analgetik & Antipiretik") {
-      contraindication = "Hipersensitivitas terhadap zat aktif; gangguan organ hati/ginjal berat harus sangat hati-hati.";
-      pregnancySafety = {
-        category: "C",
-        status: "Perlu Perhatian",
-        detail: "Category C. Hindari penggunaan obat anti-inflamasi (NSAID) pada trimester ketiga kehamilan karena risiko penutupan prematur duktus arteriosus janin dan disfungsi ginjal janin."
-      };
-      breastfeedingSafety = {
-        status: "Aman",
-        detail: "Aman. Obat analgetik umum seperti Paracetamol atau Ibuprofen sangat aman digunakan selama masa menyusui dengan paparan minimal pada bayi."
-      };
-    } else if (cat.label === "Kardiovaskular & Diuretik") {
-      contraindication = "Hipotensi berat, syok kardiogenik, bradikardia sinus berat (<50 bpm), blok AV derajat dua atau tiga, gagal jantung dekompensasi akut.";
-      pregnancySafety = {
-        category: "C",
-        status: "Perlu Perhatian",
-        detail: "Category C (atau D pada trimester 2-3 untuk golongan ACE-i/ARB). Beta-blocker seperti Bisoprolol/Concor dapat menurunkan perfusi plasenta dan memicu bradikardia janin. Gunakan hanya jika diindikasikan jelas oleh dokter spesialis."
-      };
-      breastfeedingSafety = {
-        status: "Perlu Perhatian",
-        detail: "Perlu Perhatian. Diekskresikan dalam konsentrasi rendah hingga sedang ke dalam ASI. Pantau bayi terhadap potensi efek samping bradikardia dan hipotensi."
-      };
-    }
-  }
+  let drugClass: "Obat Keras" | "Obat Bebas Terbatas" | "Obat Bebas" = "Obat Keras";
+  const idLower = preset.id.toLowerCase();
+  const nameLower = preset.name.toLowerCase();
 
-  let drugClass: "Obat Keras" | "Obat Bebas Terbatas" | "Obat Bebas" | "Jamu" | "Herbal" = "Obat Keras";
-  if (id.includes("paracetamol") || id.includes("acetaminophen") || id.includes("antacid") || id.includes("zinc") || id.includes("sucralfate") || id.includes("becom")) {
+  // 1. Obat Bebas (Lingkaran Hijau):
+  if (
+    idLower.includes("paracetamol") ||
+    nameLower.includes("paracetamol") ||
+    idLower.includes("acetaminophen") ||
+    nameLower.includes("acetaminophen") ||
+    idLower.includes("antacid") ||
+    nameLower.includes("antasida") ||
+    idLower.includes("oralit") ||
+    nameLower.includes("oralit") ||
+    idLower.includes("zinc") ||
+    nameLower.includes("zinc") ||
+    idLower.includes("zinkid") ||
+    nameLower.includes("zinkid") ||
+    idLower.includes("becom") ||
+    nameLower.includes("becom") ||
+    idLower.includes("vitamin") ||
+    nameLower.includes("vitamin")
+  ) {
     drugClass = "Obat Bebas";
-  } else if (id.includes("ibuprofen") || id.includes("ambroxol") || id.includes("bromhexine") || id.includes("dextromethorphan") || id.includes("pseudoephedrine")) {
+  }
+  // 2. Obat Bebas Terbatas (Lingkaran Biru):
+  else if (
+    idLower.includes("ibuprofen") ||
+    nameLower.includes("ibuprofen") ||
+    idLower.includes("ambroxol") ||
+    nameLower.includes("ambroxol") ||
+    idLower.includes("bromhexine") ||
+    nameLower.includes("bromhexine") ||
+    idLower.includes("dextromethorphan") ||
+    nameLower.includes("dextromethorphan") ||
+    idLower.includes("pseudoephedrine") ||
+    nameLower.includes("pseudoephedrine") ||
+    idLower.includes("thrombophob") ||
+    nameLower.includes("thrombophob") ||
+    idLower.includes("tremenza") ||
+    nameLower.includes("tremenza") ||
+    idLower.includes("ctm") ||
+    nameLower.includes("chlorpheniramine")
+  ) {
     drugClass = "Obat Bebas Terbatas";
+  }
+  // 3. Obat Keras (Lingkaran Merah dengan huruf K):
+  else {
+    drugClass = "Obat Keras";
   }
 
   let mechanism = "Mekanisme kerja spesifik bergantung pada kelas farmakologis obat ini. Bekerja pada reseptor atau enzim target untuk menghasilkan efek terapeutik.";
@@ -856,7 +881,7 @@ const getDrugMetadata = (preset: DrugPreset) => {
   let dosageRule = `Dosis lazim: ${doseMin}. Dosis maksimal: ${doseMax}. Gunakan sesuai indikasi: ${preset.indication}. ${preset.notes || ""}`;
   let usageGuide = "Gunakan sesuai petunjuk dokter atau aturan pakai pada kemasan. Jangan menggandakan dosis jika terlewat.";
   let sideEffects = "Efek samping umum mungkin meliputi gangguan gastrointestinal ringan, mual, atau alergi (ruam). Hentikan penggunaan jika terjadi reaksi alergi berat.";
-  let references = "Informasi disadur dari panduan klinis umum, FI (Farmakope Indonesia), MIMS, Medscape, Trissel's Handbook on Injectable Drugs (ASHP), dan leaflet resmi obat.";
+  let references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM - NIH), Farmakope Indonesia VI, PIONAS BPOM RI, dan Trissel's Handbook on Injectable Drugs (ASHP).";
 
   const categoryLabel = categoryInfo.toLowerCase();
   
@@ -865,43 +890,47 @@ const getDrugMetadata = (preset: DrugPreset) => {
     precautions = "Gunakan sampai habis sesuai resep dokter untuk mencegah resistensi antibiotik. Hati-hati pada pasien dengan riwayat alergi penisilin/sefalosporin atau antibiotik lainnya.";
     usageGuide = "Sebaiknya diminum bersama makanan untuk mengurangi iritasi lambung (misal: Amoksisilin) atau sesuai anjuran spesifik pada waktu perut kosong. Habiskan seluruh dosis yang diresepkan meskipun gejala sudah hilang.";
     sideEffects = "Diare, mual, muntah, ruam kulit alergi, atau risiko superinfeksi jamur (candidiasis) jika digunakan dalam jangka panjang.";
-    references = "PIONAS (Pusat Informasi Obat Nasional), Panduan Praktik Klinis (PPK) Penatalaksanaan Infeksi, Pedoman Penggunaan Antibiotik (Kemenkes RI), Trissel's Handbook on Injectable Drugs (ASHP).";
+    references = "PIONAS BPOM RI, FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), PPK Penatalaksanaan Infeksi, Trissel's Handbook on Injectable Drugs.";
   } else if (categoryLabel.includes("analgetik")) {
     mechanism = "Bekerja menghambat enzim siklooksigenase (COX) di sistem saraf pusat atau perifer, yang bertugas memproduksi prostaglandin (senyawa pemicu nyeri dan demam).";
     precautions = "Hati-hati pada pasien dengan gangguan hati akut (untuk Paracetamol), atau riwayat tukak lambung dan gangguan ginjal (untuk Ibuprofen / NSAID lainnya).";
     usageGuide = "NSAID/Ibuprofen harus diminum setelah makan atau bersama makanan untuk mencegah iritasi lambung. Paracetamol dapat diminum sebelum atau sesudah makan.";
     sideEffects = "Risiko hepatotoksisitas pada overdosis (Paracetamol). Dispepsia, nyeri ulu hati, mual, dan risiko perdarahan lambung (AINS/Ibuprofen).";
+    references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), PIONAS BPOM RI, dan Farmakope Indonesia VI.";
   } else if (categoryLabel.includes("hormon") || categoryLabel.includes("kortikosteroid")) {
     mechanism = "Berikatan dengan reseptor glukokortikoid intraseluler, menekan respons peradangan (inflamasi) dan menekan sistem kekebalan tubuh yang berlebihan.";
     precautions = "Hindari penghentian mendadak (harus tapering off) pada penggunaan jangka panjang. Awasi tanda-tanda infeksi sekunder karena efek imunosupresif.";
     usageGuide = "Sebaiknya diminum pada pagi hari sesudah makan untuk mengikuti irama sirkadian alami tubuh (sekresi kortisol) dan mencegah iritasi lambung.";
     sideEffects = "Peningkatan nafsu makan, retensi cairan/wajah moon-face, gangguan tidur, imunosupresi, peningkatan gula darah, dan sindrom Cushing pada penggunaan lama.";
+    references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), dan PIONAS BPOM RI.";
   } else if (categoryLabel.includes("pernapasan") || categoryLabel.includes("alergi")) {
     mechanism = "Bekerja dengan memblokir reseptor histamin (antihistamin), merelaksasi otot polos saluran napas (bronkodilator), atau mengencerkan dahak (mukolitik/ekspektoran).";
     precautions = "Beberapa obat (seperti CTM, Cetirizine) dapat menyebabkan kantuk. Hindari mengemudi atau mengoperasikan mesin berat setelah mengonsumsinya. Hati-hati pada pasien hipertensi (untuk dekongestan).";
     usageGuide = "Dapat diminum bersama atau tanpa makanan. Untuk inhaler/nebulizer, ikuti teknik penggunaan alat yang benar (lihat tab Panduan Pemakaian Alat).";
     sideEffects = "Kantuk (mengantuk), mulut kering, jantung berdebar (palpitasi akibat bronkodilator), pusing, dan gangguan pencernaan ringan.";
+    references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), GINA Guidelines, dan PIONAS BPOM RI.";
   } else if (categoryLabel.includes("gastrointestinal")) {
     mechanism = "Bekerja dengan menetralkan asam lambung (antasida), menghambat sekresi asam lambung (PPI/H2-blocker), atau memblokir reseptor mual-muntah di otak (antiemetik).";
     precautions = "Perhatikan interaksi obat, karena perubahan keasaman lambung dapat mengganggu penyerapan obat lain (misalnya antibiotik tertentu atau zat besi).";
     usageGuide = "Antasida dan PPI (seperti Omeprazole) sebaiknya diminum 30-60 menit sebelum makan. Pelapis lambung (Sukralfat) harus diminum dalam keadaan perut kosong.";
     sideEffects = "Konstipasi (sembelit), diare, perut kembung, sakit kepala, atau kelelahan ringan.";
+    references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), dan PIONAS BPOM RI.";
   } else if (categoryLabel.includes("kardiovaskular") || categoryLabel.includes("diuretik")) {
     mechanism = "Bekerja menurunkan resistensi vaskular sistemik, mengontrol frekuensi denyut jantung (beta-bloker / antagonis kalsium), modulasi sistem renin-angiotensin-aldosteron (ACE-i/ARB), atau memicu ekskresi natrium dan air (diuretik).";
     precautions = "Pantau tekanan darah, laju nadi secara rutin, dan fungsi ginjal/elektrolit berkala. Hindari penghentian mendadak tanpa konsultasi dokter karena risiko hipertensi berulang (rebound).";
     usageGuide = "Diminum teratur pada jam yang sama setiap hari (biasanya pagi hari). Jangan menggandakan dosis jika terlupa.";
     sideEffects = "Pusing/hipotensi ortostatik saat bangkit mendadak, rasa lelah, denyut jantung melambat (bradikardia), atau pembengkakan pergelangan kaki (edema perifer).";
-    references = "PIONAS, AHA/ACC Hypertension Guidelines, ESC Clinical Practice Guidelines, Panduan Tata Laksana Hipertensi PERKI, dan Brosur Resmi Obat.";
+    references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), AHA/ACC Guidelines, ESC Practice Guidelines, PERKI, dan PIONAS.";
   } else if (categoryLabel.includes("onkologi")) {
     mechanism = "Bekerja menginterkalasi pasangan basa DNA, menghambat enzim topoisomerase II, dan membentuk radikal bebas intraseluler yang menyebabkan pemutusan untai ganda DNA serta induksi apoptosis sel tumor yang aktif membelah.";
     precautions = "Wajib pemantauan hitung darah lengkap (CBC dengan hitung jenis & ANC), fungsi hepar (LFT), serta evaluasi fungsi ventrikel kiri (LVEF melalui ekokardiografi) sebelum dan berkala selama terapi. Perhatikan ketat batas akumulatif seumur hidup (maksimal 450-550 mg/m²). Obat merupakan vesikan poten, waspadai risiko ekstravasasi.";
     usageGuide = "Diberikan melalui infus intravena lambat menggunakan akses vena sentral (PICC/CVC) atau infus perifer paten oleh tenaga medis terlatih dengan APD sitotoksik lengkap. Beritahu pasien bahwa urin dapat berwarna kemerahan selama 24-48 jam pertama pasca pemberian (merupakan warna eliminasi obat normal, bukan hematuria).";
     sideEffects = "Mielosupresi berat (neutropenia, trombositopenia, anemia), alopesia total (reversibel), mual muntah (emetogenik sedang-tinggi), mukositis oral/stomatitis, kardiotoksisitas (aritmia hingga kardiomiopati kongestif), dan perubahan warna urin merah.";
-    references = "PIONAS BPOM RI, Formularium Nasional (Fornas) Kemenkes RI, NCCN Clinical Practice Guidelines in Oncology, dan Brosur Resmi Obat.";
+    references = "FDA Pregnancy Categories, Briggs Drugs in Pregnancy and Lactation, LactMed (NLM), NCCN Clinical Practice Guidelines in Oncology, dan PIONAS BPOM RI.";
   }
 
   let bud = "Tablet / Kapsul: Sesuai tanggal kedaluwarsa pada kemasan jika disimpan dengan baik.";
-  if (preset.id.includes("onc") || id.includes("doxorubicin") || id.includes("doksorubisin")) {
+  if (idLowerPreset.includes("onc") || idLowerPreset.includes("doxorubicin") || idLowerPreset.includes("doksorubisin")) {
     bud = "Injeksi Sitotoksik / Konsentrat Rekonstitusi: Setelah dilarutkan dalam NaCl 0.9% atau Dextrose 5%, stabil selama 24-48 jam pada suhu kulkas (2-8°C) terlindung dari cahaya, atau sesuai protokol rekonstitusi aseptis sitotoksik RS.";
   } else if (preset.id.includes("syr") || preset.id.includes("susp") || preset.id.includes("drop") || preset.id.includes("ped")) {
     if (preset.id.includes("amoxicillin") || preset.id.includes("cefixime") || preset.id.includes("antibiotic") || preset.id.includes("cef")) {
@@ -918,6 +947,7 @@ const getDrugMetadata = (preset: DrugPreset) => {
   return {
     brandName: cleanBrand,
     genericName: cleanGeneric,
+    isBrand,
     composition,
     doseMin,
     doseMax,
@@ -3646,23 +3676,75 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick info panel */}
-          <div className="bg-gradient-to-br from-emerald-900 to-teal-950 text-white rounded-2xl p-5 shadow-sm border border-teal-900/30">
-            <div className="flex items-center gap-2 border-b border-teal-900/40 pb-3 mb-3">
-              <Info className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold tracking-tight text-white">Panduan Informasi</h3>
+          {/* Quick info panel with authoritative clinical sources */}
+          <div className="bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-900 text-white rounded-2xl p-5 shadow-sm border border-emerald-800/40 space-y-4">
+            <div className="flex items-center gap-2 border-b border-emerald-800/50 pb-3">
+              <BookOpen className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold tracking-tight text-white">Panduan Informasi & Rujukan Ilmiah</h3>
+                <p className="text-[10px] text-emerald-300/80 font-sans">Basis Data & Standar Keamanan Klinis</p>
+              </div>
             </div>
-            <p className="text-xs text-emerald-200 leading-relaxed mb-3 font-sans">
-              Informasi obat disadur dari Kepustakaan Medis Terkemuka, Farmakope Indonesia, FDA, dan Buku Saku Pediatrik.
-            </p>
-            <div className="border border-teal-900/55 rounded-lg p-2.5 bg-white/5 space-y-2">
-              <span className="text-[10px] font-bold text-emerald-300 block uppercase tracking-wide">Kategori Keamanan FDA:</span>
-              <div className="grid grid-cols-5 gap-1 text-[11px] font-mono text-center font-bold">
-                <span className="bg-emerald-600/35 border border-emerald-500/30 rounded text-emerald-300">A</span>
-                <span className="bg-emerald-500/25 border border-emerald-400/20 rounded text-emerald-200">B</span>
-                <span className="bg-orange-500/25 border border-orange-400/20 rounded text-orange-200">C</span>
-                <span className="bg-rose-500/25 border border-rose-400/20 rounded text-rose-200">D</span>
-                <span className="bg-rose-600/35 border border-rose-500/30 rounded text-rose-300">X</span>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold text-emerald-300 block uppercase tracking-wider">Sumber & Pustaka Rujukan Utama:</span>
+              <ul className="space-y-2 text-xs text-emerald-100 font-sans">
+                <li className="flex items-start gap-2 bg-white/5 border border-emerald-800/40 rounded-lg p-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-bold text-white text-[11px] block">FDA Pregnancy Categories</span>
+                    <span className="text-[10px] text-emerald-200/90 leading-tight block">Klasifikasi resmi US FDA untuk stratifikasi potensi risiko teratogenik obat pada janin (Kategori A, B, C, D, X).</span>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 bg-white/5 border border-emerald-800/40 rounded-lg p-2">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-bold text-white text-[11px] block">Briggs Drugs in Pregnancy and Lactation</span>
+                    <span className="text-[10px] text-emerald-200/90 leading-tight block">Pustaka rujukan baku emas (*gold-standard reference*) karya Gerald G. Briggs dkk. untuk evaluasi risiko janin & transplasenta.</span>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2 bg-white/5 border border-emerald-800/40 rounded-lg p-2">
+                  <Baby className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-bold text-white text-[11px] block">LactMed (NLM - NIH)</span>
+                    <span className="text-[10px] text-emerald-200/90 leading-tight block">Basis data resmi *National Library of Medicine* AS mengenai kadar ekskresi obat ke dalam ASI dan keamanan pada bayi menyusui.</span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <div className="border border-emerald-800/60 rounded-xl p-3 bg-white/5 space-y-2.5">
+              <span className="text-[10px] font-bold text-emerald-300 block uppercase tracking-wide">Kategori Keamanan Kehamilan (FDA):</span>
+              <div className="grid grid-cols-5 gap-1.5 text-[11px] font-mono text-center font-bold">
+                <div className="bg-emerald-600/35 border border-emerald-500/40 rounded-lg py-1 px-0.5 text-emerald-300 flex flex-col items-center">
+                  <span>A</span>
+                  <span className="text-[8px] font-sans font-normal text-emerald-200">Aman</span>
+                </div>
+                <div className="bg-emerald-500/25 border border-emerald-400/30 rounded-lg py-1 px-0.5 text-emerald-200 flex flex-col items-center">
+                  <span>B</span>
+                  <span className="text-[8px] font-sans font-normal text-emerald-200">Relatif Aman</span>
+                </div>
+                <div className="bg-amber-500/25 border border-amber-400/30 rounded-lg py-1 px-0.5 text-amber-200 flex flex-col items-center">
+                  <span>C</span>
+                  <span className="text-[8px] font-sans font-normal text-amber-200">Waspada</span>
+                </div>
+                <div className="bg-rose-500/25 border border-rose-400/30 rounded-lg py-1 px-0.5 text-rose-200 flex flex-col items-center">
+                  <span>D</span>
+                  <span className="text-[8px] font-sans font-normal text-rose-200">Ada Risiko</span>
+                </div>
+                <div className="bg-rose-600/35 border border-rose-500/40 rounded-lg py-1 px-0.5 text-rose-300 flex flex-col items-center">
+                  <span>X</span>
+                  <span className="text-[8px] font-sans font-normal text-rose-300">Bahaya</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-emerald-800/60 rounded-xl p-3 bg-white/5 space-y-2">
+              <span className="text-[10px] font-bold text-emerald-300 block uppercase tracking-wide">Indikator Laktasi (LactMed):</span>
+              <div className="grid grid-cols-3 gap-1.5 text-[10px] text-center font-medium font-sans">
+                <span className="bg-emerald-900/50 border border-emerald-500/30 rounded-md py-1 text-emerald-200">Kompatibel / Aman</span>
+                <span className="bg-amber-900/50 border border-amber-500/30 rounded-md py-1 text-amber-200">Pantau Bayi</span>
+                <span className="bg-rose-900/50 border border-rose-500/30 rounded-md py-1 text-rose-200">Kontraindikasi</span>
               </div>
             </div>
           </div>
@@ -3854,24 +3936,22 @@ export default function App() {
                         {metadata.drugClass && (
                           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
                             {metadata.drugClass === "Obat Keras" && (
-                              <div className="w-3.5 h-3.5 rounded-full bg-rose-600 flex items-center justify-center ring-1 ring-black">
+                              <div className="w-3.5 h-3.5 rounded-full bg-rose-600 flex items-center justify-center ring-1 ring-black shrink-0">
                                 <span className="text-[8px] font-black text-white leading-none mt-0.5">K</span>
                               </div>
                             )}
                             {metadata.drugClass === "Obat Bebas Terbatas" && (
-                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 ring-1 ring-black flex items-center justify-center"></div>
+                              <div className="w-3.5 h-3.5 rounded-full bg-blue-600 ring-1 ring-black flex items-center justify-center shrink-0"></div>
                             )}
                             {metadata.drugClass === "Obat Bebas" && (
-                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 ring-1 ring-black flex items-center justify-center"></div>
+                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 ring-1 ring-black flex items-center justify-center shrink-0"></div>
                             )}
                             <span className="text-[10px] font-bold text-slate-700">{metadata.drugClass}</span>
                           </div>
                         )}
 
                         {/* Generic & Brand Indicator */}
-                        {metadata.genericName.toLowerCase() === metadata.brandName.toLowerCase() ||
-                        (metadata.brandName.toLowerCase().includes("doksorubisin") && metadata.genericName.toLowerCase().includes("doxorubicin")) ||
-                        (metadata.brandName.toLowerCase().includes("karboplatin") && metadata.genericName.toLowerCase().includes("carboplatin")) ? (
+                        {!metadata.isBrand ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-white border border-slate-700 flex items-center gap-1 shadow-2xs">
                             <span className="text-[8px] bg-white text-slate-800 rounded-sm px-1 py-0.5 leading-none font-black uppercase">G</span>
                             Generik
@@ -3945,9 +4025,42 @@ export default function App() {
                         <div className="bg-white border border-slate-200 p-4 rounded-xl space-y-3.5">
                           <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
                             <Activity className="w-4 h-4 text-emerald-500" />
-                            Kategori & Cara Kerja Obat
+                            Kategori, Golongan & Cara Kerja Obat
                           </h4>
                           <div className="space-y-2.5">
+                            {/* Summary Metadata Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                              <div>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block">Golongan Regulasi:</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  {metadata.drugClass === "Obat Keras" && (
+                                    <div className="w-3.5 h-3.5 rounded-full bg-rose-600 flex items-center justify-center ring-1 ring-black shrink-0">
+                                      <span className="text-[8px] font-black text-white leading-none mt-0.5">K</span>
+                                    </div>
+                                  )}
+                                  {metadata.drugClass === "Obat Bebas Terbatas" && (
+                                    <div className="w-3.5 h-3.5 rounded-full bg-blue-600 ring-1 ring-black flex items-center justify-center shrink-0"></div>
+                                  )}
+                                  {metadata.drugClass === "Obat Bebas" && (
+                                    <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 ring-1 ring-black flex items-center justify-center shrink-0"></div>
+                                  )}
+                                  <span className="text-xs font-bold text-slate-800">{metadata.drugClass}</span>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block">Klasifikasi Penamaan:</span>
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold mt-0.5 ${metadata.isBrand ? "text-orange-700" : "text-slate-800"}`}>
+                                  {metadata.isBrand ? "🏷️ Obat Bermerek / Paten" : "🔬 Obat Generik (INN)"}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block">Bentuk Sediaan:</span>
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-800 mt-0.5">
+                                  <span>{formInfo.icon}</span> {formInfo.label}
+                                </span>
+                              </div>
+                            </div>
+
                             <div className="space-y-0.5">
                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight block">Kategori Terapi:</span>
                               <p className="text-slate-700 font-sans text-xs leading-relaxed font-semibold">
@@ -4050,6 +4163,12 @@ export default function App() {
                             <p className="text-slate-700 font-sans text-xs leading-relaxed font-medium">
                               {metadata.pregnancySafety.detail}
                             </p>
+                            {metadata.pregnancySafety.trimesterAdvice && (
+                              <div className="mt-2 text-[11px] bg-white/85 p-2.5 rounded-lg border border-slate-200/80 text-slate-800 flex items-start gap-1.5">
+                                <span className="font-bold shrink-0 text-indigo-700">💡 Panduan Trimester / Klinis:</span>
+                                <span>{metadata.pregnancySafety.trimesterAdvice}</span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Keamanan Menyusui */}
@@ -4075,8 +4194,23 @@ export default function App() {
                             <p className="text-slate-700 font-sans text-xs leading-relaxed font-medium">
                               {metadata.breastfeedingSafety.detail}
                             </p>
+                            {metadata.breastfeedingSafety.infantRisk && (
+                              <div className="mt-2 text-[11px] bg-white/85 p-2.5 rounded-lg border border-slate-200/80 text-slate-800 flex items-start gap-1.5">
+                                <span className="font-bold shrink-0 text-teal-700">👶 Observasi Bayi:</span>
+                                <span>{metadata.breastfeedingSafety.infantRisk}</span>
+                              </div>
+                            )}
                           </div>
 
+                        </div>
+
+                        {/* Clinical Reference Citation Bar */}
+                        <div className="text-[10px] text-slate-500 bg-slate-50/80 border border-slate-200/80 rounded-lg p-2.5 flex items-start gap-2 font-sans">
+                          <BookOpen className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                          <div className="leading-relaxed">
+                            <span className="font-bold text-slate-700">Pustaka & Standar Rujukan Keamanan: </span>
+                            <span>{metadata.references}</span>
+                          </div>
                         </div>
                       </div>
 

@@ -62,3 +62,38 @@ export interface CalculationResult {
   renalDoseReductionPercent?: number;
   alerts: ValidationAlert[];
 }
+
+export interface DrugPregnancySafety {
+  category: "A" | "B" | "C" | "D" | "X";
+  status: "Aman" | "Perlu Perhatian" | "Kontraindikasi";
+  detail: string;
+  trimesterAdvice?: string;
+}
+
+export interface DrugBreastfeedingSafety {
+  status: "Aman" | "Perlu Perhatian" | "Kontraindikasi";
+  detail: string;
+  infantRisk?: string;
+}
+
+export interface DrugClinicalMetadata {
+  brandName: string;
+  genericName: string;
+  isBrand: boolean;
+  composition: string;
+  doseMin: string;
+  doseMax: string;
+  indication: string;
+  contraindication: string;
+  pregnancySafety: DrugPregnancySafety;
+  breastfeedingSafety: DrugBreastfeedingSafety;
+  drugClass: "Obat Keras" | "Obat Bebas Terbatas" | "Obat Bebas";
+  mechanism: string;
+  categoryInfo: { label: string; color: string; bg: string; border: string };
+  precautions: string;
+  dosageRule: string;
+  usageGuide: string;
+  sideEffects: string;
+  references: string;
+  bud: string;
+}

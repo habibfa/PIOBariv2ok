@@ -3,7 +3,7 @@ import { DrugPreset } from "./types";
 const UNSORTED_PRESETS: DrugPreset[] = [
   {
     id: "paracetamol_ped",
-    name: "Paracetamol (Asetaminofen) - Anak",
+    name: "Paracetamol (Asetaminofen) - Anak & Dewasa",
     indication: "Demam dan nyeri ringan hingga sedang pada bayi dan anak-anak",
     calcMethod: "mg_per_kg",
     defaultDoseValue: 15,
@@ -20,7 +20,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
   },
   {
     id: "ibuprofen_ped",
-    name: "Ibuprofen - Anak",
+    name: "Ibuprofen - Anak & Dewasa",
     indication: "Demam, nyeri ringan hingga sedang, dan inflamasi pada anak-anak",
     calcMethod: "mg_per_kg",
     defaultDoseValue: 10,
@@ -476,7 +476,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     singleDoseLimitMax: 100,
     dailyDoseLimitMax: 400,
     weightMinKg: 40,
-    notes: "Dosis: 50-100 mg setiap 4-6 jam jika diperlukan (maksimal 400 mg/hari). Merupakan agonis reseptor opioid sintetis yang lemah serta menghambat reuptake norepinefrin/serotonin.",
+    notes: "Sediaan: Kapsul/Tablet 50 mg dan Ampul Injeksi 100 mg/2 mL (50 mg/mL).\n• Dosis oral: 50–100 mg setiap 4–6 jam jika diperlukan (maksimal 400 mg/hari).\n• Dosis parenteral: 50–100 mg IV lambat (2-3 menit) atau IM setiap 4–6 jam.\n• Agonis reseptor opioid sintetis lemah serta menghambat reuptake norepinefrin/serotonin. Hindari kombinasi dengan obat serotonergik (risiko sindrom serotonin).",
   },
   {
     id: "naproxen_adult",
@@ -548,8 +548,8 @@ const UNSORTED_PRESETS: DrugPreset[] = [
   },
   {
     id: "domperidone_ped",
-    name: "Domperidon (Domperidone) Suspensi - Anak",
-    indication: "Meredakan mual dan muntah akut serta dispepsia fungsional pada anak",
+    name: "Domperidon (Domperidone)",
+    indication: "Meredakan mual dan muntah akut serta dispepsia fungsional pada dewasa dan anak",
     calcMethod: "mg_per_kg",
     defaultDoseValue: 0.25,
     doseUnit: "mg",
@@ -560,7 +560,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     dailyDoseLimitMax: 30,
     pediatricCeilingDose: 10,
     weightMinKg: 5,
-    notes: "Dosis anak: 0.25 mg/kg per kali pemberian, dapat diberikan hingga 3 kali sehari sebelum makan. Hindari penggunaan berlebih karena risiko perpanjangan interval QT jantung.",
+    notes: "Sediaan: Tablet 10 mg, Suspensi/Sirup Oral 5 mg/5 mL (botol 60 mL), Tetes Oral (Drops) 5 mg/mL (botol 10 mL).\n• Dosis Dewasa & Remaja (≥ 35 kg): 10 mg (1 tablet atau 10 mL sirup) hingga 3 kali sehari sebelum makan (maksimal 30 mg/hari).\n• Dosis Pediatrik (Anak < 35 kg): 0.25 mg/kgBB per kali pemberian, diberikan hingga 3 kali sehari (maksimal 0.75 mg/kgBB/hari atau 30 mg/hari).\n• Waktu Minum: 15–30 menit sebelum makan dan sebelum tidur.\n• Perhatian: Hindari penggunaan melebihi 7 hari dan perhatikan risiko perpanjangan interval QT jantung.",
   },
   {
     id: "zinc_ped",
@@ -1263,7 +1263,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
   {
     id: "vancomycin_inf",
     name: "Vankomisin (Vancomycin) - IV Infeksi MRSA",
-    indication: "Infeksi Gram-positif berat yang resisten terhadap beta-laktam (termasuk MRSA)",
+    indication: "Infeksi Gram-positif berat yang resisten terhadap beta-laktam (termasuk MRSA, sepsis, endokarditis)",
     calcMethod: "mg_per_kg",
     defaultDoseValue: 15,
     doseUnit: "mg",
@@ -1272,7 +1272,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     dailyDoseLimitMax: 3000,
     requiresRenalAdjustment: true,
     weightMinKg: 5,
-    notes: "Dosis standar: 15 mg/kg IV lambat selama minimal 60 menit setiap 12 jam. Pemberian terlalu cepat dapat menyebabkan Red Man Syndrome (reaksi pelepasan histamin).",
+    notes: "Sediaan: Vial serbuk steril injeksi/infus 500 mg dan 1 g.\n• Dosis standar: 15–20 mg/kg IV lambat via infus intermittent (kecepatan maksimal 10 mg/menit atau habis dalam minimal 60-120 menit) setiap 8–12 jam.\n• Penting: Pemberian terlalu cepat menyebabkan Red Man Syndrome (pelepasan histamin masif).\n• Memerlukan penyesuaian dosis pada gangguan fungsi ginjal serta pemantauan konsentrasi palung (trough level: 15–20 mcg/mL).",
   },
   {
     id: "vitamin_k_ped",
@@ -1543,19 +1543,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     dailyDoseLimitMax: 8400,
     notes: "Sediaan: 600 mg Tablet. Dosis awal 1200 mg (2 tablet) setelah buang air besar pertama, dilanjutkan 600 mg (1 tablet) tiap selesai buang air besar. Maksimal 14 tablet per hari (dewasa)."
   },
-  {
-    id: "atorvastatin_10",
-    name: "Atorvastatin",
-    indication: "Hiperkolesterolemia primer, pencegahan penyakit kardiovaskular",
-    calcMethod: "flat",
-    defaultDoseValue: 10,
-    doseUnit: "mg",
-    frequency: "once",
-    singleDoseLimitMax: 80,
-    dailyDoseLimitMax: 80,
-    notes: "Sediaan: 10 mg Tablet. Dapat diminum kapan saja (pagi atau malam). Kontraindikasi mutlak pada ibu hamil dan menyusui."
-  },
-  {
+    {
     id: "atracurium_25",
     name: "Atracurium Besylate",
     indication: "Pelemas otot rangka (muscle relaxant) selama operasi atau ventilasi mekanik",
@@ -1637,16 +1625,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "mg",
     frequency: "q12h",
     notes: "Sediaan: Tablet."
-},
-{
-    id: "baquinor_forte",
-    name: "Baquinor Forte (Ciprofloxacin)",
-    indication: "Infeksi bakteri gram negatif, infeksi saluran kemih",
-    calcMethod: "flat",
-    defaultDoseValue: 500,
-    doseUnit: "mg",
-    frequency: "q12h",
-    notes: "Sediaan: 500 mg Tablet Film Coated."
 },
 {
     id: "ciprofloxacin",
@@ -1911,28 +1889,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: Cairan Inhalasi / Respules untuk Nebulizer (0.25 mg/mL dan 0.5 mg/mL dalam ampul 2 mL). Diberikan via alat nebulizer kompresor. Setelah penggunaan inhalasi, bilas mulut dan berkumur dengan air putih untuk mencegah kandidiasis oral (infeksi jamur) dan suara serak."
 },
 {
-    id: "bufacetin",
-    name: "Bufacetin (Chloramphenicol)",
-    indication: "Infeksi kulit bakteri topikal",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "q8h",
-    notes: "Sediaan: Salep (Ointment) 2% (15 gram)."
-},
-{
-    id: "bufect",
-    name: "Bufect (Ibuprofen)",
-    indication: "Nyeri ringan-sedang, demam",
-    calcMethod: "mg_per_kg",
-    defaultDoseValue: 10,
-    doseUnit: "mg",
-    frequency: "q8h",
-    liquidConcentrationValue: 100,
-    liquidConcentrationVolume: 5,
-    notes: "Sediaan: Sirup 100 mg/5 mL (60 mL). Dosis lazim anak: 5-10 mg/kgBB per kali pemberian."
-},
-{
     id: "burnazin",
     name: "Burnazin (Silver Sulfadiazine)",
     indication: "Pencegahan dan pengobatan infeksi pada luka bakar",
@@ -2023,16 +1979,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 500 MG; 100 IU"
 },
 {
-    id: "auto_candesartan",
-    name: "Candesartan",
-    indication: "Hipertensi dan gagal jantung",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 16 MG | TABLET 8 MG"
-},
-{
     id: "auto_capneu",
     name: "Capneu",
     indication: "Terapi suportif untuk nyeri saraf dan neuropati",
@@ -2041,26 +1987,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: INJECTION 20 MG/ML"
-},
-{
-    id: "auto_captopril",
-    name: "Captopril",
-    indication: "Hipertensi dan gagal jantung",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 12.5 MG | TABLET 25 MG"
-},
-{
-    id: "auto_carbamazepine",
-    name: "Carbamazepine",
-    indication: "Epilepsi, kejang, dan neuralgia trigeminal",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 200 MG"
 },
 {
     id: "auto_carbo_glycerin_30_ml",
@@ -2143,16 +2069,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: SOLUTION, INJECTION 1 MG/ML"
 },
 {
-    id: "auto_cefadroxil",
-    name: "Cefadroxil",
-    indication: "Infeksi bakteri pada saluran kemih, kulit, dan tenggorokan",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 500 MG | POWDER, FOR ORAL SUSPENSION 125 MG/5 ML"
-},
-{
     id: "auto_cefat",
     name: "Cefat",
     indication: "Infeksi bakteri saluran napas, kulit, dan kemih",
@@ -2222,16 +2138,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     id: "auto_ceftazidime",
     name: "Ceftazidime",
     indication: "Infeksi bakteri berat termasuk Pseudomonas aeruginosa",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: POWDER, FOR INJECTION SOLUTION 1 GM"
-},
-{
-    id: "auto_ceftriaxone",
-    name: "Ceftriaxone",
-    indication: "Infeksi bakteri berat, meningitis, profilaksis bedah",
     calcMethod: "flat",
     defaultDoseValue: 1,
     doseUnit: "units",
@@ -2641,16 +2547,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 500 MG; 125 MG"
 },
 {
-    id: "auto_clindamycin",
-    name: "Clindamycin",
-    indication: "Infeksi bakteri anaerob serius, kulit, dan jaringan lunak",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 150 MG | CAPSULE 300 MG"
-},
-{
     id: "auto_clinimix_n9g15e_1_l",
     name: "Clinimix n9g15e 1 l",
     indication: "Nutrisi parenteral parenteral untuk pasien dewasa dan anak",
@@ -2719,16 +2615,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: TABLET 0.15 MG"
-},
-{
-    id: "auto_clopidogrel",
-    name: "Clopidogrel",
-    indication: "Mencegah stroke, serangan jantung, dan penyakit arteri perifer",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 75 MG"
 },
 {
     id: "auto_clozapine",
@@ -2814,34 +2700,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: Tablet salut selaput 1.25 mg, 2.5 mg, 5 mg, dan 10 mg.\n• Hipertensi & Angina Pektoris: Dosis awal 5 mg 1x sehari (dapat dimulai 2.5 mg pada pasien sensitif/lansia). Dosis lazim 5–10 mg 1x sehari, maks 20 mg/hari.\n• Gagal Jantung Kronis Stabil: Titrasi bertahap diawali 1.25 mg 1x/hari selama 1-2 minggu, lalu 2.5 mg, 3.75 mg, 5 mg, 7.5 mg hingga target pemeliharaan 10 mg 1x/hari sesuai toleransi.\n• Beta-blocker kardioselektif (beta-1). Pantau laju denyut jantung dan tekanan darah secara berkala."
 },
 {
-    id: "auto_cortidex",
-    name: "Cortidex",
-    indication: "Alergi berat, peradangan, dan penyakit autoimun",
+    id: "cortidex",
+    name: "Cortidex (Dexamethasone)",
+    indication: "Alergi akut & berat, insufisiensi adrenokortikal, inflamasi berat, syok anafilaktik, edema serebral",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: 0.5 mg"
-},
-{
-    id: "auto_cortidex_1_ml",
-    name: "Cortidex 1 ml",
-    indication: "Alergi akut, inflamasi berat, atau syok anafilaktik",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INJECTION 5 MG"
-},
-{
-    id: "auto_cotrimoxazole",
-    name: "Cotrimoxazole",
-    indication: "Infeksi saluran kemih, otitis media, pneumonia jirovecii",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SUSPENSION 200 MG/5 ML; 40 MG/5 ML | TABLET 800 MG; 160 MG | TABLET 400 MG; 80 MG"
+    defaultDoseValue: 0.5,
+    doseUnit: "mg",
+    frequency: "q8h",
+    singleDoseLimitMax: 8,
+    dailyDoseLimitMax: 16,
+    weightMinKg: 10,
+    notes: "Sediaan: Tablet 0.5 mg dan Ampul Injeksi 5 mg/mL (ampul 1 mL).\n• Dosis Oral Dewasa: 0.5–9 mg/hari terbagi dalam 2–4 dosis sesuai respons klinis.\n• Dosis Injeksi (IV/IM): 4–20 mg IV pelan atau IM (dapat diulang sesuai kondisi darurat).\n• Glukokortikoid sintesis kuat tanpa efek retensi natrium yang bermakna. Lakukan tapering-off pada penggunaan kronis."
 },
 {
     id: "auto_counterpain_30_gm",
@@ -2892,16 +2761,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: SOLUTION, INJECTION 50 MG/10 ML"
-},
-{
-    id: "auto_ctm",
-    name: "Ctm",
-    indication: "Meredakan gejala alergi seperti gatal-gatal dan rinitis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 4 MG"
 },
 {
     id: "auto_curacil_500_mg__10_ml",
@@ -3024,16 +2883,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: POWDER, FOR INJECTION SOLUTION"
 },
 {
-    id: "auto_dexamethasone",
-    name: "Dexamethasone",
-    indication: "Mengatasi alergi berat, radang, dan penyakit autoimun",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 0.5 MG | SOLUTION, INJECTION 5 MG/ML | TABLET 0.5 MG"
-},
-{
     id: "auto_dexmeto_100_mcg_2_ml",
     name: "Dexmeto 100 mcg/2 ml",
     indication: "Sedasi pasien di ICU atau selama prosedur bedah",
@@ -3094,24 +2943,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 60 MG"
 },
 {
-    id: "auto_diazepam",
-    name: "Diazepam",
-    indication: "Mengatasi kecemasan, kejang otot, dan gejala putus alkohol",
+    id: "digoxin",
+    name: "Digoksin (Digoxin)",
+    indication: "Gagal jantung kongestif kronik, fibrilasi atrium, dan aritmia supraventrikular pada dewasa & anak",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
+    defaultDoseValue: 0.25,
+    doseUnit: "mg",
     frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 5 MG/ML | 10 MG | 5 MG | TABLET 2 MG | TABLET 5 MG"
-},
-{
-    id: "auto_digoxin",
-    name: "Digoxin",
-    indication: "Terapi gagal jantung kongestif dan fibrilasi atrium",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INJECTION 0.5 MG/2 ML | TABLET 0.25 MG"
+    singleDoseLimitMax: 0.5,
+    dailyDoseLimitMax: 0.5,
+    weightMinKg: 3,
+    notes: "Sediaan: Tablet 0.25 mg, Eliksir/Sirup Cairan Oral 0.05 mg/mL (botol 60 mL), Ampul Injeksi 0.5 mg/2 mL (0.25 mg/mL).\n• Dosis Pemeliharaan Dewasa: 0.125–0.25 mg sekali sehari oral (pada lansia/gangguan ginjal: 0.0625–0.125 mg/hari).\n• Dosis Digitalisasi Cepat (Darurat): 0.5–1 mg IV/oral terbagi dalam 24 jam dengan monitoring EKG ketat.\n• Pediatrik: Dosis pemeliharaan cairan oral 8–10 mcg/kgBB/hari dibagi 2 dosis.\n• PERHATIAN: Indeks terapi sempit (kadar terapeutik serum 0.5–0.9 ng/mL). Pantau kalium darah (hipokalemia meningkatkan risiko toksisitas digoksin)."
 },
 {
     id: "auto_dilatamol",
@@ -3124,24 +2966,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: SYRUP 2 MG/5 ML"
 },
 {
-    id: "auto_diltiazem_inf",
-    name: "Diltiazem inf",
-    indication: "Pengendalian cepat denyut jantung pada gangguan aritmia akut",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 30 MG"
-},
-{
-    id: "auto_diltiazem",
+    id: "diltiazem",
     name: "Diltiazem",
-    indication: "Terapi hipertensi kronis dan profilaksis angina pektoris",
+    indication: "Hipertensi, profilaksis angina pektoris, dan pengendalian cepat denyut ventrikel pada fibrilasi/flutter atrium akut",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 30 MG"
+    defaultDoseValue: 30,
+    doseUnit: "mg",
+    frequency: "q8h",
+    singleDoseLimitMax: 120,
+    dailyDoseLimitMax: 360,
+    weightMinKg: 30,
+    notes: "Sediaan: Tablet 30 mg, Kapsul Lepas Lambat (SR) 100 mg & 200 mg, Serbuk Injeksi / Infus Vial 10 mg & 50 mg.\n• Dosis Oral Dewasa: 30 mg 3–4 kali sehari (dosis dapat ditingkatkan bertahap hingga 180–360 mg/hari).\n• Dosis Injeksi IV Bolus (Aritmia Akut): 0.25 mg/kgBB diberikan selama 2 menit; jika perlu bolus kedua 0.35 mg/kgBB setelah 15 menit.\n• Dosis Infus Kontinu IV: 5–15 mg/jam dititrasi sesuai target laju denyut jantung.\n• Kalsium antagonis non-dihidropiridin; kontraindikasi pada sindrom sick sinus, AV block derajat 2–3, dan hipotensi berat."
 },
 {
     id: "auto_dimenhidrinat",
@@ -3152,16 +2987,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: TABLET 50 MG"
-},
-{
-    id: "auto_diphenhydramine",
-    name: "Diphenhydramine",
-    indication: "Mengatasi gejala alergi dan reaksi hipersensitivitas akut",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INJECTION, SOLUTION 10 MG/ML | SOLUTION, INJECTION 150 MG/15 ML"
 },
 {
     id: "auto_diphteria_antitoxin",
@@ -3214,24 +3039,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: INJECTION, SOLUTION 250 MG/5 ML"
 },
 {
-    id: "auto_dobutamin",
-    name: "Dobutamin",
-    indication: "Meningkatkan curah jantung pada penderita gagal jantung akut",
+    id: "dobutamin",
+    name: "Dobutamin (Dobutamine HCl)",
+    indication: "Dukungan inotropik positif pada dekompensasi kordis akut, syok kardiogenik, dan gagal jantung kongestif",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
+    defaultDoseValue: 250,
+    doseUnit: "mg",
     frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 250 MG"
-},
-{
-    id: "auto_dobutamine_hcl",
-    name: "Dobutamine hcl",
-    indication: "Terapi penunjang inotropik pada penderita gagal jantung",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INJECTION 250 MG/5 ML"
+    singleDoseLimitMax: 500,
+    dailyDoseLimitMax: 1000,
+    weightMinKg: 10,
+    notes: "Sediaan: Ampul/Vial Injeksi Konsentrat Infus 250 mg / 5 mL (50 mg/mL) atau 250 mg / 20 mL.\n• Dosis Dewasa & Pediatrik: Diberikan via syringe pump / infus kontinu IV dengan kecepatan 2.5–10 mcg/kgBB/menit (dapat dititrasi hingga 20–40 mcg/kgBB/menit pada syok berat).\n• Rekonstitusi: Larutkan 250 mg dobutamin ke dalam 50 mL atau 250–500 mL D5W atau NaCl 0.9% (konsentrasi lazim syringe pump: 5 mg/mL [5000 mcg/mL]).\n• Agonis reseptor beta-1 adrenergik yang meningkatkan kontraktilitas miokardium dan curah jantung dengan efek kronotropik minimal."
 },
 {
     id: "auto_dolutegravir_50_mg___lamivudine_300_mg___tenovofir_300_mg",
@@ -3242,26 +3060,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: TABLET"
-},
-{
-    id: "auto_domperidon_60_ml",
-    name: "Domperidon 60 ml",
-    indication: "Meredakan mual dan muntah akut pada anak-anak",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SYRUP 5 MG/5 ML"
-},
-{
-    id: "auto_domperidon",
-    name: "Domperidon",
-    indication: "Mengobati mual, muntah, dan dispepsia fungsional kronis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: DROPS 5 MG/ML | TABLET 10 MG"
 },
 {
     id: "auto_dopamet",
@@ -3534,16 +3332,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: POWDER, FOR ORAL SOLUTION 200 MG/5 ML | TABLET 200 MG | TABLET, FILM COATED 500 MG"
 },
 {
-    id: "auto_erythromycin",
-    name: "Erythromycin",
-    indication: "Mengobati infeksi bakteri sensitif pada pasien alergi penisilin",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 250 MG | SYRUP 60 ML POWDER, FOR ORAL SUSPENSION 200 MG/5 ML | TABLET 500 MG"
-},
-{
     id: "auto_esomeprazole_40_mg",
     name: "Esomeprazole 40 mg",
     indication: "Terapi refluks gastroesofageal (GERD) dan ulkus lambung",
@@ -3754,26 +3542,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET"
 },
 {
-    id: "auto_favipiravir__200_mg",
-    name: "Favipiravir  200 mg",
-    indication: "Terapi infeksi virus influenza atau virus COVID-19",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET"
-},
-{
-    id: "auto_favipiravir",
-    name: "Favipiravir",
-    indication: "Terapi antiviral untuk pasien dengan infeksi virus tertentu",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: 200 MG"
-},
-{
     id: "auto_fenofibrate",
     name: "Fenofibrate",
     indication: "Menurunkan kadar kolesterol jahat dan trigliserida dalam darah",
@@ -3912,16 +3680,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: POWDER"
-},
-{
-    id: "auto_fluconazole",
-    name: "Fluconazole",
-    indication: "Terapi kandidiasis dan infeksi jamur sistemik",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INFUSION 200 MG/100 ML | TABLET 150 MG"
 },
 {
     id: "auto_fluimucil_75_ml",
@@ -4124,16 +3882,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: CREAM 5 GM"
 },
 {
-    id: "auto_furosemid",
-    name: "Furosemid",
-    indication: "Diuretik untuk terapi hipertensi dan edema",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 20 MG/2 ML | TABLET 40 MG"
-},
-{
     id: "auto_fusycom_5_gm",
     name: "Fusycom 5 gm",
     indication: "Terapi infeksi kulit topikal akibat bakteri",
@@ -4324,16 +4072,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 5 MG"
 },
 {
-    id: "auto_gliclazide",
-    name: "Gliclazide",
-    indication: "Antidiabetes oral untuk diabetes melitus tipe 2",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 80 MG | TABLET, SUSTAINED RELEASE, FILM COATED 60 MG"
-},
-{
     id: "auto_glimepiride",
     name: "Glimepiride",
     indication: "Antidiabetes oral untuk diabetes melitus tipe 2",
@@ -4384,16 +4122,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: INFUSION 20 GM/100 ML"
 },
 {
-    id: "auto_glyceryl_guaiacolate",
-    name: "Glyceryl guaiacolate",
-    indication: "Ekspektoran untuk meredakan batuk berdahak",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 100 MG"
-},
-{
     id: "auto_glycophos__20_ml",
     name: "Glycophos  20 ml",
     indication: "Suplemen fosfat dalam nutrisi parenteral intravena",
@@ -4402,16 +4130,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: SOLUTION, CONCENTRATE"
-},
-{
-    id: "auto_griseofulvin",
-    name: "Griseofulvin",
-    indication: "Terapi infeksi jamur pada kulit, rambut, kuku",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 125 MG | TABLET 500 MG"
 },
 {
     id: "auto_haldol_decanoas",
@@ -4432,16 +4150,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: INJECTION, SOLUTION 5 MG/1 ML"
-},
-{
-    id: "auto_haloperidol",
-    name: "Haloperidol",
-    indication: "Antipsikotik untuk terapi skizofrenia dan psikosis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 0.5 MG | TABLET 1.5 MG | TABLET 5 MG"
 },
 {
     id: "auto_harnal_d",
@@ -4694,26 +4402,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 1 MG | TABLET 2 MG"
 },
 {
-    id: "auto_ibuprofen_60_ml",
-    name: "Ibuprofen 60 ml",
-    indication: "Meredakan demam dan nyeri ringan hingga sedang",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SYRUP 100 MG/5 ML | SYRUP 200 MG/5 ML"
-},
-{
-    id: "auto_ibuprofen",
-    name: "Ibuprofen",
-    indication: "Meredakan nyeri ringan hingga sedang dan demam",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 200 MG | TABLET 400 MG"
-},
-{
     id: "auto_icobal_500_mg",
     name: "Icobal 500 mg",
     indication: "Terapi neuropati perifer akibat kekurangan vitamin B12",
@@ -4844,16 +4532,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: SUSPENSION, INJECTION"
 },
 {
-    id: "auto_inh",
-    name: "Inh",
-    indication: "Terapi pengobatan dan pencegahan tuberkulosis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 300 MG"
-},
-{
     id: "auto_inhavent",
     name: "Inhavent",
     indication: "Terapi bronkodilator untuk PPOK dan asma",
@@ -4982,16 +4660,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: SOLUTION 370 MG/50 ML"
-},
-{
-    id: "auto_isoniazid_tb_ro_300_mg",
-    name: "Isoniazid tb ro 300 mg",
-    indication: "Pengobatan tuberkulosis resisten obat",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET"
 },
 {
     id: "auto_isoprinosine",
@@ -5254,16 +4922,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: SOLUTION, INJECTION 50 MG/2 ML"
 },
 {
-    id: "auto_ketoconazol",
-    name: "Ketoconazol",
-    indication: "Mengatasi infeksi jamur pada kulit dan organ",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CREAM | TABLET 200 MG"
-},
-{
     id: "auto_ketomed_15_gm",
     name: "Ketomed 15 gm",
     indication: "Mengobati infeksi jamur kulit seperti panu dan kurap",
@@ -5442,16 +5100,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: Sediaan Lainnya"
-},
-{
-    id: "auto_lansoprazole",
-    name: "Lansoprazole",
-    indication: "Mengatasi tukak lambung dan refluks asam lambung",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 30 MG | INJECTION"
 },
 {
     id: "auto_lantus_solostar_3_ml",
@@ -5684,26 +5332,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET, FILM COATED 2 MG"
 },
 {
-    id: "auto_loperamid",
-    name: "Loperamid",
-    indication: "Terapi simptomatik diare akut",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 2 MG"
-},
-{
-    id: "auto_loratadine",
-    name: "Loratadine",
-    indication: "Mengatasi gejala rinitis alergi dan urtikaria",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 10 MG"
-},
-{
     id: "auto_lorazepam",
     name: "Lorazepam",
     indication: "Mengatasi gangguan kecemasan dan insomnia",
@@ -5834,16 +5462,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 500 MCG"
 },
 {
-    id: "auto_meloxicam",
-    name: "Meloxicam",
-    indication: "Meredakan nyeri dan inflamasi pada osteoartritis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 15 MG"
-},
-{
     id: "auto_meprovent_2_5_ml",
     name: "Meprovent 2.5 ml",
     indication: "Terapi bronkospasme pada penyakit PPOK dan asma",
@@ -5894,16 +5512,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: INJECTION 500 MG/ML"
 },
 {
-    id: "auto_metformin_hcl",
-    name: "Metformin hcl",
-    indication: "Terapi diabetes melitus tipe 2",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 500 MG"
-},
-{
     id: "auto_methylergometrin",
     name: "Methylergometrin",
     indication: "Pencegahan dan penanganan perdarahan pasca persalinan",
@@ -5944,16 +5552,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET, SUSTAINED RELEASE, FILM COATED 10 MG"
 },
 {
-    id: "auto_methylprednisolone",
-    name: "Methylprednisolone",
-    indication: "Mengatasi peradangan, alergi berat, dan penyakit autoimun",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: POWDER, FOR INJECTION SOLUTION 125 MG | POWDER, FOR INJECTION SOLUTION 500 MG | TABLET 16 MG | TABLET 4 MG"
-},
-{
     id: "auto_metoclopramide",
     name: "Metoclopramide",
     indication: "Mencegah dan meredakan mual serta muntah",
@@ -5962,36 +5560,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: SOLUTION, INJECTION 10 MG/2 ML"
-},
-{
-    id: "auto_metronidazol",
-    name: "Metronidazol",
-    indication: "Mengobati infeksi bakteri anaerob dan trikomoniasis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 500 MG"
-},
-{
-    id: "auto_metronidazole_125_mg",
-    name: "Metronidazole 125 mg",
-    indication: "Mengobati infeksi bakteri anaerob dan amoebiasis",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SYRUP"
-},
-{
-    id: "auto_metronidazole",
-    name: "Metronidazole",
-    indication: "Mengobati infeksi akibat bakteri anaerob dan protozoa",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INFUSION 500 MG/100 ML"
 },
 {
     id: "auto_meylon__25_ml",
@@ -6124,16 +5692,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET, SUSTAINED ACTION"
 },
 {
-    id: "auto_morphine",
-    name: "Morphine",
-    indication: "Meredakan nyeri sedang hingga berat",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 10 MG/ML"
-},
-{
     id: "auto_motaderm_10_gm",
     name: "Motaderm 10 gm",
     indication: "Mengatasi dermatitis dan kondisi kulit meradang",
@@ -6224,16 +5782,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 180 MG | TABLET 360 MG"
 },
 {
-    id: "auto_n_ace",
-    name: "N-ace",
-    indication: "Mengencerkan dahak kental pada gangguan saluran pernapasan",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 200 MG"
-},
-{
     id: "auto_nacl_0_9___500_ml",
     name: "Nacl 0.9 % 500 ml",
     indication: "Mengganti cairan tubuh dan elektrolit yang hilang",
@@ -6312,26 +5860,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: SPRAY 55 MCG/1 SPR"
-},
-{
-    id: "auto_n_asetil_sistein",
-    name: "N-asetil sistein",
-    indication: "Mengencerkan mukus atau dahak pada saluran pernapasan",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 200 MG | INFUSION"
-},
-{
-    id: "auto_natrium_diklofenak",
-    name: "Natrium diklofenak",
-    indication: "Meredakan nyeri dan peradangan pada osteoarthritis atau gout",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 25 MG | TABLET 50 MG"
 },
 {
     id: "auto_natrium_klorida__100_ml",
@@ -6462,16 +5990,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: INJECTION 10 MG/10 ML"
-},
-{
-    id: "auto_nifedipin",
-    name: "Nifedipin",
-    indication: "Mengobati hipertensi dan angina pektoris",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 10 MG"
 },
 {
     id: "auto_nimodipin_0_2_mg_ml",
@@ -6724,16 +6242,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 10 MG | TABLET 5 MG"
 },
 {
-    id: "auto_omeprazole",
-    name: "Omeprazole",
-    indication: "Mengobati tukak lambung, GERD, dan hipersekresi asam",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 20 MG | POWDER, FOR INJECTION SOLUTION 40 MG"
-},
-{
     id: "auto_omnipaque_300_20_ml",
     name: "Omnipaque 300 20 ml",
     indication: "Bahan kontras pemeriksaan radiologi atau CT scan",
@@ -6752,16 +6260,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: 150 MCG | 300 MCG"
-},
-{
-    id: "auto_ondansetron",
-    name: "Ondansetron",
-    indication: "Mencegah mual dan muntah akibat kemoterapi atau operasi",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 4 MG/2 ML | SOLUTION, INJECTION 8 MG/4 ML | TABLET 4 MG | TABLET 8 MG"
 },
 {
     id: "auto_optiflox_tetes_mata",
@@ -6802,16 +6300,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: CAPSULE (IMMED./COMP. RELEASE), SOFT GELATIN"
-},
-{
-    id: "auto_oseltamivir",
-    name: "Oseltamivir",
-    indication: "Mengobati dan mencegah infeksi virus influenza tipe A dan B",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE | CAPSULE"
 },
 {
     id: "auto_osfit_dha",
@@ -6884,16 +6372,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: INJECTION"
 },
 {
-    id: "auto_oxytocin",
-    name: "Oxytocin",
-    indication: "Induksi persalinan dan pencegahan perdarahan pascapersalinan",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: 10 IU/ml"
-},
-{
     id: "auto_pamol",
     name: "Pamol",
     indication: "Meredakan demam dan meredakan rasa nyeri",
@@ -6902,16 +6380,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: SUPPOSITORY 125 MG | SUPPOSITORY 250 MG"
-},
-{
-    id: "auto_paracetamol",
-    name: "Paracetamol",
-    indication: "Meredakan demam dan nyeri ringan hingga sedang",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SYRUP 120 MG/5 ML | DROPS 10 ML SOLUTION, DROPS 100 MG/ML | INFUSION 100 ML | TABLET 500 MG"
 },
 {
     id: "auto_paramol",
@@ -7054,16 +6522,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 800 MG"
 },
 {
-    id: "auto_pirantel_pamoat",
-    name: "Pirantel pamoat",
-    indication: "Infeksi cacing kremi, gelang, dan tambang",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 125 MG"
-},
-{
     id: "auto_pirazinamid",
     name: "Pirazinamid",
     indication: "Tuberkulosis (TBC)",
@@ -7162,16 +6620,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: TABLET, EXTENDED RELEASE 0.375 MG | TABLET, EXTENDED RELEASE 0.75 MG"
-},
-{
-    id: "auto_prednison",
-    name: "Prednison",
-    indication: "Kondisi inflamasi dan penyakit autoimun",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 5 MG"
 },
 {
     id: "auto_pregabalin_75_mg",
@@ -7282,16 +6730,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: INJECTION 100 MG/10 ML"
-},
-{
-    id: "auto_propranolol",
-    name: "Propranolol",
-    indication: "Hipertensi, angina pektoris, dan aritmia",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 10 MG"
 },
 {
     id: "auto_propylthiourasil",
@@ -7432,16 +6870,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: TABLET 5 MG"
-},
-{
-    id: "auto_ranitidine",
-    name: "Ranitidine",
-    indication: "Tukak lambung dan penyakit refluks asam lambung",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 50 MG/2 ML | TABLET 150 MG"
 },
 {
     id: "auto_recofol_n_20_ml",
@@ -7614,16 +7042,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 150 MG"
 },
 {
-    id: "auto_rifampicin",
-    name: "Rifampicin",
-    indication: "Pengobatan tuberkulosis (TBC) dan kusta",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 300 MG | TABLET 450 MG"
-},
-{
     id: "auto_rifanh_150_150",
     name: "Rifanh 150/150",
     indication: "Terapi tuberkulosis paru fase lanjutan",
@@ -7792,26 +7210,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: AEROSOL"
-},
-{
-    id: "auto_salbutamol_sulfat_2_5_ml",
-    name: "Salbutamol sulfat 2.5 ml",
-    indication: "Mengatasi bronkospasme akut pada asma",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SOLUTION, FOR INHALATION 1 MG/ML"
-},
-{
-    id: "auto_salbutamol",
-    name: "Salbutamol",
-    indication: "Meredakan bronkospasme pada asma dan PPOK",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SYRUP 2 MG/5 ML | TABLET 2 MG"
 },
 {
     id: "auto_salofalk",
@@ -8094,16 +7492,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: CREAM"
 },
 {
-    id: "auto_simvastatin",
-    name: "Simvastatin",
-    indication: "Menurunkan kolesterol total dan LDL",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 10 MG | TABLET 20 MG"
-},
-{
     id: "auto_sinovac_sars_cov_2",
     name: "Sinovac sars-cov-2",
     indication: "Vaksinasi pencegahan infeksi virus COVID-19",
@@ -8254,16 +7642,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: Sediaan Lainnya"
 },
 {
-    id: "auto_spiramycin",
-    name: "Spiramycin",
-    indication: "Infeksi bakteri sensitif, terutama toksoplasmosis kehamilan",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 500 MG"
-},
-{
     id: "auto_spiriva_2_5_mcg_refill",
     name: "Spiriva 2.5 mcg refill",
     indication: "Terapi pemeliharaan untuk pasien PPOK dan asma",
@@ -8282,26 +7660,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: INHALATION"
-},
-{
-    id: "auto_spironolacton",
-    name: "Spironolacton",
-    indication: "Hipertensi, gagal jantung edema, aldosteronisme primer",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 100 MG"
-},
-{
-    id: "auto_spironolactone",
-    name: "Spironolactone",
-    indication: "Hipertensi, edema akibat gagal jantung congestive",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 25 MG"
 },
 {
     id: "auto_sporetik",
@@ -8584,34 +7942,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: CAPSULE 130 MG"
 },
 {
-    id: "auto_thiamazole_10_mg",
-    name: "Thiamazole 10 mg",
-    indication: "Terapi hipertiroidisme atau persiapan tiroidektomi",
+    id: "thiamazole",
+    name: "Thiamazole (Metimazol)",
+    indication: "Terapi hipertiroidisme, penyakit Graves, dan persiapan pra-operasi tiroidektomi",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
+    defaultDoseValue: 10,
+    doseUnit: "mg",
     frequency: "once",
-    notes: "Sediaan: TABLET"
-},
-{
-    id: "auto_thiamazole_5_mg",
-    name: "Thiamazole 5 mg",
-    indication: "Terapi hipertiroidisme dan penyakit Graves",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET"
-},
-{
-    id: "auto_thiamphenicol",
-    name: "Thiamphenicol",
-    indication: "Infeksi bakteri sensitif, demam tifoid",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 500 MG"
+    singleDoseLimitMax: 30,
+    dailyDoseLimitMax: 60,
+    weightMinKg: 20,
+    notes: "Sediaan: Tablet salut selaput 5 mg dan 10 mg.\n• Hipertiroidisme Dewasa: Dosis awal ringan 15 mg/hari, sedang 30-40 mg/hari, berat 60 mg/hari terbagi tiap 8 jam. Setelah eutiroid (4-8 minggu), diturunkan ke dosis pemeliharaan 5-15 mg sekali sehari.\n• Anak: Dosis awal 0.4-0.5 mg/kgBB/hari terbagi tiap 8 jam.\n• Pantau tanda agranulositosis (demam, sakit tenggorokan mendadak) dan periksa fungsi hati serta darah lengkap berkala."
 },
 {
     id: "auto_thiopental_sodium_vil",
@@ -8644,24 +7985,14 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: 10 GM"
 },
 {
-    id: "auto_thrombophob_10_gm",
-    name: "Thrombophob 10 gm",
-    indication: "Mengatasi trombosis permukaan, tromboflebitis, memar",
+    id: "thrombophob",
+    name: "Thrombophob (Heparin Sodium)",
+    indication: "Mengatasi trombosis permukaan, tromboflebitis superfisial, memar, dan hematoma",
     calcMethod: "flat",
     defaultDoseValue: 1,
     doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: GEL 20000 IU/100 GM"
-},
-{
-    id: "auto_thrombophob",
-    name: "Thrombophob",
-    indication: "Mengurangi memar, hematoma, phlebitis superficial",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: 20 GM"
+    frequency: "q8h",
+    notes: "Sediaan: Gel (Heparin Sodium 20.000 IU/100 g) tube 10 g dan 20 g; Ointment (Heparin Sodium 5.000 IU + Benzil Nikotinat 250 mg) tube 20 g.\n• Cara penggunaan: Oleskan tipis-tipis pada kulit yang mengalami memar atau flebitis 2-3 kali sehari.\n• Peringatan: Hanya untuk pemakaian luar pada kulit utuh. Jangan dioleskan pada luka terbuka, membran mukosa, atau area yang mengalami perdarahan aktif."
 },
 {
     id: "auto_thyrozol",
@@ -8714,16 +8045,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: INJECTION"
 },
 {
-    id: "auto_tramadol",
-    name: "Tramadol",
-    indication: "Pereda nyeri sedang hingga berat",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: SOLUTION, INJECTION 100 MG/2 ML"
-},
-{
     id: "auto_travatan_0_004__",
     name: "Travatan 0.004 %",
     indication: "Menurunkan tekanan intraokular pada glaukoma",
@@ -8744,24 +8065,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 60 MG; 2.5 MG"
 },
 {
-    id: "auto_triamcinolone_acetonide_5_ml",
-    name: "Triamcinolone acetonide 5 ml",
-    indication: "Mengatasi inflamasi, kelainan kulit, alergi",
+    id: "triamcinolone",
+    name: "Triamcinolone (Triamsinolon Asetonid)",
+    indication: "Terapi antiinflamasi sistemik, dermatosis alergi berat, keloid/jaringan parut, dan radang sendi",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
+    defaultDoseValue: 4,
+    doseUnit: "mg",
     frequency: "once",
-    notes: "Sediaan: INJECTION 10 MG/ML"
-},
-{
-    id: "auto_triamcinolone",
-    name: "Triamcinolone",
-    indication: "Terapi antiinflamasi, alergi, gangguan imun",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 4 MG"
+    singleDoseLimitMax: 16,
+    dailyDoseLimitMax: 32,
+    weightMinKg: 20,
+    notes: "Sediaan: Tablet oral 4 mg dan Vial suspensi injeksi/infiltrasi 10 mg/mL (vial 5 mL) & 40 mg/mL.\n• Oral: 4–12 mg/hari (dosis tunggal atau terbagi), titrasi bertahap ke dosis pemeliharaan efektif terendah.\n• Injeksi Intralesi/Keloid: 2.5–10 mg disuntikkan langsung ke dalam lesi tiap 1–2 minggu sesuai respons.\n• Injeksi Intra-artikular: 2.5–5 mg untuk sendi kecil atau 10–40 mg untuk sendi besar.\n• Peringatan: Jangan disuntikkan secara intravena (IV). Pantau kadar gula darah dan tekanan darah."
 },
 {
     id: "auto_trichloroacetic_acid_40___for",
@@ -8864,24 +8178,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: TABLET 500 MG"
 },
 {
-    id: "auto_uperio_24_3_25_7_mg",
-    name: "Uperio 24,3/25,7 mg",
-    indication: "Terapi gagal jantung kronis fraksi ejeksi rendah",
+    id: "uperio",
+    name: "Uperio (Sakubitril / Valsartan)",
+    indication: "Terapi gagal jantung kronis dengan penurunan fraksi ejeksi (HFrEF NYHA II-IV)",
     calcMethod: "flat",
     defaultDoseValue: 1,
     doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET, COATED"
-},
-{
-    id: "auto_uperio_48_6_51_4_mg",
-    name: "Uperio 48,6/51,4 mg",
-    indication: "Terapi gagal jantung kronis fraksi ejeksi rendah",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET, COATED"
+    frequency: "q12h",
+    singleDoseLimitMax: 2,
+    dailyDoseLimitMax: 2,
+    weightMinKg: 40,
+    notes: "Sediaan: Tablet salut selaput 50 mg (24.3/25.7 mg), 100 mg (48.6/51.4 mg), dan 200 mg (97.2/102.8 mg).\n• Dosis awal lazim: 1 tablet 100 mg (48.6/51.4 mg) 2 kali sehari.\n• Dosis awal rendah: 1 tablet 50 mg (24.3/25.7 mg) 2 kali sehari untuk pasien yang belum pernah menggunakan ACEi/ARB, gangguan hati sedang (Child-Pugh B), atau eGFR < 30 mL/min/1.73 m².\n• Dosis pemeliharaan target: 1 tablet 200 mg (97.2/102.8 mg) 2 kali sehari, dititrasi tiap 2-4 minggu.\n• Kontraindikasi: Riwayat angioedema terkait terapi ACEi/ARB dan kehamilan (kategori D/X)."
 },
 {
     id: "auto_urinter",
@@ -9054,24 +8361,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: 2 DOSIS / VIL"
 },
 {
-    id: "auto_valisanbe_2_ml_5_mg_ml",
-    name: "Valisanbe 2 ml 5 mg/ml",
-    indication: "Mengatasi kejang, kecemasan, atau kejang otot",
+    id: "valisanbe",
+    name: "Valisanbe (Diazepam)",
+    indication: "Mengatasi kejang akut, status epileptikus, spasme otot rangka, dan gangguan ansietas berat",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: INJECTION"
-},
-{
-    id: "auto_valisanbe",
-    name: "Valisanbe",
-    indication: "Mengatasi gangguan kecemasan dan kejang",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 2 MG | TABLET 5 MG"
+    defaultDoseValue: 5,
+    doseUnit: "mg",
+    frequency: "q8h",
+    singleDoseLimitMax: 10,
+    dailyDoseLimitMax: 30,
+    weightMinKg: 20,
+    notes: "Sediaan: Tablet 2 mg, Tablet 5 mg, dan Injeksi Ampul 2 mL (5 mg/mL = 10 mg/ampul).\n• Ansietas / Spasme Otot Dewasa: Oral 2–5 mg 2–4 kali sehari sesuai keparahan gejala.\n• Kejang Akut / Status Epileptikus Dewasa: 5–10 mg IV lambat (kecepatan ≤ 2-5 mg/menit), dapat diulang setelah 10-15 menit bila perlu (maks 30 mg).\n• Kejang Anak: 0.2–0.5 mg/kg IV perlahan atau rektal bila akses IV belum tersedia.\n• Peringatan: Golongan psikotropika. Pantau kepatenan jalan napas, saturasi O2, dan laju pernapasan (risiko depresi pernapasan)."
 },
 {
     id: "auto_valproic_acid_50_mg_ml",
@@ -9104,16 +8404,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: POWDER, FOR INJECTION SOLUTION 0.5 GM"
 },
 {
-    id: "auto_vancomycin_steril",
-    name: "Vancomycin steril",
-    indication: "Infeksi bakteri gram positif yang serius",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: POWDER, FOR INJECTION SOLUTION 500 MG"
-},
-{
     id: "auto_vasola",
     name: "Vasola",
     indication: "Infeksi dan inflamasi pada mata atau telinga",
@@ -9124,24 +8414,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: INJECTION 2.5 MG/0.5 ML"
 },
 {
-    id: "auto_vectrine_60_ml",
-    name: "Vectrine 60 ml",
-    indication: "Mengencerkan dahak pada penyakit saluran pernapasan",
+    id: "vectrine",
+    name: "Vectrine (Erdosteine)",
+    indication: "Mukolitik untuk mengencerkan dahak pada penyakit saluran pernapasan akut dan kronik",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: POWDER, FOR ORAL SUSPENSION 175 MG/5 ML"
-},
-{
-    id: "auto_vectrine",
-    name: "Vectrine",
-    indication: "Mukolitik untuk mengencerkan dahak",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: CAPSULE 300 MG"
+    defaultDoseValue: 300,
+    doseUnit: "mg",
+    frequency: "q12h",
+    singleDoseLimitMax: 300,
+    dailyDoseLimitMax: 900,
+    weightMinKg: 15,
+    notes: "Sediaan: Kapsul 300 mg dan Sirup Kering (Suspensi Oral) 175 mg/5 mL (botol 60 mL).\n• Dewasa: Kapsul 300 mg, diminum 2–3 kali sehari (maksimal 900 mg/hari).\n• Anak > 30 kg: Sirup 10 mL (350 mg) 2 kali sehari.\n• Anak 20–30 kg: Sirup 5 mL (175 mg) 3 kali sehari.\n• Anak 15–19 kg: Sirup 5 mL (175 mg) 2 kali sehari.\n• Tidak menimbulkan efek samping iritasi lambung seperti mukolitik berbasis SH bebas lainnya."
 },
 {
     id: "auto_ventisorb",
@@ -9194,24 +8477,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: SUSPENSION, SYRUP 5 MG/5 ML"
 },
 {
-    id: "auto_viccillin_1_gm",
-    name: "Viccillin 1 gm",
-    indication: "Mengobati berbagai infeksi bakteri rentan",
+    id: "viccillin",
+    name: "Viccillin (Ampisilin & Ampisilin-Sulbaktam)",
+    indication: "Infeksi bakteri rentan pada saluran pernapasan, saluran kemih, intra-abdomen, ginekologi, dan sepsis",
     calcMethod: "flat",
     defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: POWDER, FOR INJECTION SOLUTION 1 GM"
-},
-{
-    id: "auto_viccillin_sx",
-    name: "Viccillin-sx",
-    indication: "Mengobati infeksi bakteri sedang hingga berat",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: Sediaan Lainnya"
+    doseUnit: "g",
+    frequency: "q6h",
+    singleDoseLimitMax: 3,
+    dailyDoseLimitMax: 12,
+    weightMinKg: 20,
+    notes: "Sediaan: Viccillin Vial 1 g (Ampisilin murni) dan Viccillin-SX Vial 1.5 g (Ampisilin 1 g + Sulbaktam 0.5 g) serbuk injeksi IV/IM.\n• Viccillin 1 g: Dosis lazim dewasa 500 mg – 1 g setiap 6 jam via IV lambat atau IM dalam.\n• Viccillin-SX 1.5 g: 1.5 g (1 g ampisilin + 0.5 g sulbaktam) hingga 3 g setiap 6–8 jam via IV lambat atau infus intermittent (dosis maksimal sulbaktam 4 g/hari).\n• Lakukan tes sensitivitas/skin test bila ada riwayat alergi antibiotik beta-laktam."
 },
 {
     id: "auto_viorex_no_rinse_antimicrobial",
@@ -9262,16 +8538,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     doseUnit: "units",
     frequency: "once",
     notes: "Sediaan: TABLET"
-},
-{
-    id: "auto_zinc__zinkid_zincpro_",
-    name: "Zinc (zinkid/zincpro)",
-    indication: "Terapi komplementer diare pada anak",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET | SYRUP 20 MG/5 ML | TABLET 20 MG | DROPS 10 MG/ML"
 },
 {
     id: "auto_vitamin_a",
@@ -9414,16 +8680,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: 5 mg/5 ml | TABLET 10 MG"
 },
 {
-    id: "auto_warfarin",
-    name: "Warfarin",
-    indication: "Antikoagulan pencegah trombosis dan emboli",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET 2 MG"
-},
-{
     id: "auto_water_for",
     name: "Water for",
     indication: "Pelarut sediaan obat injeksi steril",
@@ -9494,24 +8750,17 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     notes: "Sediaan: POWDER, FOR INJECTION SOLUTION 1 GM"
 },
 {
-    id: "auto_zinkid_100_ml",
-    name: "Zinkid 100 ml",
-    indication: "Terapi penanganan diare pada anak",
+    id: "zinkid",
+    name: "Zinkid (Zinc Sulfat)",
+    indication: "Terapi komplementer diare pada anak untuk mempercepat pemulihan dan mencegah kekambuhan",
     calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
+    defaultDoseValue: 20,
+    doseUnit: "mg",
     frequency: "once",
-    notes: "Sediaan: SYRUP 10 MG/5 ML"
-},
-{
-    id: "auto_zinkid",
-    name: "Zinkid",
-    indication: "Terapi komplementer diare anak",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "units",
-    frequency: "once",
-    notes: "Sediaan: TABLET, DISPERSIBLE"
+    singleDoseLimitMax: 20,
+    dailyDoseLimitMax: 20,
+    weightMinKg: 3,
+    notes: "Sediaan: Tablet Dispersibel 20 mg dan Sirup 10 mg/5 mL (botol 100 mL).\n• Rekomendasi WHO & Kemenkes RI: Wajib diberikan bersama cairan Oralit.\n• Bayi < 6 bulan: 10 mg (1/2 tablet dispersibel atau 5 mL sirup) 1 kali sehari selama 10 hari berturut-turut.\n• Anak 6 bulan – 5 tahun: 20 mg (1 tablet dispersibel atau 10 mL sirup) 1 kali sehari selama 10 hari berturut-turut.\n• Catatan: Terapi harus dihabiskan 10 hari penuh meskipun diare telah berhenti."
 },
 {
     id: "auto_zistic",
@@ -9622,19 +8871,6 @@ const UNSORTED_PRESETS: DrugPreset[] = [
   {
     id: "cholera",
     name: "Vaksin Kolera",
-    indication: "-",
-    calcMethod: "flat",
-    defaultDoseValue: 1,
-    doseUnit: "mg",
-    frequency: "once",
-    dailyDoseLimitMax: 1000,
-    weightMinKg: 20,
-    weightMaxKg: 150,
-    notes: "Data dosis tidak lengkap, ini merupakan placeholder untuk skrining interaksi.",
-  } as DrugPreset,
-  {
-    id: "clarithromycin",
-    name: "Clarithromycin",
     indication: "-",
     calcMethod: "flat",
     defaultDoseValue: 1,
