@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+}
 
 @theme {
   --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -126,5 +130,11 @@ body {
 
 .animate-haptic-shake {
   animation: hapticVibrate 0.45s ease-in-out 2;
+}
+
+/* Fast scrolling & off-screen rendering optimization */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 160px;
 }
 

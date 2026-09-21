@@ -1,4 +1,3 @@
-import { jsPDF } from "jspdf";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 
 interface PDFParams {
@@ -11,7 +10,7 @@ interface PDFParams {
   isFemale: boolean;
 }
 
-export function generateMedicalReportPDF({
+export async function generateMedicalReportPDF({
   inputs,
   calculated,
   calculatedBsa,
@@ -20,6 +19,7 @@ export function generateMedicalReportPDF({
   aiReport,
   isFemale,
 }: PDFParams) {
+  const { jsPDF } = await import("jspdf");
   // Initialize A4 PDF: 210mm x 297mm
   const doc = new jsPDF({
     orientation: "portrait",

@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from "react";
-import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import { Upload, Save, Menu } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 import { getDrugSafetyReview } from "./data/drugSafetyMetadata";
@@ -8,14 +6,27 @@ import { DRUG_PRESETS as INITIAL_DRUG_PRESETS } from "./presets";
 import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction, getCanonicalSubstance, getInteractionsForDrug, getFoodInteractionsForDrug } from "./interactions";
 import { calculateDosage, calculateMostellerBsa, calculateCockcroftGault } from "./mathUtils";
 import ClinicalAlerts from "./components/ClinicalAlerts";
-import PharmacistConsultation from "./PharmacistConsultation";
-import FornasDrugs from "./FornasDrugs";
-import ClinicalSOAP from "./ClinicalSOAP";
 import { generateMedicalReportPDF } from "./pdfUtils";
 import FloatingAIAssistant from "./components/FloatingAIAssistant";
 import MedicalDashboardHero from "./components/MedicalDashboardHero";
-import GlassSettingsModal from "./components/GlassSettingsModal";
 import CountUp from "./components/CountUp";
+
+// Lazy-loaded tab components for fast initial load and smooth tab transitions
+const PharmacistConsultation = lazy(() => import("./PharmacistConsultation"));
+const FornasDrugs = lazy(() => import("./FornasDrugs"));
+const ClinicalSOAP = lazy(() => import("./ClinicalSOAP"));
+const MapFacilities = lazy(() => import("./MapFacilities").then(m => ({ default: m.MapFacilities })));
+const IvCompatibilityChecker = lazy(() => import("./IvCompatibilityChecker").then(m => ({ default: m.IvCompatibilityChecker })));
+const DiseasesConditions = lazy(() => import("./DiseasesConditions").then(m => ({ default: m.DiseasesConditions })));
+const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => ({ default: m.MedicalCalculators })));
+const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
+
+const TabLoadingFallback = () => (
+  <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
+    <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+    <span className="text-xs font-semibold text-slate-500">Memuat modul klinis...</span>
+  </div>
+);
 import {
   Calculator,
   Activity,
@@ -81,11 +92,6 @@ import tetesTelingaImg from "./assets/images/tetes_telinga_guide_1782741766653.j
 import semprotHidungImg from "./assets/images/semprot_hidung_guide_1782741778450.jpg";
 // @ts-ignore
 import insulinImg from "./assets/images/pena_insulin_guide_1782741791385.jpg";
-import { MapFacilities } from "./MapFacilities";
-
-import { IvCompatibilityChecker } from "./IvCompatibilityChecker";
-import { DiseasesConditions } from "./DiseasesConditions";
-import { MedicalCalculators } from "./MedicalCalculators";
 
 // Helper function to extract Generic and Brand names
 const getGenericAndBrand = (name: string, presetId?: string) => {
@@ -1003,19 +1009,25 @@ export default function App() {
 
     const fileExt = drugCsvFile.name.split('.').pop()?.toLowerCase();
     if (fileExt === 'csv' || fileExt === 'tsv') {
-      Papa.parse(drugCsvFile, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-        complete: (results) => {
-          validateAndSetDrugData(results.data as any[]);
-        },
-        error: (error) => {
-          setDrugCsvError("Gagal membaca file CSV: " + error.message);
-        }
-      });
+      try {
+        const Papa = (await import("papaparse")).default;
+        Papa.parse(drugCsvFile, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true,
+          complete: (results) => {
+            validateAndSetDrugData(results.data as any[]);
+          },
+          error: (error) => {
+            setDrugCsvError("Gagal membaca file CSV: " + error.message);
+          }
+        });
+      } catch (err: any) {
+        setDrugCsvError("Gagal memuat modul CSV: " + err.message);
+      }
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
+        const XLSX = await import("xlsx");
         const data = await drugCsvFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheetName = workbook.SheetNames[0];
@@ -1046,7 +1058,8 @@ export default function App() {
     }
   };
 
-  const handleDownloadDrugTemplate = () => {
+  const handleDownloadDrugTemplate = async () => {
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(INITIAL_DRUG_PRESETS);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Informasi_Obat");
@@ -1095,19 +1108,25 @@ export default function App() {
     }
     const fileExt = ddiCsvFile.name.split('.').pop()?.toLowerCase();
     if (fileExt === 'csv' || fileExt === 'tsv') {
-      Papa.parse(ddiCsvFile, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-        complete: (results) => {
-          validateAndSetDdiData(results.data as any[]);
-        },
-        error: (error) => {
-          setDdiCsvError("Gagal membaca file CSV: " + error.message);
-        }
-      });
+      try {
+        const Papa = (await import("papaparse")).default;
+        Papa.parse(ddiCsvFile, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true,
+          complete: (results) => {
+            validateAndSetDdiData(results.data as any[]);
+          },
+          error: (error) => {
+            setDdiCsvError("Gagal membaca file CSV: " + error.message);
+          }
+        });
+      } catch (err: any) {
+        setDdiCsvError("Gagal memuat parser CSV: " + err.message);
+      }
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
+        const XLSX = await import("xlsx");
         const data = await ddiCsvFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheetName = workbook.SheetNames[0];
@@ -1138,7 +1157,8 @@ export default function App() {
     }
   };
 
-  const handleDownloadDdiTemplate = () => {
+  const handleDownloadDdiTemplate = async () => {
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(INITIAL_INTERACTION_DATABASE);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Skrining_Interaksi");
@@ -1294,6 +1314,12 @@ export default function App() {
   const [descSelectedAlphabet, setDescSelectedAlphabet] = useState<string>("all");
   const [descExpandedId, setDescExpandedId] = useState<string | null>(null);
   const [descOnlyWithInteractions, setDescOnlyWithInteractions] = useState<boolean>(false);
+  const [descPage, setDescPage] = useState<number>(1);
+  const [descPageSize, setDescPageSize] = useState<number>(30);
+
+  useEffect(() => {
+    setDescPage(1);
+  }, [descSearchQuery, descSearchScope, descSelectedCategory, descSelectedAlphabet, descOnlyWithInteractions]);
 
   // Multi-drug DDI Screening States
   const [ddiSelectedIds, setDdiSelectedIds] = useState<string[]>([
@@ -1605,10 +1631,47 @@ export default function App() {
     isFemale
   );
 
-  const filteredPresets = drugPresets.filter((p) => {
-    const cat = getDrugCategory(p.id, p.name);
-    return matchDrugSimultaneous(p, cat.label, searchTerm, "all").isMatch;
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  const filteredPresets = useMemo(() => {
+    return drugPresets.filter((p) => {
+      const cat = getDrugCategory(p.id, p.name);
+      return matchDrugSimultaneous(p, cat.label, searchTerm, "all").isMatch;
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }, [drugPresets, searchTerm]);
+
+  const sanitizedDrugPresets = useMemo(() => sanitizeDrugPresets(drugPresets), [drugPresets]);
+
+  const descFilteredList = useMemo(() => {
+    return sanitizedDrugPresets.filter(p => {
+      if (descOnlyWithInteractions) {
+        const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
+        const food = getFoodInteractionsForDrug(p.id, p.name);
+        if (ddi.length === 0 && food.length === 0) return false;
+      }
+      const info = getDrugCategory(p.id, p.name);
+      const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
+      if (!matchResult.isMatch) return false;
+
+      // Category filter
+      if (descSelectedCategory !== "all") {
+        const label = info.label.toLowerCase();
+        if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
+        if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
+        if (descSelectedCategory === "kardio" && !label.includes("kardiovaskular")) return false;
+        if (descSelectedCategory === "pernapasan" && !label.includes("pernapasan")) return false;
+        if (descSelectedCategory === "gastro" && !label.includes("gastrointestinal")) return false;
+        if (descSelectedCategory === "hormon" && !label.includes("hormon")) return false;
+        if (descSelectedCategory === "onkologi" && !label.includes("onkologi")) return false;
+        if (descSelectedCategory === "lainnya" && !(label.includes("lain-lain") || label.includes("suplemen"))) return false;
+      }
+
+      // Alphabet filter
+      if (descSelectedAlphabet !== "all") {
+        if (p.name.charAt(0).toUpperCase() !== descSelectedAlphabet) return false;
+      }
+      
+      return true;
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }, [sanitizedDrugPresets, descOnlyWithInteractions, descSearchQuery, descSearchScope, descSelectedCategory, descSelectedAlphabet, interactionDatabase]);
 
   // Comparison Data Calculations
   const presetA = drugPresets.find((p) => p.id === comparePresetAId);
@@ -3853,48 +3916,62 @@ export default function App() {
       <>
         {/* MAP FACILITIES TAB */}
         <section className="lg:col-span-12 w-full">
-          <MapFacilities isAdmin={isAdmin} />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <MapFacilities isAdmin={isAdmin} />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "iv" ? (
       <>
         {/* IV COMPATIBILITY TAB */}
         <section className="lg:col-span-12 w-full">
-          <IvCompatibilityChecker isAdmin={isAdmin} />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <IvCompatibilityChecker isAdmin={isAdmin} />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "diseases" ? (
       <>
         {/* DISEASES & CONDITIONS TAB */}
         <section className="lg:col-span-12 w-full">
-          <DiseasesConditions />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <DiseasesConditions />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "medcalc" ? (
       <>
         {/* MEDICAL CALCULATORS TAB */}
         <section className="lg:col-span-12 w-full">
-          <MedicalCalculators />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <MedicalCalculators />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "pharmacist" ? (
       <>
         {/* PHARMACIST CONSULTATION TAB */}
         <section className="lg:col-span-12 w-full min-h-[calc(100vh-12rem)] flex flex-col rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
-          <PharmacistConsultation isAdmin={isAdmin} />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <PharmacistConsultation isAdmin={isAdmin} />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "fornas" ? (
       <>
         {/* FORNAS TAB */}
         <section className="lg:col-span-12 w-full min-h-[calc(100vh-12rem)] flex flex-col rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white">
-          <FornasDrugs isAdmin={isAdmin} />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <FornasDrugs isAdmin={isAdmin} />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "soap" ? (
       <>
         <section className="lg:col-span-12 w-full min-h-[calc(100vh-12rem)] flex flex-col rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white p-6">
-          <ClinicalSOAP />
+          <Suspense fallback={<TabLoadingFallback />}>
+            <ClinicalSOAP />
+          </Suspense>
         </section>
       </>
     ) : activeTab === "desc" ? (
@@ -4282,122 +4359,60 @@ export default function App() {
                 </div>
               )}
             </div>
-            {(() => {
-              const sanitizedPresets = sanitizeDrugPresets(drugPresets);
-              const count = sanitizedPresets.filter(p => {
-                if (descOnlyWithInteractions) {
-                  const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
-                  const food = getFoodInteractionsForDrug(p.id, p.name);
-                  if (ddi.length === 0 && food.length === 0) return false;
-                }
-                const info = getDrugCategory(p.id, p.name);
-                const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
-                if (!matchResult.isMatch) return false;
+              <span className="text-xs font-bold font-sans bg-teal-50 text-teal-800 px-3 py-1.5 rounded-xl border border-teal-100/80">
+                Menampilkan {descFilteredList.length} dari {sanitizedDrugPresets.length} Obat
+              </span>
+            </div>
 
-                // Category filter
-                if (descSelectedCategory !== "all") {
-                  const label = info.label.toLowerCase();
-                  if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
-                  if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
-                  if (descSelectedCategory === "kardio" && !label.includes("kardiovaskular")) return false;
-                  if (descSelectedCategory === "pernapasan" && !label.includes("pernapasan")) return false;
-                  if (descSelectedCategory === "gastro" && !label.includes("gastrointestinal")) return false;
-                  if (descSelectedCategory === "hormon" && !label.includes("hormon")) return false;
-                  if (descSelectedCategory === "onkologi" && !label.includes("onkologi")) return false;
-                  if (descSelectedCategory === "lainnya" && !(label.includes("lain-lain") || label.includes("suplemen"))) return false;
-                }
-
-                // Alphabet filter
-                if (descSelectedAlphabet !== "all") {
-                  if (p.name.charAt(0).toUpperCase() !== descSelectedAlphabet) return false;
-                }
-                
-                return true;
-              }).length;
-
-              return (
-                <span className="text-xs font-bold font-sans bg-teal-50 text-teal-800 px-3 py-1.5 rounded-xl border border-teal-100/80">
-                  Menampilkan {count} dari {sanitizedPresets.length} Obat
-                </span>
-              );
-            })()}
-          </div>
-
-          <div className="space-y-6">
-            {(() => {
-              const sanitizedPresets = sanitizeDrugPresets(drugPresets);
-              const filteredList = sanitizedPresets.filter(p => {
-                if (descOnlyWithInteractions) {
-                  const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
-                  const food = getFoodInteractionsForDrug(p.id, p.name);
-                  if (ddi.length === 0 && food.length === 0) return false;
-                }
-                const info = getDrugCategory(p.id, p.name);
-                const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
-                if (!matchResult.isMatch) return false;
-
-                // Category filter
-                if (descSelectedCategory !== "all") {
-                  const label = info.label.toLowerCase();
-                  if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
-                  if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
-                  if (descSelectedCategory === "kardio" && !label.includes("kardiovaskular")) return false;
-                  if (descSelectedCategory === "pernapasan" && !label.includes("pernapasan")) return false;
-                  if (descSelectedCategory === "gastro" && !label.includes("gastrointestinal")) return false;
-                  if (descSelectedCategory === "hormon" && !label.includes("hormon")) return false;
-                  if (descSelectedCategory === "onkologi" && !label.includes("onkologi")) return false;
-                  if (descSelectedCategory === "lainnya" && !(label.includes("lain-lain") || label.includes("suplemen"))) return false;
-                }
-
-                // Alphabet filter
-                if (descSelectedAlphabet !== "all") {
-                  if (p.name.charAt(0).toUpperCase() !== descSelectedAlphabet) return false;
-                }
-                
-                return true;
-              }).sort((a, b) => a.name.localeCompare(b.name));
-
-              if (filteredList.length === 0) {
-                return (
-                  <div className="glass-card p-10 text-center rounded-3xl space-y-4 border border-dashed border-slate-300">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
-                      <Search className="w-7 h-7" />
+            <div className="space-y-6">
+              {(() => {
+                if (descFilteredList.length === 0) {
+                  return (
+                    <div className="glass-card p-10 text-center rounded-3xl space-y-4 border border-dashed border-slate-300">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
+                        <Search className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-base font-bold text-slate-800">Obat Tidak Ditemukan</h3>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                          Tidak ada obat yang cocok dengan kata kunci <span className="font-bold text-slate-700">"{descSearchQuery}"</span> pada mode{" "}
+                          <span className="font-bold text-slate-700">
+                            {descSearchScope === "indication" ? "Indikasi" : descSearchScope === "category" ? "Kategori Terapi" : "Simultan (Semua)"}
+                          </span>.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDescSearchQuery("");
+                            setDescSearchScope("all");
+                            setDescSelectedCategory("all");
+                            setDescSelectedAlphabet("all");
+                            setDescOnlyWithInteractions(false);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-2 shadow-xs"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Reset Pencarian & Filter
+                        </button>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <h3 className="text-base font-bold text-slate-800">Obat Tidak Ditemukan</h3>
-                      <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                        Tidak ada obat yang cocok dengan kata kunci <span className="font-bold text-slate-700">"{descSearchQuery}"</span> pada mode{" "}
-                        <span className="font-bold text-slate-700">
-                          {descSearchScope === "indication" ? "Indikasi" : descSearchScope === "category" ? "Kategori Terapi" : "Simultan (Semua)"}
-                        </span>.
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-center gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDescSearchQuery("");
-                          setDescSearchScope("all");
-                          setDescSelectedCategory("all");
-                          setDescSelectedAlphabet("all");
-                          setDescOnlyWithInteractions(false);
-                        }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-2 shadow-xs"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        Reset Pencarian & Filter
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
+                  );
+                }
 
-              const groupedByAlphabet = filteredList.reduce((acc, preset) => {
-                const firstLetter = preset.name.charAt(0).toUpperCase();
-                if (!acc[firstLetter]) acc[firstLetter] = [];
-                acc[firstLetter].push(preset);
-                return acc;
-              }, {} as Record<string, typeof drugPresets>);
+                const totalDescPages = Math.max(1, Math.ceil(descFilteredList.length / descPageSize));
+                const safePage = Math.min(Math.max(1, descPage), totalDescPages);
+                const startIndex = (safePage - 1) * descPageSize;
+                const endIndex = Math.min(descFilteredList.length, startIndex + descPageSize);
+                const paginatedList = descPageSize >= 9999 ? descFilteredList : descFilteredList.slice(startIndex, endIndex);
+
+                const groupedByAlphabet = paginatedList.reduce((acc, preset) => {
+                  const firstLetter = preset.name.charAt(0).toUpperCase();
+                  if (!acc[firstLetter]) acc[firstLetter] = [];
+                  acc[firstLetter].push(preset);
+                  return acc;
+                }, {} as Record<string, typeof drugPresets>);
 
               return Object.keys(groupedByAlphabet).sort().map(letter => (
                 <div key={letter} className="space-y-4">
@@ -5005,6 +5020,91 @@ export default function App() {
               ));
             })()}
           </div>
+
+          {/* Pagination Controls */}
+          {descFilteredList.length > 0 && (
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white/90 border border-slate-200/80 shadow-xs backdrop-blur-md">
+              <div className="text-xs text-slate-500 font-medium">
+                Menampilkan <span className="font-bold text-slate-800">{Math.min((Math.max(1, descPage) - 1) * descPageSize + 1, descFilteredList.length)}</span> - <span className="font-bold text-slate-800">{Math.min(descFilteredList.length, Math.max(1, descPage) * descPageSize)}</span> dari <span className="font-bold text-teal-700">{descFilteredList.length}</span> obat
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDescPage(prev => Math.max(1, prev - 1));
+                      window.scrollTo({ top: 350, behavior: "smooth" });
+                    }}
+                    disabled={descPage <= 1}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    title="Halaman Sebelumnya"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Page Jump Numbers */}
+                  {(() => {
+                    const totalDescPages = Math.max(1, Math.ceil(descFilteredList.length / descPageSize));
+                    const safePage = Math.min(Math.max(1, descPage), totalDescPages);
+                    return Array.from({ length: totalDescPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalDescPages || Math.abs(p - safePage) <= 1)
+                      .map((p, idx, arr) => {
+                        const showEllipsisBefore = idx > 0 && p - arr[idx - 1] > 1;
+                        return (
+                          <React.Fragment key={p}>
+                            {showEllipsisBefore && <span className="px-1 text-slate-400 text-xs">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDescPage(p);
+                                window.scrollTo({ top: 350, behavior: "smooth" });
+                              }}
+                              className={`min-w-8 h-8 px-2 text-xs font-bold rounded-lg transition-all ${
+                                safePage === p
+                                  ? "bg-teal-600 text-white shadow-xs"
+                                  : "text-slate-600 hover:bg-slate-100 border border-slate-200"
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        );
+                      });
+                  })()}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const totalDescPages = Math.max(1, Math.ceil(descFilteredList.length / descPageSize));
+                      setDescPage(prev => Math.min(totalDescPages, prev + 1));
+                      window.scrollTo({ top: 350, behavior: "smooth" });
+                    }}
+                    disabled={descPage >= Math.max(1, Math.ceil(descFilteredList.length / descPageSize))}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    title="Halaman Selanjutnya"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Page Size Selector */}
+                <select
+                  value={descPageSize}
+                  onChange={(e) => {
+                    setDescPageSize(Number(e.target.value));
+                    setDescPage(1);
+                  }}
+                  className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  <option value={30}>30 / hal</option>
+                  <option value={60}>60 / hal</option>
+                  <option value={100}>100 / hal</option>
+                  <option value={99999}>Semua</option>
+                </select>
+              </div>
+            </div>
+          )}
         </section>
       </>
     ) : (
@@ -5868,14 +5968,18 @@ export default function App() {
       <FloatingAIAssistant />
       
       {/* Glassmorphism Transparency & Blur Settings Modal */}
-      <GlassSettingsModal
-        isOpen={isGlassSettingsOpen}
-        onClose={() => setIsGlassSettingsOpen(false)}
-        opacity={glassOpacity}
-        onOpacityChange={setGlassOpacity}
-        blur={glassBlur}
-        onBlurChange={setGlassBlur}
-      />
+      {isGlassSettingsOpen && (
+        <Suspense fallback={null}>
+          <GlassSettingsModal
+            isOpen={isGlassSettingsOpen}
+            onClose={() => setIsGlassSettingsOpen(false)}
+            opacity={glassOpacity}
+            onOpacityChange={setGlassOpacity}
+            blur={glassBlur}
+            onBlurChange={setGlassBlur}
+          />
+        </Suspense>
+      )}
 </div>
   );
 }
