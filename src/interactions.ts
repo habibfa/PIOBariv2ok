@@ -10,7 +10,9 @@ export interface DrugInteraction {
   evidence: string;
 }
 
-export const INTERACTION_DATABASE: DrugInteraction[] = [
+import { EXTENDED_INTERACTIONS_FOR_PRESETS, EXTENDED_FOOD_INTERACTIONS } from "./interactions_presets_extended";
+
+const BASE_INTERACTION_DATABASE: DrugInteraction[] = [
   {
       "id": "amox_doxy",
       "drugAId": "amoxicillin_ped",
@@ -640,6 +642,11 @@ export const INTERACTION_DATABASE: DrugInteraction[] = [
   },
 ];
 
+export const INTERACTION_DATABASE: DrugInteraction[] = [
+  ...BASE_INTERACTION_DATABASE,
+  ...EXTENDED_INTERACTIONS_FOR_PRESETS,
+];
+
 export interface FoodInteraction {
   id: string;
   drugId: string;
@@ -651,7 +658,7 @@ export interface FoodInteraction {
   evidence?: string;
 }
 
-export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
+const BASE_FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
   {
     id: "simvastatin_grapefruit",
     drugId: "simvastatin_adult",
@@ -824,6 +831,11 @@ export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
   }
 ];
 
+export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
+  ...BASE_FOOD_INTERACTION_DATABASE,
+  ...EXTENDED_FOOD_INTERACTIONS,
+];
+
 /**
  * Maps a drug ID and name to a canonical active substance key.
  * This guarantees consistent drug-drug interaction matching across generic,
@@ -834,48 +846,114 @@ export function getCanonicalSubstance(id: string, name: string): string {
   if (norm.includes("amox") || norm.includes("amok")) return "amoxicillin";
   if (norm.includes("cipro") || norm.includes("sipro") || norm.includes("baquinor")) return "ciprofloxacin";
   if (norm.includes("warfarin") || norm.includes("simarc")) return "warfarin";
-  if (norm.includes("spirono") || norm.includes("spironolakton")) return "spironolactone";
+  if (norm.includes("spirono") || norm.includes("spironolakton") || norm.includes("aldactone") || norm.includes("carpiaton") || norm.includes("letonal")) return "spironolactone";
   if (norm.includes("enalapril") || norm.includes("tenivast")) return "enalapril";
-  if (norm.includes("captopril") || norm.includes("kaptopril")) return "captopril";
-  if (norm.includes("candesartan") || norm.includes("kandesartan")) return "candesartan";
-  if (norm.includes("aspirin") || norm.includes("aspilets") || norm.includes("asetilsalisilat")) return "aspirin";
-  if (norm.includes("ibuprofen") || norm.includes("proris")) return "ibuprofen";
-  if (norm.includes("mefenamat") || norm.includes("mefenamic") || norm.includes("ponstan")) return "mefenamic_acid";
-  if (norm.includes("diklofenak") || norm.includes("diclofenac") || norm.includes("voltaren") || norm.includes("voltadex")) return "diclofenac";
-  if (norm.includes("ketorolac") || norm.includes("ketorolak") || norm.includes("toradol")) return "ketorolac";
-  if (norm.includes("rifampi") || norm.includes("rifampisin") || norm.includes("rifampicin") || norm.includes("rifanh") || norm.includes("rifastar")) return "rifampicin";
-  if (norm.includes("clopidogrel") || norm.includes("klopidogrel") || norm.includes("plavix")) return "clopidogrel";
-  if (norm.includes("omeprazol") || norm.includes("omeprazole")) return "omeprazole";
-  if (norm.includes("lansoprazol") || norm.includes("lansoprazole")) return "lansoprazole";
-  if (norm.includes("simvastatin") || norm.includes("simva") || norm.includes("zocor")) return "simvastatin";
-  if (norm.includes("atorvastatin") || norm.includes("lipitor")) return "atorvastatin";
-  if (norm.includes("ketoconazole") || norm.includes("ketokonazol") || norm.includes("zoloral")) return "ketoconazole";
-  if (norm.includes("erythromycin") || norm.includes("eritromisin")) return "erythromycin";
-  if (norm.includes("clarithromycin") || norm.includes("klaritromisin")) return "clarithromycin";
+  if (norm.includes("captopril") || norm.includes("kaptopril") || norm.includes("otoryl")) return "captopril";
+  if (norm.includes("candesartan") || norm.includes("kandesartan") || norm.includes("canderin") || norm.includes("blopress")) return "candesartan";
+  if (norm.includes("aspirin") || norm.includes("aspilets") || norm.includes("asetilsalisilat") || norm.includes("thromboaspilets") || norm.includes("miniaspi") || norm.includes("farmasal") || norm.includes("aspi")) return "aspirin";
+  if (norm.includes("ibuprofen") || norm.includes("proris") || norm.includes("bufect") || norm.includes("farsifen")) return "ibuprofen";
+  if (norm.includes("mefenamat") || norm.includes("mefenamic") || norm.includes("ponstan") || norm.includes("asammefenamat")) return "mefenamic_acid";
+  if (norm.includes("diklofenak") || norm.includes("diclofenac") || norm.includes("voltaren") || norm.includes("voltadex") || norm.includes("cataflam") || norm.includes("flamar")) return "diclofenac";
+  if (norm.includes("ketorolac") || norm.includes("ketorolak") || norm.includes("toradol") || norm.includes("remopain") || norm.includes("laturol") || norm.includes("torasic") || norm.includes("scelto")) return "ketorolac";
+  if (norm.includes("rifampi") || norm.includes("rifampisin") || norm.includes("rifampicin") || norm.includes("rifanh") || norm.includes("rifastar") || norm.includes("rimactazid") || norm.includes("rimstar")) return "rifampicin";
+  if (norm.includes("clopidogrel") || norm.includes("klopidogrel") || norm.includes("plavix") || norm.includes("clopisan") || norm.includes("placta") || norm.includes("vaclo")) return "clopidogrel";
+  if (norm.includes("omeprazol") || norm.includes("omeprazole") || norm.includes("ozid") || norm.includes("lokev") || norm.includes("pramezol") || norm.includes("omerazole")) return "omeprazole";
+  if (norm.includes("lansoprazol") || norm.includes("lansoprazole") || norm.includes("prospans") || norm.includes("lapraz") || norm.includes("inazol") || norm.includes("laz") || norm.includes("gastrolan")) return "lansoprazole";
+  if (norm.includes("simvastatin") || norm.includes("simva") || norm.includes("zocor") || norm.includes("selvim") || norm.includes("cholestat") || norm.includes("valesco")) return "simvastatin";
+  if (norm.includes("atorvastatin") || norm.includes("lipitor") || norm.includes("truvaz") || norm.includes("atorva") || norm.includes("stator")) return "atorvastatin";
+  if (norm.includes("ketoconazole") || norm.includes("ketokonazol") || norm.includes("zoloral") || norm.includes("mycoral") || norm.includes("formyco")) return "ketoconazole";
+  if (norm.includes("erythromycin") || norm.includes("eritromisin") || norm.includes("erysanbe") || norm.includes("erythrocin")) return "erythromycin";
+  if (norm.includes("clarithromycin") || norm.includes("klaritromisin") || norm.includes("bicrolin") || norm.includes("abboticin") || norm.includes("clapharma")) return "clarithromycin";
   if (norm.includes("digoxin") || norm.includes("digoksin") || norm.includes("fargoxin")) return "digoxin";
-  if (norm.includes("furosemid") || norm.includes("furosemide") || norm.includes("lasix")) return "furosemide";
+  if (norm.includes("furosemid") || norm.includes("furosemide") || norm.includes("lasix") || norm.includes("farsix") || norm.includes("edemin") || norm.includes("impugan")) return "furosemide";
   if (norm.includes("propranolol") || norm.includes("farmadral")) return "propranolol";
-  if (norm.includes("bisoprolol") || norm.includes("concor")) return "bisoprolol";
-  if (norm.includes("salbutamol") || norm.includes("ventolin") || norm.includes("salbulin") || norm.includes("suprasma")) return "salbutamol";
-  if (norm.includes("insulin") || norm.includes("sansulin") || norm.includes("ryzodeg")) return "insulin";
-  if (norm.includes("gentamicin") || norm.includes("gentamisin") || norm.includes("sagestam")) return "gentamicin";
+  if (norm.includes("bisoprolol") || norm.includes("concor") || norm.includes("b-beta") || norm.includes("bbeta") || norm.includes("maintate") || norm.includes("lodoz")) return "bisoprolol";
+  if (norm.includes("salbutamol") || norm.includes("ventolin") || norm.includes("salbulin") || norm.includes("suprasma") || norm.includes("astika") || norm.includes("velutine")) return "salbutamol";
+  if (norm.includes("insulin") || norm.includes("sansulin") || norm.includes("ryzodeg") || norm.includes("novorapid") || norm.includes("lantus") || norm.includes("levemir") || norm.includes("apidra") || norm.includes("humalog")) return "insulin";
+  if (norm.includes("gentamicin") || norm.includes("gentamisin") || norm.includes("sagestam") || norm.includes("garamycin") || norm.includes("ottogenta")) return "gentamicin";
   if (norm.includes("vancomycin") || norm.includes("vankomisin") || norm.includes("vancep")) return "vancomycin";
-  if (norm.includes("haloperidol") || norm.includes("haldol") || norm.includes("serenace")) return "haloperidol";
-  if (norm.includes("levofloxacin") || norm.includes("levofloksasin") || norm.includes("cravit")) return "levofloxacin";
-  if (norm.includes("tramadol")) return "tramadol";
+  if (norm.includes("haloperidol") || norm.includes("haldol") || norm.includes("serenace") || norm.includes("govotil") || norm.includes("haldoldecanoat")) return "haloperidol";
+  if (norm.includes("levofloxacin") || norm.includes("levofloksasin") || norm.includes("cravit") || norm.includes("levocin") || norm.includes("mosardal")) return "levofloxacin";
+  if (norm.includes("tramadol") || norm.includes("centrasic") || norm.includes("tramal") || norm.includes("tradosik") || norm.includes("kamadol")) return "tramadol";
   if (norm.includes("quetiapin") || norm.includes("quetiapine") || norm.includes("seroquel")) return "quetiapine";
-  if (norm.includes("amlodipin") || norm.includes("amlodipine") || norm.includes("norvask")) return "amlodipine";
-  if (norm.includes("potassiumchloride") || norm.includes("kcl") || norm.includes("kaliumklorida")) return "potassium_chloride";
-  if (norm.includes("allopurinol") || norm.includes("alopurinol") || norm.includes("zyloric")) return "allopurinol";
-  if (norm.includes("doxycycline") || norm.includes("doksisiklin")) return "doxycycline";
-  if (norm.includes("amikacin") || norm.includes("amikasin")) return "amikacin";
-  if (norm.includes("chloramphenicol") || norm.includes("kloramfenikol") || norm.includes("bufacetin")) return "chloramphenicol";
+  if (norm.includes("amlodipin") || norm.includes("amlodipine") || norm.includes("norvask") || norm.includes("amdocal") || norm.includes("tensivask") || norm.includes("intervask")) return "amlodipine";
+  if (norm.includes("potassiumchloride") || norm.includes("kcl") || norm.includes("kaliumklorida") || norm.includes("ksr")) return "potassium_chloride";
+  if (norm.includes("allopurinol") || norm.includes("alopurinol") || norm.includes("zyloric") || norm.includes("sinoric") || norm.includes("isoric") || norm.includes("puricemia")) return "allopurinol";
+  if (norm.includes("doxycycline") || norm.includes("doksisiklin") || norm.includes("dohixat") || norm.includes("doxicor")) return "doxycycline";
+  if (norm.includes("amikacin") || norm.includes("amikasin") || norm.includes("amikin") || norm.includes("alostil")) return "amikacin";
+  if (norm.includes("chloramphenicol") || norm.includes("kloramfenikol") || norm.includes("bufacetin") || norm.includes("colsancetine") || norm.includes("colme")) return "chloramphenicol";
   if (norm.includes("kolera") || norm.includes("cholera") || norm.includes("vaxchora")) return "cholera";
-  if (norm.includes("paracetamol") || norm.includes("asetaminofen") || norm.includes("sanmol") || norm.includes("panadol")) return "paracetamol";
-  if (norm.includes("sucralfate") || norm.includes("sukralfat")) return "sucralfate";
+  if (norm.includes("paracetamol") || norm.includes("asetaminofen") || norm.includes("sanmol") || norm.includes("panadol") || norm.includes("pamol") || norm.includes("dumin") || norm.includes("tempra") || norm.includes("paratusin") || norm.includes("sumagesic") || norm.includes("ottopan") || norm.includes("farmadol")) return "paracetamol";
+  if (norm.includes("sucralfate") || norm.includes("sukralfat") || norm.includes("neopepsan") || norm.includes("episan") || norm.includes("ulcron") || norm.includes("propepsa") || norm.includes("inpepsa")) return "sucralfate";
   if (norm.includes("methotrexate") || norm.includes("metotreksat") || norm.includes("rheutrex")) return "methotrexate";
-  if (norm.includes("amiodarone") || norm.includes("amiodaron") || norm.includes("tiaryt")) return "amiodarone";
+  if (norm.includes("amiodarone") || norm.includes("amiodaron") || norm.includes("tiaryt") || norm.includes("cordarone")) return "amiodarone";
+
+  // Additional major classes for Presets & Drug Information
+  if (norm.includes("metformin") || norm.includes("glumin") || norm.includes("neodipar") || norm.includes("forbetes") || norm.includes("glucophage")) return "metformin";
+  if (norm.includes("glimepirid") || norm.includes("glimepiride") || norm.includes("amaryl") || norm.includes("glimpid") || norm.includes("actaryl") || norm.includes("diversa")) return "glimepiride";
+  if (norm.includes("ceftriaxon") || norm.includes("seftriakson") || norm.includes("rocephin") || norm.includes("broadced") || norm.includes("ceftrimax") || norm.includes("terbac")) return "ceftriaxone";
+  if (norm.includes("cefixim") || norm.includes("sefiksim") || norm.includes("cepspan") || norm.includes("spancef") || norm.includes("fixep") || norm.includes("anfix")) return "cefixime";
+  if (norm.includes("dexamethason") || norm.includes("deksametason") || norm.includes("cortidex") || norm.includes("kalmethasone") || norm.includes("oradexon") || norm.includes("lanadexon") || norm.includes("indexon")) return "dexamethasone";
+  if (norm.includes("prednison") || norm.includes("prednisone")) return "prednisone";
+  if (norm.includes("methylprednisolon") || norm.includes("metilprednisolon") || norm.includes("medixon") || norm.includes("sanexon") || norm.includes("urbason") || norm.includes("solumedrol") || norm.includes("prednox") || norm.includes("torasid")) return "methylprednisolone";
+  if (norm.includes("morfin") || norm.includes("morphin") || norm.includes("mst") || norm.includes("morphine")) return "morphine";
+  if (norm.includes("fentanil") || norm.includes("fentanyl") || norm.includes("durogesic")) return "fentanyl";
+  if (norm.includes("diazepam") || norm.includes("valisanbe") || norm.includes("stesolid") || norm.includes("valium") || norm.includes("trankinon")) return "diazepam";
+  if (norm.includes("midazolam") || norm.includes("miloz") || norm.includes("sedacum") || norm.includes("fortanest") || norm.includes("dormicum")) return "midazolam";
+  if (norm.includes("phenytoin") || norm.includes("fenitoin") || norm.includes("kutoin") || norm.includes("dilantin") || norm.includes("zentropil") || norm.includes("decantoin")) return "phenytoin";
+  if (norm.includes("carbamazepin") || norm.includes("karbamazepin") || norm.includes("bamgetol") || norm.includes("tegretol")) return "carbamazepine";
+  if (norm.includes("valproat") || norm.includes("valproic") || norm.includes("depakene") || norm.includes("depakote") || norm.includes("divalproex") || norm.includes("ivalep") || norm.includes("falpro")) return "valproate";
+  if (norm.includes("colchicin") || norm.includes("kolkisin") || norm.includes("recolfar") || norm.includes("lanturol")) return "colchicine";
+  if (norm.includes("theophyllin") || norm.includes("teofilin") || norm.includes("bronsolvan") || norm.includes("euphyllin") || norm.includes("retaphyl")) return "theophylline";
+  if (norm.includes("aminophyllin") || norm.includes("aminofilin") || norm.includes("phylex")) return "aminophylline";
+  if (norm.includes("isoniazid") || norm.includes("inh") || norm.includes("inoxin") || norm.includes("tibigon")) return "isoniazid";
+  if (norm.includes("fluconazol") || norm.includes("flukonazol") || norm.includes("diflucan") || norm.includes("flucoral") || norm.includes("candizol") || norm.includes("zemyc")) return "fluconazole";
+  if (norm.includes("donepezil") || norm.includes("aricept") || norm.includes("alzeil") || norm.includes("donecept")) return "donepezil";
+  if (norm.includes("ondansetron") || norm.includes("narfoz") || norm.includes("cedantron") || norm.includes("invomit") || norm.includes("zofran") || norm.includes("vometron") || norm.includes("dantrox")) return "ondansetron";
+  if (norm.includes("calcium") || norm.includes("kalsium") || norm.includes("calc") || norm.includes("cagluconat") || norm.includes("calcii")) return "calcium";
+
   return id.toLowerCase();
+}
+
+/**
+ * Retrieves all registered drug interactions that involve a given drug preset.
+ */
+export function getInteractionsForDrug(id: string, name: string, db: DrugInteraction[] = INTERACTION_DATABASE): DrugInteraction[] {
+  const targetSubstance = getCanonicalSubstance(id, name);
+  const targetId = id.toLowerCase();
+  const targetNorm = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  return db.filter(item => {
+    if (item.drugAId === id || item.drugBId === id) return true;
+    const subA = getCanonicalSubstance(item.drugAId, item.drugAName);
+    const subB = getCanonicalSubstance(item.drugBId, item.drugBName);
+    if (subA === targetSubstance || subB === targetSubstance) return true;
+
+    const normA = item.drugAName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normB = item.drugBName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (targetNorm && targetNorm.length >= 4 && (targetNorm.includes(normA) || normA.includes(targetNorm) || targetNorm.includes(normB) || normB.includes(targetNorm))) {
+      return true;
+    }
+
+    return false;
+  });
+}
+
+/**
+ * Retrieves all registered food interactions that involve a given drug preset.
+ */
+export function getFoodInteractionsForDrug(id: string, name: string, db: FoodInteraction[] = FOOD_INTERACTION_DATABASE): FoodInteraction[] {
+  const targetSubstance = getCanonicalSubstance(id, name);
+  const targetId = id.toLowerCase();
+
+  return db.filter(item => {
+    if (item.drugId === id) return true;
+    const sub = getCanonicalSubstance(item.drugId, item.drugName);
+    if (sub === targetSubstance) return true;
+    const baseA = targetId.split("_")[0];
+    const baseB = item.drugId.split("_")[0];
+    return baseA === baseB;
+  });
 }
 
 /**

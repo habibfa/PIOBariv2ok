@@ -5,7 +5,7 @@ import { Upload, Save, Menu } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 import { getDrugSafetyReview } from "./data/drugSafetyMetadata";
 import { DRUG_PRESETS as INITIAL_DRUG_PRESETS } from "./presets";
-import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction, getCanonicalSubstance } from "./interactions";
+import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction, getCanonicalSubstance, getInteractionsForDrug, getFoodInteractionsForDrug } from "./interactions";
 import { calculateDosage, calculateMostellerBsa, calculateCockcroftGault } from "./mathUtils";
 import ClinicalAlerts from "./components/ClinicalAlerts";
 import PharmacistConsultation from "./PharmacistConsultation";
@@ -61,7 +61,8 @@ import {
   Pill,
   Tag,
   Copy,
-  CheckCheck
+  CheckCheck,
+  Zap
 } from "lucide-react";
 import HighlightText from "./components/HighlightText";
 import { matchDrugSimultaneous, SearchScope } from "./utils/searchUtils";
@@ -1053,7 +1054,8 @@ export default function App() {
     const [interactionDatabase, setInteractionDatabase] = useState<DrugInteraction[]>(() => {
     localStorage.removeItem("interactionDatabase_v4");
     localStorage.removeItem("interactionDatabase_v5");
-    const saved = localStorage.getItem("interactionDatabase_v6");
+    localStorage.removeItem("interactionDatabase_v6");
+    const saved = localStorage.getItem("interactionDatabase_v7");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as DrugInteraction[];
@@ -1065,19 +1067,19 @@ export default function App() {
             return fresh || item;
           });
           const merged = [...updated, ...missing];
-          localStorage.setItem("interactionDatabase_v6", JSON.stringify(merged));
+          localStorage.setItem("interactionDatabase_v7", JSON.stringify(merged));
           return merged;
         }
       } catch (e) {
         return INITIAL_INTERACTION_DATABASE;
       }
     }
-    localStorage.setItem("interactionDatabase_v6", JSON.stringify(INITIAL_INTERACTION_DATABASE));
+    localStorage.setItem("interactionDatabase_v7", JSON.stringify(INITIAL_INTERACTION_DATABASE));
     return INITIAL_INTERACTION_DATABASE;
   });
 
   useEffect(() => {
-    localStorage.setItem("interactionDatabase_v6", JSON.stringify(interactionDatabase));
+    localStorage.setItem("interactionDatabase_v7", JSON.stringify(interactionDatabase));
   }, [interactionDatabase]);
 
   const [isUpdateDdiModalOpen, setIsUpdateDdiModalOpen] = useState(false);
@@ -1289,6 +1291,7 @@ export default function App() {
   const [descSelectedCategory, setDescSelectedCategory] = useState<string>("all");
   const [descSelectedAlphabet, setDescSelectedAlphabet] = useState<string>("all");
   const [descExpandedId, setDescExpandedId] = useState<string | null>(null);
+  const [descOnlyWithInteractions, setDescOnlyWithInteractions] = useState<boolean>(false);
 
   // Multi-drug DDI Screening States
   const [ddiSelectedIds, setDdiSelectedIds] = useState<string[]>([
@@ -4043,6 +4046,38 @@ export default function App() {
                 </button>
               </div>
             )}
+            {/* Quick Filter: Interaksi Obat Terdaftar */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                <Zap className="w-3 h-3 text-amber-500" />
+                Filter Khusus Interaksi
+              </label>
+              <button
+                type="button"
+                onClick={() => setDescOnlyWithInteractions(!descOnlyWithInteractions)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                  descOnlyWithInteractions
+                    ? "bg-amber-50 border-amber-300 text-amber-900 ring-2 ring-amber-200"
+                    : "bg-slate-50 hover:bg-amber-50/70 border-slate-200 text-slate-700 hover:text-amber-900"
+                }`}
+                title="Tampilkan hanya obat yang memiliki peringatan interaksi obat atau pantangan makanan terdaftar"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className={`w-3.5 h-3.5 ${descOnlyWithInteractions ? "text-amber-600 fill-amber-500" : "text-amber-500"}`} />
+                  <span>Obat Berinteraksi</span>
+                </div>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                  descOnlyWithInteractions ? "bg-amber-200 text-amber-900" : "bg-slate-200 text-slate-600"
+                }`}>
+                  {drugPresets.filter(p => {
+                    const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
+                    const food = getFoodInteractionsForDrug(p.id, p.name);
+                    return ddi.length > 0 || food.length > 0;
+                  }).length}
+                </span>
+              </button>
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kategori Terapi</label>
               <div className="space-y-1">
@@ -4221,10 +4256,26 @@ export default function App() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setDescSearchQuery("")}
+                    onClick={() => {
+                      setDescSearchQuery("");
+                      setDescOnlyWithInteractions(false);
+                    }}
                     className="text-[10px] text-rose-500 hover:text-rose-700 font-bold hover:underline ml-1"
                   >
                     Hapus Filter
+                  </button>
+                </div>
+              )}
+              {descOnlyWithInteractions && (
+                <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-900 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-2xs">
+                  <Zap className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Hanya Menampilkan Obat dengan Interaksi Terdaftar</span>
+                  <button
+                    type="button"
+                    onClick={() => setDescOnlyWithInteractions(false)}
+                    className="text-rose-600 hover:text-rose-800 font-bold ml-1 hover:underline text-[10px] flex items-center gap-0.5"
+                  >
+                    <X className="w-3 h-3" /> Tutup
                   </button>
                 </div>
               )}
@@ -4232,6 +4283,11 @@ export default function App() {
             {(() => {
               const sanitizedPresets = sanitizeDrugPresets(drugPresets);
               const count = sanitizedPresets.filter(p => {
+                if (descOnlyWithInteractions) {
+                  const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
+                  const food = getFoodInteractionsForDrug(p.id, p.name);
+                  if (ddi.length === 0 && food.length === 0) return false;
+                }
                 const info = getDrugCategory(p.id, p.name);
                 const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
                 if (!matchResult.isMatch) return false;
@@ -4269,6 +4325,11 @@ export default function App() {
             {(() => {
               const sanitizedPresets = sanitizeDrugPresets(drugPresets);
               const filteredList = sanitizedPresets.filter(p => {
+                if (descOnlyWithInteractions) {
+                  const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
+                  const food = getFoodInteractionsForDrug(p.id, p.name);
+                  if (ddi.length === 0 && food.length === 0) return false;
+                }
                 const info = getDrugCategory(p.id, p.name);
                 const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
                 if (!matchResult.isMatch) return false;
@@ -4317,6 +4378,7 @@ export default function App() {
                           setDescSearchScope("all");
                           setDescSelectedCategory("all");
                           setDescSelectedAlphabet("all");
+                          setDescOnlyWithInteractions(false);
                         }}
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors inline-flex items-center gap-2 shadow-xs"
                       >
@@ -4444,6 +4506,30 @@ export default function App() {
                         }`}>
                           Menyusui: {metadata.breastfeedingSafety.status}
                         </span>
+
+                        {/* Drug Interaction Status Badge */}
+                        {(() => {
+                          const directInteractions = getInteractionsForDrug(preset.id, preset.name, interactionDatabase);
+                          const foodInteractions = getFoodInteractionsForDrug(preset.id, preset.name);
+                          const totalDdi = directInteractions.length;
+                          const totalFood = foodInteractions.length;
+                          const criticalCount = directInteractions.filter(i => i.severity === "CRITICAL").length + foodInteractions.filter(i => i.severity === "CRITICAL").length;
+
+                          if (totalDdi === 0 && totalFood === 0) {
+                            return null;
+                          }
+
+                          return (
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${
+                              criticalCount > 0
+                                ? "bg-rose-50 border-rose-200 text-rose-700"
+                                : "bg-amber-50 border-amber-200 text-amber-800"
+                            }`} title={`${totalDdi} interaksi obat & ${totalFood} pantangan makanan terdaftar`}>
+                              <Zap className="w-3 h-3 shrink-0 text-amber-600" />
+                              {totalDdi} Interaksi Obat {criticalCount > 0 && `(${criticalCount} Kritis)`}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
@@ -4667,41 +4753,244 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* Section: Interaksi Obat (DDI) & Interaksi Makanan */}
+                      {(() => {
+                        const drugInteractions = getInteractionsForDrug(preset.id, preset.name, interactionDatabase);
+                        const foodInteractions = getFoodInteractionsForDrug(preset.id, preset.name);
+                        const hasInteractions = drugInteractions.length > 0 || foodInteractions.length > 0;
+                        const criticalDdi = drugInteractions.filter(i => i.severity === "CRITICAL");
+                        const warningDdi = drugInteractions.filter(i => i.severity === "WARNING");
+
+                        return (
+                          <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-3xs">
+                            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-2.5">
+                              <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                                <Zap className="w-4 h-4 text-amber-500" />
+                                Peringatan Interaksi Obat (DDI) & Pantangan Makanan
+                              </h4>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!ddiSelectedIds.includes(preset.id)) {
+                                    setDdiSelectedIds([...ddiSelectedIds, preset.id]);
+                                  }
+                                  setActiveTab("ddi");
+                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-[11px] font-bold transition-all shadow-2xs cursor-pointer"
+                                title="Buka menu skrining interaksi lengkap dengan obat ini langsung ditambahkan ke keranjang"
+                              >
+                                <Search className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Skrining Pasien dengan Obat Ini</span>
+                              </button>
+                            </div>
+
+                            {!hasInteractions ? (
+                              <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl text-emerald-900 text-xs flex items-center gap-3">
+                                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                                <div>
+                                  <p className="font-bold text-emerald-950">Tidak Ditemukan Interaksi Kritis Terdaftar</p>
+                                  <p className="text-[11px] text-emerald-800 font-sans mt-0.5 leading-relaxed">
+                                    Belum ada catatan interaksi mayor atau kontraindikasi mutlak dalam database klinis RSUD Palembang BARI untuk obat ini. Tetap pantau kondisi klinis dan organ eliminasi pasien.
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {/* Summary Badge Count */}
+                                <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                                  <span className="text-slate-500 font-medium font-sans">Terdeteksi:</span>
+                                  {criticalDdi.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-black flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3" /> {criticalDdi.length} Kontraindikasi Kritis
+                                    </span>
+                                  )}
+                                  {warningDdi.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-bold flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" /> {warningDdi.length} Peringatan / Pemantauan
+                                    </span>
+                                  )}
+                                  {foodInteractions.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-800 font-bold flex items-center gap-1">
+                                      🥗 {foodInteractions.length} Pantangan Makanan / Minuman
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* List of Drug Interactions */}
+                                {drugInteractions.length > 0 && (
+                                  <div className="space-y-2.5 mt-2">
+                                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                      <Pill className="w-3 h-3 text-slate-400" />
+                                      Daftar Interaksi Antar-Obat ({drugInteractions.length})
+                                    </h5>
+                                    <div className="grid grid-cols-1 gap-2.5">
+                                      {drugInteractions.map((interaction) => {
+                                        const otherDrugName = interaction.drugAName.toLowerCase().includes(preset.name.toLowerCase().slice(0, 4))
+                                          ? interaction.drugBName
+                                          : interaction.drugAName;
+                                        const isCritical = interaction.severity === "CRITICAL";
+
+                                        return (
+                                          <div
+                                            key={interaction.id}
+                                            className={`p-3.5 rounded-xl border ${
+                                              isCritical
+                                                ? "bg-rose-50/40 border-rose-200"
+                                                : "bg-amber-50/30 border-amber-200/80"
+                                            } space-y-2`}
+                                          >
+                                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                              <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-0.5 rounded text-[9.5px] font-black uppercase tracking-wider ${
+                                                  isCritical
+                                                    ? "bg-rose-600 text-white"
+                                                    : "bg-amber-500 text-white"
+                                                }`}>
+                                                  {isCritical ? "KONTRAINDIKASI / KRITIS" : "PERINGATAN MODERAT"}
+                                                </span>
+                                                <span className="font-bold text-slate-900 text-xs">
+                                                  Interaksi dengan: <span className="underline decoration-amber-400 font-extrabold text-slate-950">{otherDrugName}</span>
+                                                </span>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const pairIds = [preset.id];
+                                                  const targetPreset = drugPresets.find(p => 
+                                                    p.id === interaction.drugAId || p.id === interaction.drugBId ||
+                                                    p.name.toLowerCase().includes(otherDrugName.toLowerCase())
+                                                  );
+                                                  if (targetPreset && !pairIds.includes(targetPreset.id)) {
+                                                    pairIds.push(targetPreset.id);
+                                                  }
+                                                  setDdiSelectedIds(Array.from(new Set([...ddiSelectedIds, ...pairIds])));
+                                                  setActiveTab("ddi");
+                                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                                }}
+                                                className="text-[10px] font-bold text-teal-700 hover:text-teal-900 hover:underline flex items-center gap-1 cursor-pointer bg-white/80 px-2 py-0.5 rounded-md border border-teal-200"
+                                              >
+                                                <span>Uji Pasangan Ini di Skrining</span> &rarr;
+                                              </button>
+                                            </div>
+
+                                            <div className="text-[11.5px] text-slate-700 font-sans leading-relaxed space-y-1.5">
+                                              <p>
+                                                <strong className="text-slate-900 font-semibold">Mekanisme Klinis: </strong>
+                                                {interaction.mechanism}
+                                              </p>
+                                              <div className="p-2 bg-white/95 rounded-lg border border-slate-200/80 text-slate-800">
+                                                <strong className="text-emerald-800 font-semibold">Rekomendasi Farmasis: </strong>
+                                                {interaction.recommendation}
+                                              </div>
+                                              {interaction.evidence && (
+                                                <p className="text-[10px] text-slate-500 italic mt-0.5">
+                                                  <strong>Bukti Ilmiah / Referensi: </strong> {interaction.evidence}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* List of Food Interactions */}
+                                {foodInteractions.length > 0 && (
+                                  <div className="space-y-2 mt-3 pt-2 border-t border-slate-100">
+                                    <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                      🥗 Pantangan Makanan & Minuman Terkait ({foodInteractions.length})
+                                    </h5>
+                                    <div className="grid grid-cols-1 gap-2">
+                                      {foodInteractions.map((fItem) => (
+                                        <div
+                                          key={fItem.id}
+                                          className="p-3 bg-orange-50/50 border border-orange-200 rounded-xl space-y-1"
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-bold text-orange-950 text-xs flex items-center gap-1.5">
+                                              <span>⚠️</span> {fItem.foodName}
+                                            </span>
+                                            <span className={`px-2 py-0.2 text-[9px] font-black uppercase rounded ${
+                                              fItem.severity === "CRITICAL" ? "bg-rose-600 text-white" : "bg-amber-600 text-white"
+                                            }`}>
+                                              {fItem.severity === "CRITICAL" ? "HINDARI MUTLAK" : "PERINGATAN"}
+                                            </span>
+                                          </div>
+                                          <p className="text-[11.5px] text-slate-700 font-sans leading-relaxed">
+                                            <strong className="text-slate-900 font-semibold">Mekanisme: </strong>{fItem.mechanism}
+                                          </p>
+                                          <div className="p-1.5 bg-white/90 rounded-md text-[11px] text-orange-950 font-medium border border-orange-100">
+                                            <strong className="text-orange-900">Saran Konsumsi: </strong>{fItem.recommendation}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* Card Actions: Quick Calculate */}
-                      <div className="flex items-center justify-between flex-wrap gap-2.5 pt-1.5 border-t border-slate-100">
-                        <span className="text-[10px] text-slate-400 italic font-sans font-medium">Klik tombol di sebelah kanan untuk langsung melakukan kalkulasi dosis aman bagi pasien</span>
+                      <div className="flex items-center justify-between flex-wrap gap-2.5 pt-2 border-t border-slate-100">
+                        <span className="text-[10px] text-slate-400 italic font-sans font-medium">Klik tombol untuk langsung melakukan kalkulasi dosis atau uji skrining interaksi</span>
                         
-                        <button
-                          onClick={() => {
-                            setSelectedPresetId(preset.id);
-                            
-                            // Get the true preset reference
-                            const realPreset = drugPresets.find(x => x.id === preset.id);
-                            if (realPreset) {
-                              setSelectedPreset(realPreset);
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!ddiSelectedIds.includes(preset.id)) {
+                                setDdiSelectedIds([...ddiSelectedIds, preset.id]);
+                              }
+                              setActiveTab("ddi");
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                            title="Tambahkan obat ini ke keranjang skrining interaksi"
+                          >
+                            <Zap className="w-3.5 h-3.5 text-amber-600" />
+                            Skrining Interaksi
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedPresetId(preset.id);
                               
-                              setInputs(prev => ({
-                                ...prev,
-                                calcMethod: realPreset.calcMethod,
-                                targetDoseValue: realPreset.defaultDoseValue,
-                                doseUnit: realPreset.doseUnit,
-                                frequency: realPreset.frequency,
-                                liquidConcentrationValue: realPreset.liquidConcentrationValue || "",
-                                liquidConcentrationVolume: realPreset.liquidConcentrationVolume || ""
-                              }));
-                            }
-                            
-                            // Go back to the single calculator tab
-                            setIsMobileMenuOpen(false); setActiveTab("single");
-                            
-                            // Scroll up smoothly to calculations
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 self-end text-xs"
-                        >
-                          <Calculator className="w-3.5 h-3.5" />
-                          <span>Mulai Hitung Dosis</span>
-                        </button>
+                              // Get the true preset reference
+                              const realPreset = drugPresets.find(x => x.id === preset.id);
+                              if (realPreset) {
+                                setSelectedPreset(realPreset);
+                                
+                                setInputs(prev => ({
+                                  ...prev,
+                                  calcMethod: realPreset.calcMethod,
+                                  targetDoseValue: realPreset.defaultDoseValue,
+                                  doseUnit: realPreset.doseUnit,
+                                  frequency: realPreset.frequency,
+                                  liquidConcentrationValue: realPreset.liquidConcentrationValue || "",
+                                  liquidConcentrationVolume: realPreset.liquidConcentrationVolume || ""
+                                }));
+                              }
+                              
+                              // Go back to the single calculator tab
+                              setIsMobileMenuOpen(false); setActiveTab("single");
+                              
+                              // Scroll up smoothly to calculations
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 self-end text-xs cursor-pointer"
+                          >
+                            <Calculator className="w-3.5 h-3.5" />
+                            <span>Mulai Hitung Dosis</span>
+                          </button>
+                        </div>
                       </div>
 
                     </div>
@@ -5458,8 +5747,10 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setInteractionDatabase(INITIAL_INTERACTION_DATABASE);
-                  localStorage.setItem("interactionDatabase_v5", JSON.stringify(INITIAL_INTERACTION_DATABASE));
+                  localStorage.setItem("interactionDatabase_v7", JSON.stringify(INITIAL_INTERACTION_DATABASE));
                   localStorage.removeItem("interactionDatabase_v4");
+                  localStorage.removeItem("interactionDatabase_v5");
+                  localStorage.removeItem("interactionDatabase_v6");
                   setIsUpdateDdiModalOpen(false);
                 }}
                 className="px-3.5 py-2 font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors text-xs"
