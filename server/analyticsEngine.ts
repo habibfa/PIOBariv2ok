@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { Request } from "express";
+import { anonymizeIP } from "./security";
 
 export interface CustomEventRecord {
   id: string;
@@ -102,16 +103,18 @@ function parseUserAgent(uaString?: string): { device: 'Mobile' | 'Desktop' | 'Ta
   return { device, browser };
 }
 
-// Clean client IP
+// Clean client IP (anonymized for HIPAA & privacy compliance)
 function extractClientIP(req: Request): string {
   const forwarded = req.headers["x-forwarded-for"];
+  let ip = "";
   if (typeof forwarded === "string") {
-    return forwarded.split(",")[0].trim();
+    ip = forwarded.split(",")[0].trim();
+  } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+    ip = forwarded[0].trim();
+  } else {
+    ip = req.socket.remoteAddress || "127.0.0.1";
   }
-  if (Array.isArray(forwarded) && forwarded.length > 0) {
-    return forwarded[0].trim();
-  }
-  return req.socket.remoteAddress || "127.0.0.1";
+  return anonymizeIP(ip);
 }
 
 // Baseline Initializer if database is completely blank

@@ -31,30 +31,35 @@ const ExpandableText = ({ text, maxLength = 100 }: { text: string; maxLength?: n
 
 export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
   const [fornasData, setFornasData] = useState<FornasDrug[]>(() => {
-    const saved = localStorage.getItem("fornasData_v3") || localStorage.getItem("fornasData_v2");
+    const saved = localStorage.getItem("fornasData_v7_complete");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as FornasDrug[];
-        const updated = parsed.map(p => {
-          const initial = INITIAL_FORNAS_DATA.find(i => i.id === p.id);
-          if (initial && (p.namaObat !== initial.namaObat || p.bentukSediaan !== initial.bentukSediaan || p.kelasTerapi !== initial.kelasTerapi || p.subKelasTerapi !== initial.subKelasTerapi || p.restriksi !== initial.restriksi || p.peresepanMaksimal !== initial.peresepanMaksimal || p.fpktp !== initial.fpktp || p.fpktl !== initial.fpktl || p.oen !== initial.oen || p.catatan !== initial.catatan)) {
-             return { ...p, ...initial };
-          }
-          return p;
-        });
-        const newInitial = INITIAL_FORNAS_DATA.filter(
-          (initial) => !updated.some((p) => p.id === initial.id)
+        // Validate that parsed data is complete and not contaminated
+        const isCorrupted = parsed.some(p => 
+          p.namaObat === "Hari." || 
+          p.namaObat.startsWith("Hari ") || 
+          p.namaObat.includes("luas permukaan") ||
+          p.namaObat.startsWith("(")
         );
-        return [...updated, ...newInitial];
+        if (Array.isArray(parsed) && parsed.length >= 1200 && !isCorrupted) {
+          return parsed;
+        }
       } catch (e) {
-        return INITIAL_FORNAS_DATA;
+        // fallback to initial
       }
     }
+    // Purge outdated caches
+    localStorage.removeItem("fornasData_v6_clean");
+    localStorage.removeItem("fornasData_v5_clean");
+    localStorage.removeItem("fornasData_v4_kmk1199");
+    localStorage.removeItem("fornasData_v3");
+    localStorage.removeItem("fornasData_v2");
     return INITIAL_FORNAS_DATA;
   });
 
   useEffect(() => {
-    localStorage.setItem("fornasData_v3", JSON.stringify(fornasData));
+    localStorage.setItem("fornasData_v7_complete", JSON.stringify(fornasData));
   }, [fornasData]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -125,6 +130,13 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     XLSX.writeFile(workbook, "Template_Data_Fornas.xlsx");
   };
 
+  const handleExportFullData = () => {
+    const worksheet = XLSX.utils.json_to_sheet(fornasData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Fornas_KMK_1199_2025");
+    XLSX.writeFile(workbook, `Fornas_KMK_1199_2025_${fornasData.length}_Obat.xlsx`);
+  };
+
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [showKeterangan, setShowKeterangan] = useState(false);
 
@@ -183,8 +195,22 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
               Formularium Nasional (Fornas) Kementerian Kesehatan Republik Indonesia.
             </p>
             <p className="text-sm text-slate-500 mt-1 max-w-3xl leading-relaxed">
-              Data Berdasarkan KMK NOMOR HK.01.07/MENKES/1199/2025 tentang Formularium Nasional tanggal 31 Desember 2025, berlaku pada 1 April 2026.
+              Data Berdasarkan Keputusan Menteri Kesehatan RI Nomor HK.01.07/MENKES/1199/2025 tentang Formularium Nasional tanggal 31 Desember 2025, berlaku efektif 1 April 2026.
             </p>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Resmi KMK 1199/2025
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+                30 Kelas Terapi
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                {new Set(fornasData.map(d => d.namaObat)).size} Obat Generik
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                {fornasData.length} Bentuk Sediaan
+              </span>
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             {isAdmin && (
@@ -197,6 +223,13 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                   Update Data
                 </button>
                 <button
+                  onClick={() => setFornasData(INITIAL_FORNAS_DATA)}
+                  className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
+                >
+                  <Save className="w-4 h-4" />
+                  Pulihkan Standar Resmi
+                </button>
+                <button
                   onClick={() => setFornasData([])}
                   className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
                 >
@@ -205,14 +238,24 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 </button>
               </>
             )}
-            <a
-              href="/fornas_2025.pdf"
-              download
-              className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
-            >
-              <Download className="w-4 h-4" />
-              Download Sumber
-            </a>
+            <div className="flex flex-wrap sm:flex-col gap-2">
+              <button
+                onClick={handleExportFullData}
+                className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
+                title="Unduh seluruh data Fornas resmi ke format Excel"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Ekspor Excel ({fornasData.length})
+              </button>
+              <a
+                href="/fornas_2025.pdf"
+                download
+                className="inline-flex justify-center items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </a>
+            </div>
           </div>
         </div>
         
