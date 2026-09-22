@@ -2255,16 +2255,30 @@ export default function App() {
         
         {/* Header (Desktop and Mobile) */}
         <header className="h-18 glass-header flex items-center justify-between px-4 sm:px-6 shadow-2xs shrink-0">
-          <div className="flex items-center gap-3 lg:hidden">
+          <div className="flex items-center gap-2.5 lg:hidden">
             <button 
               onClick={() => setIsMobileMenuOpen(true)} 
-              className="p-2.5 -ml-2 text-slate-600 hover:text-teal-600 hover:bg-white/80 rounded-xl transition-colors"
+              className="p-2 -ml-2 text-slate-600 hover:text-teal-600 hover:bg-white/80 rounded-xl transition-colors cursor-pointer"
+              title="Buka Menu Modul Lengkap"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex flex-col">
+            <div className="flex items-center gap-2">
               <span className="text-xl font-black tracking-tight text-teal-700">
                 PIOBARI <span className="text-rose-600">v2</span>
+              </span>
+              <span className="text-[10px] bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded-full border border-teal-200/60 truncate max-w-[125px]">
+                {activeTab === "iv" ? "Kompatibilitas IV" : 
+                 activeTab === "desc" ? "Informasi Obat" : 
+                 activeTab === "ddi" ? "Skrining DDI" : 
+                 activeTab === "fornas" ? "Fornas 2025" : 
+                 activeTab === "medcalc" ? "Kalkulator Medis" : 
+                 activeTab === "soap" ? "Clinical SOAP" : 
+                 activeTab === "ai" ? "Konsultasi AI" : 
+                 activeTab === "pharmacist" ? "Apoteker Siaga" : 
+                 activeTab === "video" ? "Panduan Alat" : 
+                 activeTab === "diseases" ? "Penyakit" : 
+                 activeTab === "map" ? "Peta Faskes" : "Klinis"}
               </span>
             </div>
           </div>
@@ -2356,7 +2370,7 @@ export default function App() {
         </header>
 
         {/* Main Content scrollable area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-36 sm:pb-40 lg:pb-8 overflow-y-auto custom-scrollbar">
           <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         
         {activeTab === "single" ? (
@@ -6065,9 +6079,10 @@ export default function App() {
       <div className="lg:hidden fixed bottom-3 left-4 right-4 glass-card rounded-3xl shadow-[0_12px_36px_rgba(15,23,42,0.12)] flex items-center justify-around py-1.5 px-3 z-40">
         <button 
           onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all ${
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
             activeTab === "desc" ? "text-teal-700 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
+          title="Informasi Obat"
         >
           <BookOpen className={`w-5 h-5 ${activeTab === "desc" ? "text-teal-700" : ""}`} />
           <span className="text-[9px] font-bold tracking-tight">Obat</span>
@@ -6075,28 +6090,34 @@ export default function App() {
 
         <button 
           onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all ${
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
             activeTab === "ddi" ? "text-rose-600 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
+          title="Skrining Interaksi"
         >
           <ShieldAlert className={`w-5 h-5 ${activeTab === "ddi" ? "text-rose-600 animate-pulse" : ""}`} />
           <span className="text-[9px] font-bold tracking-tight">Skrining</span>
         </button>
 
-        {/* Elevated Center 3D Action Pill */}
+        {/* Elevated Center 3D Action Pill: Kompatibilitas IV */}
         <button
-          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ai"); }}
-          className="-translate-y-4 w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-600 to-teal-400 text-white shadow-[0_8px_20px_rgba(13,148,136,0.45)] border-4 border-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all group"
-          title="Tanya AI Asisten"
+          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("iv"); }}
+          className={`-translate-y-4 w-12 h-12 rounded-full text-white shadow-[0_8px_20px_rgba(13,148,136,0.45)] border-4 border-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all group cursor-pointer ${
+            activeTab === "iv"
+              ? "bg-gradient-to-tr from-cyan-600 via-teal-600 to-emerald-500 ring-2 ring-teal-400 ring-offset-2"
+              : "bg-gradient-to-tr from-emerald-600 via-teal-600 to-teal-400"
+          }`}
+          title="Kompatibilitas Obat IV"
         >
-          <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          <Droplets className={`w-5 h-5 group-hover:rotate-12 transition-transform ${activeTab === "iv" ? "animate-bounce" : ""}`} />
         </button>
 
         <button 
           onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all ${
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
             activeTab === "medcalc" ? "text-sky-600 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
           }`}
+          title="Kalkulator Medis"
         >
           <Calculator className={`w-5 h-5 ${activeTab === "medcalc" ? "text-sky-600" : ""}`} />
           <span className="text-[9px] font-bold tracking-tight">Kalkulator</span>
@@ -6104,7 +6125,10 @@ export default function App() {
 
         <button 
           onClick={() => setIsMobileMenuOpen(true)} 
-          className="flex flex-col items-center justify-center w-14 h-11 gap-1 text-slate-400 hover:text-slate-600 transition-all"
+          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
+            !["desc", "ddi", "iv", "medcalc"].includes(activeTab) ? "text-teal-700 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          }`}
+          title="Menu Semua Fitur"
         >
           <Menu className="w-5 h-5" />
           <span className="text-[9px] font-bold tracking-tight">Menu</span>

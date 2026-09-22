@@ -2667,6 +2667,15 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     return INITIAL_MATRIX;
   });
 
+  const scrollToTop = () => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleSelectRegimenForIvCheck = (drugIds: string[]) => {
     const validIds: string[] = [];
     drugIds.forEach(targetId => {
@@ -2685,7 +2694,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     }
     setMainViewMode("iv_checker");
     setMobileIvTab("results");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollToTop();
   };
 
   useEffect(() => {
@@ -2870,41 +2879,49 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
       ) : (
         <div className="w-full space-y-6">
           {/* MOBILE SUB-NAVIGATION (Hanya terlihat di layar ponsel < lg) */}
-          <div className="lg:hidden flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setMobileIvTab("drugs")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                mobileIvTab === "drugs"
-                  ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Droplets className="w-4 h-4 text-emerald-600" />
-              <span>1. Daftar Obat ({selectedDrugs.length})</span>
-            </button>
+          <div className="lg:hidden sticky top-0 z-20 bg-slate-50/95 backdrop-blur-md py-1.5 -mx-1 px-1">
+            <div className="flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileIvTab("drugs");
+                  scrollToTop();
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobileIvTab === "drugs"
+                    ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Droplets className="w-4 h-4 text-emerald-600" />
+                <span>1. Pilih Obat ({selectedDrugs.length})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setMobileIvTab("results")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                mobileIvTab === "results"
-                  ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <ShieldAlert className="w-4 h-4 text-emerald-600" />
-              <span>2. Hasil Matriks</span>
-              {selectedDrugs.length >= 2 ? (
-                <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                  Siap
-                </span>
-              ) : (
-                <span className="text-[10px] text-slate-400">
-                  (Pilih min 2)
-                </span>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileIvTab("results");
+                  scrollToTop();
+                }}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  mobileIvTab === "results"
+                    ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4 text-emerald-600" />
+                <span>2. Hasil Matriks</span>
+                {selectedDrugs.length >= 2 ? (
+                  <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                    Siap
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-400">
+                    (Min 2)
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* MAIN GRID: Kolom Bersebelahan di Layar Lebar (lg+), Bergantian di Ponsel */}
@@ -2988,9 +3005,9 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                         type="button"
                         onClick={() => {
                           setMobileIvTab("results");
-                          window.scrollTo({ top: 0, behavior: "smooth" });
+                          scrollToTop();
                         }}
-                        className="lg:hidden w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-2xs transition-colors mt-1"
+                        className="lg:hidden w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-colors mt-1 cursor-pointer active:scale-98"
                       >
                         <span>Lihat Hasil Kompatibilitas ({selectedDrugs.length})</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -3010,7 +3027,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                   />
                 </div>
 
-                <div className="max-h-[55vh] lg:max-h-[calc(100vh-320px)] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                <div className="max-h-[58vh] sm:max-h-[65vh] lg:max-h-[calc(100vh-320px)] overflow-y-auto pr-1 sm:pr-2 space-y-2 custom-scrollbar touch-pan-y">
                   {filteredDrugs.map(drug => {
                     const isSelected = selectedDrugs.includes(drug.id);
                     return (
@@ -3046,11 +3063,14 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
             {/* RIGHT COLUMN: Compatibility Matrix & Details */}
             <section className={`w-full lg:col-span-8 space-y-6 ${mobileIvTab === "results" ? "block" : "hidden lg:block"}`}>
               {/* Mobile Back Shortcut */}
-              <div className="lg:hidden flex items-center justify-between bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200/80 mb-2">
+              <div className="lg:hidden flex items-center justify-between bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200/80 mb-2">
                 <button
                   type="button"
-                  onClick={() => setMobileIvTab("drugs")}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"
+                  onClick={() => {
+                    setMobileIvTab("drugs");
+                    scrollToTop();
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4 text-emerald-700" />
                   <span>← Ubah Pilihan Obat ({selectedDrugs.length} dipilih)</span>
@@ -3059,7 +3079,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                   <button
                     type="button"
                     onClick={() => setSelectedDrugs([])}
-                    className="text-[11px] font-bold text-rose-600 hover:underline"
+                    className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
                   >
                     Reset
                   </button>
@@ -3097,8 +3117,18 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                     <div className="space-y-6">
                       
                       {/* Cross-Compatibility Matrix */}
-                      <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full text-sm text-left">
+                      <div className="space-y-1.5">
+                        <div className="lg:hidden flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                          <span className="flex items-center gap-1 font-medium">
+                            <ArrowRight className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                            Geser tabel ke samping untuk melihat kolom
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            {selectedDrugs.length} Obat
+                          </span>
+                        </div>
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                          <table className="w-full text-sm text-left">
                           <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                             <tr>
                               <th className="px-4 py-3 border-r border-slate-200 w-48">Obat / Cairan</th>
@@ -3137,6 +3167,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
                           </tbody>
                         </table>
                       </div>
+                    </div>
 
                       {/* Compatibility Details List */}
                       <div>
@@ -3249,23 +3280,23 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
 
           {/* FLOATING ACTION BAR ON MOBILE WHEN >= 2 DRUGS IN 'DRUGS' TAB */}
           {mobileIvTab === "drugs" && selectedDrugs.length >= 2 && (
-            <div className="fixed bottom-20 left-4 right-4 z-40 lg:hidden flex justify-center animate-in fade-in slide-in-from-bottom-3 duration-200">
+            <div className="fixed bottom-[74px] left-3 right-20 sm:right-24 z-30 lg:hidden flex justify-center animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-auto">
               <button
                 type="button"
                 onClick={() => {
                   setMobileIvTab("results");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollToTop();
                 }}
-                className="w-full max-w-sm py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl shadow-xl border border-emerald-400/40 flex items-center justify-between font-bold text-xs active:scale-98 transition-all"
+                className="w-full py-3 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl shadow-xl border border-emerald-400/40 flex items-center justify-between font-bold text-xs active:scale-98 transition-all cursor-pointer"
               >
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-white text-emerald-800 flex items-center justify-center text-[11px] font-black">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="w-5 h-5 rounded-full bg-white text-emerald-800 flex items-center justify-center text-[11px] font-black shrink-0">
                     {selectedDrugs.length}
                   </span>
-                  <span>Obat Terpilih</span>
+                  <span className="truncate">Terpilih</span>
                 </div>
-                <span className="flex items-center gap-1 text-white font-extrabold">
-                  Lihat Hasil Kompatibilitas <ArrowRight className="w-4 h-4" />
+                <span className="flex items-center gap-1 text-white font-extrabold text-[11px] shrink-0">
+                  Lihat Matriks <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </button>
             </div>
