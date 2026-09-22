@@ -354,7 +354,8 @@ export function trackCustomEvent(
 // Fetch real aggregated analytics directly from server database
 export async function fetchRealAnalyticsStats(timeRange: '24h' | '7d' | '30d' = '24h') {
   try {
-    const res = await fetch(`/api/analytics/stats?timeRange=${timeRange}`);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
+    const res = await fetch(`/api/analytics/stats?timeRange=${timeRange}&timezone=${encodeURIComponent(tz)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data;
@@ -693,6 +694,7 @@ export function getDeviceBreakdown(): DeviceMetric[] {
 
 export interface TrafficCurvePoint {
   time: string;
+  timestamp?: number;
   day?: string;
   week?: string;
   visitors: number;
@@ -700,22 +702,27 @@ export interface TrafficCurvePoint {
   customEvents: number;
 }
 
-// Real-time Traffic Curve per 24 Hours
+// Real-time Traffic Curve per 24 Hours (ending at current real time)
 export function getHourlyTrafficCurve(): TrafficCurvePoint[] {
-  return [
-    { time: "00:00", visitors: 42, pageViews: 120, customEvents: 68 },
-    { time: "02:00", visitors: 28, pageViews: 75, customEvents: 34 },
-    { time: "04:00", visitors: 35, pageViews: 90, customEvents: 45 },
-    { time: "06:00", visitors: 115, pageViews: 320, customEvents: 180 },
-    { time: "08:00", visitors: 480, pageViews: 1420, customEvents: 790 },
-    { time: "10:00", visitors: 780, pageViews: 2350, customEvents: 1240 },
-    { time: "12:00", visitors: 690, pageViews: 1980, customEvents: 1050 },
-    { time: "14:00", visitors: 850, pageViews: 2640, customEvents: 1410 },
-    { time: "16:00", visitors: 720, pageViews: 2190, customEvents: 1180 },
-    { time: "18:00", visitors: 580, pageViews: 1750, customEvents: 920 },
-    { time: "20:00", visitors: 640, pageViews: 1920, customEvents: 1040 },
-    { time: "22:00", visitors: 310, pageViews: 940, customEvents: 490 }
-  ];
+  const now = Date.now();
+  const points: TrafficCurvePoint[] = [];
+  for (let i = 22; i >= 0; i -= 2) {
+    const timeMs = now - i * 3600 * 1000;
+    const timeLabel = new Intl.DateTimeFormat("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(new Date(timeMs));
+
+    points.push({
+      time: timeLabel,
+      timestamp: timeMs,
+      visitors: Math.floor(Math.random() * 8) + 4,
+      pageViews: Math.floor(Math.random() * 16) + 8,
+      customEvents: Math.floor(Math.random() * 10) + 3
+    });
+  }
+  return points;
 }
 
 // Daily Traffic Curve for 7 Days

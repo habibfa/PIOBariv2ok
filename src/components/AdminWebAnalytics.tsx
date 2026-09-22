@@ -266,7 +266,21 @@ export const AdminWebAnalytics: React.FC = () => {
   const chartData = useMemo(() => {
     if (serverStats) {
       if (timeRange === "24h" && serverStats.hourlyTraffic && serverStats.hourlyTraffic.length > 0) {
-        return serverStats.hourlyTraffic;
+        return serverStats.hourlyTraffic.map((item: any) => {
+          if (item.timestamp) {
+            try {
+              const formattedTime = new Intl.DateTimeFormat("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false
+              }).format(new Date(item.timestamp));
+              return { ...item, time: formattedTime };
+            } catch {
+              return item;
+            }
+          }
+          return item;
+        });
       }
       if (timeRange === "7d" && serverStats.dailyTraffic && serverStats.dailyTraffic.length > 0) {
         return serverStats.dailyTraffic;

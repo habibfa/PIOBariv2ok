@@ -346,8 +346,9 @@ export function recordHeartbeat(data: {
 }
 
 // Get aggregated real stats
-export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h') {
+export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', clientTimezone?: string) {
   const now = Date.now();
+  const tz = clientTimezone || "Asia/Jakarta";
   let timeWindowMs = 24 * 3600 * 1000;
   if (timeRange === "7d") timeWindowMs = 7 * 24 * 3600 * 1000;
   else if (timeRange === "30d") timeWindowMs = 30 * 24 * 3600 * 1000;
@@ -356,10 +357,21 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h') 
   const filteredEvents = store.events.filter(e => e.timestamp >= cutoff);
   const filteredPVs = store.pageViews.filter(p => p.timestamp >= cutoff);
 
-  // Today start
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayMs = todayStart.getTime();
+  // Today start in target timezone (WIB UTC+7)
+  let todayMs = now - 24 * 3600 * 1000;
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(new Date(now));
+    todayMs = new Date(`${parts}T00:00:00+07:00`).getTime();
+  } catch {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    todayMs = todayStart.getTime();
+  }
 
   const pvsToday = store.pageViews.filter(p => p.timestamp >= todayMs).length;
   const eventsToday = store.events.filter(e => e.timestamp >= todayMs).length;
@@ -370,12 +382,27 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h') 
       .concat(store.events.filter(e => e.timestamp >= todayMs).map(e => e.sessionId))
   ).size;
 
-  // Hourly curve (last 24 hours in 2-hour buckets)
-  const hourlyCurve: Array<{ time: string; visitors: number; pageViews: number; customEvents: number }> = [];
+  // Hourly curve (last 24 hours in 2-hour buckets, ending at current real time)
+  const hourlyCurve: Array<{ time: string; timestamp: number; visitors: number; pageViews: number; customEvents: number }> = [];
   for (let i = 22; i >= 0; i -= 2) {
     const bucketStart = now - (i + 2) * 3600 * 1000;
     const bucketEnd = now - i * 3600 * 1000;
-    const hourLabel = new Date(bucketEnd).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    let hourLabel: string;
+    try {
+      hourLabel = new Intl.DateTimeFormat("id-ID", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).format(new Date(bucketEnd));
+    } catch {
+      hourLabel = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).format(new Date(bucketEnd));
+    }
 
     const pvsInBucket = store.pageViews.filter(p => p.timestamp >= bucketStart && p.timestamp < bucketEnd);
     const evsInBucket = store.events.filter(e => e.timestamp >= bucketStart && e.timestamp < bucketEnd);
@@ -383,6 +410,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h') 
 
     hourlyCurve.push({
       time: hourLabel,
+      timestamp: bucketEnd,
       visitors: visitorsInBucket || Math.floor(Math.random() * 5) + 2,
       pageViews: pvsInBucket.length || Math.floor(Math.random() * 12) + 5,
       customEvents: evsInBucket.length || Math.floor(Math.random() * 8) + 2

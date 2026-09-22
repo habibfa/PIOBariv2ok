@@ -490,7 +490,8 @@ ${patientData}`;
   app.get("/api/analytics/stats", (req, res) => {
     try {
       const timeRange = (req.query.timeRange as '24h' | '7d' | '30d') || '24h';
-      const stats = getAggregatedAnalytics(timeRange);
+      const timezone = (req.query.timezone as string) || 'Asia/Jakarta';
+      const stats = getAggregatedAnalytics(timeRange, timezone);
       res.json(stats);
     } catch (err: any) {
       console.error("[Analytics Stats Error]", err);
