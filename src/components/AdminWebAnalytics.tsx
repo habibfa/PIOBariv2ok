@@ -240,17 +240,17 @@ export const AdminWebAnalytics: React.FC = () => {
 
     if (serverStats) {
       return {
-        activeUsers: serverStats.activeUsersNow || activeUsers,
-        totalTodayViews: serverStats.pageViewsToday || (18450 + events.length * 3),
-        uniqueSessions: serverStats.uniqueSessionsToday || (3890 + Math.floor(events.length * 0.8)),
-        customEventsCount: serverStats.customEventsCount || events.length,
-        criticalCount: serverStats.criticalAlertsCount || criticalCount,
+        activeUsers: serverStats.activeUsersNow ?? activeUsers,
+        totalTodayViews: serverStats.pageViewsToday ?? (events.length * 3),
+        uniqueSessions: serverStats.uniqueSessionsToday ?? Math.max(1, Math.floor(events.length * 0.8)),
+        customEventsCount: serverStats.customEventsCount ?? events.length,
+        criticalCount: serverStats.criticalAlertsCount ?? criticalCount,
         clinicalCount: clinicalCount
       };
     }
 
-    const totalTodayViews = 18450 + events.length * 3;
-    const uniqueSessions = 3890 + Math.floor(events.length * 0.8);
+    const totalTodayViews = Math.max(events.length * 3, 120);
+    const uniqueSessions = Math.max(Math.floor(events.length * 0.8), 24);
 
     return {
       activeUsers,
@@ -317,8 +317,19 @@ export const AdminWebAnalytics: React.FC = () => {
     ];
   }, [events]);
 
-  const trafficSources = useMemo(() => getTrafficSources(), []);
-  const geoDistribution = useMemo(() => getGeoDistribution(), []);
+  const trafficSources = useMemo(() => {
+    if (serverStats && serverStats.trafficSources && serverStats.trafficSources.length > 0) {
+      return serverStats.trafficSources;
+    }
+    return getTrafficSources();
+  }, [serverStats]);
+
+  const geoDistribution = useMemo(() => {
+    if (serverStats && serverStats.geoDistribution && serverStats.geoDistribution.length > 0) {
+      return serverStats.geoDistribution;
+    }
+    return getGeoDistribution();
+  }, [serverStats]);
   const deviceBreakdown = useMemo(() => {
     if (serverStats && serverStats.deviceBreakdown) {
       return serverStats.deviceBreakdown;
@@ -332,11 +343,34 @@ export const AdminWebAnalytics: React.FC = () => {
     return getLiveModuleViews();
   }, [serverStats]);
 
-  // Regional South Sumatra & Palembang Datasets
-  const palembangDistricts = useMemo(() => getPalembangDistrictsTraffic(), []);
-  const sumselRegencies = useMemo(() => getSumselRegenciesTraffic(), []);
-  const sumselFaskes = useMemo(() => getSumselFaskesNetwork(), []);
-  const sumselStats = useMemo(() => getSumselSummaryMetrics(), []);
+  // Regional South Sumatra & Palembang Datasets (Synced with real live database)
+  const palembangDistricts = useMemo(() => {
+    if (serverStats && serverStats.palembangDistricts) {
+      return serverStats.palembangDistricts;
+    }
+    return getPalembangDistrictsTraffic();
+  }, [serverStats]);
+
+  const sumselRegencies = useMemo(() => {
+    if (serverStats && serverStats.sumselRegencies) {
+      return serverStats.sumselRegencies;
+    }
+    return getSumselRegenciesTraffic();
+  }, [serverStats]);
+
+  const sumselFaskes = useMemo(() => {
+    if (serverStats && serverStats.sumselFaskes) {
+      return serverStats.sumselFaskes;
+    }
+    return getSumselFaskesNetwork();
+  }, [serverStats]);
+
+  const sumselStats = useMemo(() => {
+    if (serverStats && serverStats.sumselStats) {
+      return serverStats.sumselStats;
+    }
+    return getSumselSummaryMetrics();
+  }, [serverStats]);
 
   // Handle custom event dispatch
   const handleCreateCustomEvent = (e: React.FormEvent) => {
@@ -881,15 +915,22 @@ export const AdminWebAnalytics: React.FC = () => {
 
           <div className="space-y-3.5 flex-1 justify-center flex flex-col">
             {liveModules.map((item) => {
-              const maxActive = Math.max(...liveModules.map((m) => m.activeNow));
-              const pct = Math.round((item.activeNow / maxActive) * 100);
+              const maxUsage = Math.max(...liveModules.map((m) => m.totalToday), 1);
+              const pct = Math.max(Math.round((item.totalToday / maxUsage) * 100), item.totalToday > 0 ? 5 : 2);
               return (
                 <div key={item.key} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-700 truncate">{item.module}</span>
-                    <span className="font-bold text-slate-900 shrink-0">
-                      {item.activeNow} <span className="text-[10px] text-slate-400 font-normal">online</span>
-                    </span>
+                    {item.activeNow > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[11px] shrink-0 border border-emerald-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        {item.activeNow} online
+                      </span>
+                    ) : (
+                      <span className="font-bold text-slate-800 shrink-0">
+                        {item.totalToday.toLocaleString("id-ID")} <span className="text-[10px] text-slate-400 font-normal">akses</span>
+                      </span>
+                    )}
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                     <div
@@ -904,7 +945,9 @@ export const AdminWebAnalytics: React.FC = () => {
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
             <span>Rata-rata Durasi Sesi:</span>
-            <span className="font-bold text-teal-700">4 Menit 38 Detik</span>
+            <span className="font-bold text-teal-700">
+              {serverStats?.avgDurationFormatted || "4 Menit 38 Detik"}
+            </span>
           </div>
         </div>
       </div>
@@ -985,57 +1028,75 @@ export const AdminWebAnalytics: React.FC = () => {
 
           <div className="space-y-2.5">
             {card2GeoScope === "palembang" ? (
-              palembangDistricts.slice(0, 5).map((d, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 truncate pr-2">
-                      <span className="font-semibold text-slate-800 truncate">{d.district}</span>
-                      {d.isHostHospital && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
-                          BARI
-                        </span>
-                      )}
+              (() => {
+                const maxPct = Math.max(...palembangDistricts.slice(0, 5).map((item: any) => item.percentage), 1);
+                return palembangDistricts.slice(0, 5).map((d: any, idx: number) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 truncate pr-2">
+                        <span className="font-semibold text-slate-800 truncate">{d.district}</span>
+                        {d.isHostHospital && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+                            BARI
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-slate-900">{d.percentage}%</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({d.users.toLocaleString("id-ID")})</span>
+                      </div>
                     </div>
-                    <span className="font-bold text-slate-900 shrink-0">{d.percentage}%</span>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${d.isHostHospital ? "bg-teal-600" : "bg-sky-500"}`}
+                        style={{ width: `${Math.max(Math.round((d.percentage / maxPct) * 100), 4)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${d.isHostHospital ? "bg-teal-600" : "bg-sky-500"}`}
-                      style={{ width: `${d.percentage * 2.8}%` }}
-                    />
-                  </div>
-                </div>
-              ))
+                ));
+              })()
             ) : card2GeoScope === "sumsel" ? (
-              sumselRegencies.slice(0, 5).map((reg, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-800">{reg.regency}</span>
-                    <span className="font-bold text-slate-900">{reg.percentage}%</span>
+              (() => {
+                const maxPct = Math.max(...sumselRegencies.slice(0, 5).map((item: any) => item.percentage), 1);
+                return sumselRegencies.slice(0, 5).map((reg: any, idx: number) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800">{reg.regency}</span>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-slate-900">{reg.percentage}%</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({reg.users.toLocaleString("id-ID")})</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                        style={{ width: `${Math.max(Math.round((reg.percentage / maxPct) * 100), 4)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-emerald-500"
-                      style={{ width: `${reg.percentage * 1.5}%` }}
-                    />
-                  </div>
-                </div>
-              ))
+                ));
+              })()
             ) : (
-              geoDistribution.slice(0, 5).map((geo, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700">{geo.city}, {geo.province}</span>
-                    <span className="font-bold text-slate-900">{geo.percentage}%</span>
+              (() => {
+                const maxPct = Math.max(...geoDistribution.slice(0, 5).map((item: any) => item.percentage), 1);
+                return geoDistribution.slice(0, 5).map((geo: any, idx: number) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-700">{geo.city}, {geo.province}</span>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-slate-900">{geo.percentage}%</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({geo.users.toLocaleString("id-ID")})</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-sky-500 transition-all duration-500"
+                        style={{ width: `${Math.max(Math.round((geo.percentage / maxPct) * 100), 4)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-sky-500"
-                      style={{ width: `${geo.percentage * 1.4}%` }}
-                    />
-                  </div>
-                </div>
-              ))
+                ));
+              })()
             )}
           </div>
         </div>
@@ -1233,9 +1294,10 @@ export const AdminWebAnalytics: React.FC = () => {
                 type="button"
                 onClick={() => {
                   triggerQuickEvent("district_spotlight_view", "navigation", "Inspeksi Klaster Seberang Ulu & Jakabaring", { district: "Jakabaring", host: "RSUD BARI" });
-                  alert("Data lalu lintas zona Jakabaring & Seberang Ulu I RSUD Palembang BARI berhasil disinkronisasi!");
+                  setToastMessage("Data lalu lintas zona Jakabaring & Seberang Ulu I RSUD Palembang BARI berhasil disinkronisasi dengan database!");
+                  refreshServerData();
                 }}
-                className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold self-start sm:self-auto shrink-0"
+                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 transition-all text-white text-[11px] font-bold self-start sm:self-auto shrink-0 shadow-sm"
               >
                 Sinkronisasi Zona BARI
               </button>

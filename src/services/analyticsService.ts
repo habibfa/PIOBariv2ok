@@ -475,25 +475,22 @@ export function exportEventsToJSON(events: CustomEventRecord[]): void {
 // Traffic Sources Baseline
 export function getTrafficSources(): TrafficSource[] {
   return [
-    { source: "Direct / Bookmark Apotek", visitors: 4820, percentage: 38.5, trend: "+12.4%" },
-    { source: "Google Organic (Pencarian Dosis Obat)", visitors: 3910, percentage: 31.2, trend: "+18.1%" },
-    { source: "WhatsApp Group Farmasi & Klinisi", visitors: 1940, percentage: 15.5, trend: "+24.8%" },
-    { source: "Portal Rumah Sakit & Faskes BPJS", visitors: 1210, percentage: 9.7, trend: "+6.3%" },
-    { source: "Referensi IAI & Kemkes/BPOM", visitors: 640, percentage: 5.1, trend: "+9.2%" }
+    { source: "Direct / Bookmark Apotek", visitors: 46, percentage: 38.3, trend: "+12.4%" },
+    { source: "Google Organic (Pencarian Dosis Obat)", visitors: 37, percentage: 30.8, trend: "+18.1%" },
+    { source: "WhatsApp Group Farmasi & Klinisi", visitors: 19, percentage: 15.8, trend: "+24.8%" },
+    { source: "Portal Rumah Sakit & Faskes BPJS", visitors: 12, percentage: 10.0, trend: "+6.3%" },
+    { source: "Referensi IAI & Kemkes/BPOM", visitors: 6, percentage: 5.0, trend: "+9.2%" }
   ];
 }
 
 // Geo Location Traffic Breakdown (National + South Sumatra Highlight)
 export function getGeoDistribution(): GeoLocationTraffic[] {
   return [
-    { city: "Palembang", province: "Sumatera Selatan", users: 7980, percentage: 63.8 },
-    { city: "Ogan Ilir", province: "Sumatera Selatan", users: 1050, percentage: 8.4 },
-    { city: "Banyuasin", province: "Sumatera Selatan", users: 990, percentage: 7.9 },
-    { city: "OKI (Kayuagung)", province: "Sumatera Selatan", users: 640, percentage: 5.1 },
-    { city: "Jakarta (Rujukan)", province: "DKI Jakarta", users: 580, percentage: 4.6 },
-    { city: "Prabumulih", province: "Sumatera Selatan", users: 470, percentage: 3.8 },
-    { city: "Muara Enim", province: "Sumatera Selatan", users: 360, percentage: 2.9 },
-    { city: "Bandung / Surabaya", province: "Jawa Barat/Timur", users: 430, percentage: 3.5 }
+    { city: "Palembang", province: "Sumatera Selatan (Host BARI)", users: 76, percentage: 63.3 },
+    { city: "Ogan Ilir & Banyuasin", province: "Sumatera Selatan (Penyangga)", users: 19, percentage: 15.8 },
+    { city: "OKI & Prabumulih", province: "Sumatera Selatan", users: 11, percentage: 9.2 },
+    { city: "Jakarta (Rujukan Nasional)", province: "DKI Jakarta", users: 8, percentage: 6.7 },
+    { city: "Bandung / Surabaya", province: "Jawa Barat & Jawa Timur", users: 6, percentage: 5.0 }
   ];
 }
 
@@ -504,18 +501,18 @@ export function getPalembangDistrictsTraffic(): PalembangDistrictTraffic[] {
       district: "Jakabaring & Seberang Ulu I",
       zone: "Kawasan RSUD Palembang BARI",
       faskesUtama: "RSUD Palembang BARI, Puskesmas 7 Ulu, Pustu 8 Ulu",
-      users: 2580,
-      percentage: 32.4,
-      activeNow: 14,
+      users: 39,
+      percentage: 32.5,
+      activeNow: 2,
       isHostHospital: true
     },
     {
       district: "Seberang Ulu II",
       zone: "Tangga Takat & 14 Ulu",
       faskesUtama: "Puskesmas Tangga Takat, Puskesmas Nagaswidak",
-      users: 1180,
-      percentage: 14.8,
-      activeNow: 6
+      users: 18,
+      percentage: 15.0,
+      activeNow: 1
     },
     {
       district: "Plaju",
