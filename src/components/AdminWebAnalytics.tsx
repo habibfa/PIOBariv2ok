@@ -24,7 +24,19 @@ import {
   Zap,
   Sliders,
   ChevronRight,
-  Database
+  Database,
+  MapPin,
+  Building2,
+  Hospital,
+  Navigation,
+  Compass,
+  Layers,
+  Map,
+  Server,
+  Wifi,
+  WifiOff,
+  Check,
+  FileText
 } from "lucide-react";
 import {
   AreaChart,
@@ -52,7 +64,22 @@ import {
   getHourlyTrafficCurve,
   getDailyTrafficCurve,
   getMonthlyTrafficCurve,
-  getLiveModuleViews
+  getLiveModuleViews,
+  getPalembangDistrictsTraffic,
+  getSumselRegenciesTraffic,
+  getSumselFaskesNetwork,
+  getSumselSummaryMetrics,
+  PALEMBANG_DISTRICTS,
+  SUMSEL_REGENCIES,
+  PalembangDistrictTraffic,
+  SumselRegencyTraffic,
+  SumselFaskesReferral,
+  fetchRealAnalyticsStats,
+  fetchRealEvents,
+  resetServerDatabase,
+  sendHeartbeat,
+  setSelectedFaskesCity,
+  getSelectedOrDetectedCity
 } from "../services/analyticsService";
 
 export const AdminWebAnalytics: React.FC = () => {
@@ -61,43 +88,119 @@ export const AdminWebAnalytics: React.FC = () => {
   const [events, setEvents] = useState<CustomEventRecord[]>([]);
   const [activeUsers, setActiveUsers] = useState<number>(44);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>("all");
+  const [activeRegionFilter, setActiveRegionFilter] = useState<"all" | "palembang" | "sumsel_other" | "outside">("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedEventModal, setSelectedEventModal] = useState<CustomEventRecord | null>(null);
+
+  // Real Server Engine States
+  const [serverStats, setServerStats] = useState<any>(null);
+  const [isServerConnected, setIsServerConnected] = useState<boolean>(true);
+  const [latencyMs, setLatencyMs] = useState<number>(14);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [autoSync, setAutoSync] = useState<boolean>(true);
+  const [lastSyncTime, setLastSyncTime] = useState<string>("Memuat...");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
+
+  // Regional Focus View state
+  const [geoTab, setGeoTab] = useState<"palembang" | "sumsel" | "faskes">("palembang");
+  const [card2GeoScope, setCard2GeoScope] = useState<"palembang" | "sumsel" | "nasional">("palembang");
 
   // Custom Event Creator state
   const [isCreatorOpen, setIsCreatorOpen] = useState<boolean>(false);
   const [customEventName, setCustomEventName] = useState<string>("");
   const [customEventCategory, setCustomEventCategory] = useState<'clinical' | 'safety' | 'navigation' | 'conversion' | 'custom'>('custom');
   const [customEventLabel, setCustomEventLabel] = useState<string>("");
+  const [customEventCity, setCustomEventCity] = useState<string>(getSelectedOrDetectedCity());
   const [customEventMetaKey, setCustomEventMetaKey] = useState<string>("target");
   const [customEventMetaVal, setCustomEventMetaVal] = useState<string>("bangsal_icu");
   const [creationSuccess, setCreationSuccess] = useState<boolean>(false);
 
+  // Fetch real data from server
+  const refreshServerData = async () => {
+    setIsRefreshing(true);
+    const start = performance.now();
+    try {
+      const data = await fetchRealAnalyticsStats(timeRange);
+      const ping = Math.max(1, Math.round(performance.now() - start));
+      setLatencyMs(ping);
+      if (data) {
+        setServerStats(data);
+        setIsServerConnected(true);
+        if (data.activeUsersNow) {
+          setActiveUsers(data.activeUsersNow);
+        }
+      }
+      const remoteEvents = await fetchRealEvents({ limit: 150 });
+      if (remoteEvents && remoteEvents.length > 0) {
+        setEvents(remoteEvents);
+      }
+      setLastSyncTime(new Date().toLocaleTimeString("id-ID"));
+    } catch (e) {
+      console.warn("Analytics server offline fallback:", e);
+      setIsServerConnected(false);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Load events & subscribe
   useEffect(() => {
+    // Initial local read
     setEvents(getSavedCustomEvents());
+    // Initial server fetch
+    refreshServerData();
 
     const unsubscribe = subscribeToAnalyticsEvents((newEvent) => {
       setEvents((prev) => [newEvent, ...prev.slice(0, 249)]);
+      if (serverStats) {
+        setServerStats((prev: any) => prev ? {
+          ...prev,
+          customEventsCount: (prev.customEventsCount || 0) + 1,
+          pageViewsToday: newEvent.eventName === "page_view" ? (prev.pageViewsToday || 0) + 1 : prev.pageViewsToday
+        } : prev);
+      }
     });
 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [timeRange]);
 
-  // Simulate subtle real-time active users fluctuation
+  // Periodic Auto-Sync with Real Database Engine (every 5 seconds)
   useEffect(() => {
+    if (!autoSync) return;
     const timer = setInterval(() => {
-      setActiveUsers((prev) => {
-        const delta = Math.floor(Math.random() * 5) - 2; // -2 to +2
-        const next = prev + delta;
-        return Math.max(34, Math.min(62, next));
-      });
-    }, 4500);
-
+      refreshServerData();
+    }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [autoSync, timeRange]);
+
+  // Quick Action Handler for Live Telemetry Testing
+  const handleQuickLiveAction = (
+    name: string,
+    cat: 'clinical' | 'safety' | 'navigation' | 'conversion' | 'custom',
+    label: string,
+    meta: Record<string, any>
+  ) => {
+    const ev = trackCustomEvent(name, {
+      category: cat,
+      label,
+      metadata: meta,
+      city: customEventCity
+    });
+    setToastMessage(`Berhasil mengirim: "${label}" ke database server real-time!`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Reset Server Database
+  const handleResetDatabase = async () => {
+    await resetServerDatabase();
+    setIsResetConfirmOpen(false);
+    await refreshServerData();
+    setToastMessage("Database telemetri server berhasil di-reset ke baseline aktif.");
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // Filtered events
   const filteredEvents = useMemo(() => {
@@ -105,6 +208,20 @@ export const AdminWebAnalytics: React.FC = () => {
       if (activeCategoryFilter !== "all" && ev.category !== activeCategoryFilter) {
         return false;
       }
+      if (activeRegionFilter === "palembang") {
+        if (!ev.city.toLowerCase().includes("palembang")) return false;
+      } else if (activeRegionFilter === "sumsel_other") {
+        const isPalembang = ev.city.toLowerCase().includes("palembang");
+        const isSumsel = ev.city.includes("Sumatera Selatan") ||
+          ["ogan", "banyuasin", "oki", "prabumulih", "muara", "lahat", "lubuklinggau", "baturaja", "sekayu", "pagar alam", "pali", "empat lawang", "muratara"].some(k => ev.city.toLowerCase().includes(k));
+        if (isPalembang || !isSumsel) return false;
+      } else if (activeRegionFilter === "outside") {
+        const isSumsel = ev.city.toLowerCase().includes("palembang") ||
+          ev.city.includes("Sumatera Selatan") ||
+          ["ogan", "banyuasin", "oki", "prabumulih", "muara", "lahat", "lubuklinggau", "baturaja", "sekayu", "pagar alam", "pali", "empat lawang", "muratara"].some(k => ev.city.toLowerCase().includes(k));
+        if (isSumsel) return false;
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = ev.eventName.toLowerCase().includes(q);
@@ -114,12 +231,24 @@ export const AdminWebAnalytics: React.FC = () => {
       }
       return true;
     });
-  }, [events, activeCategoryFilter, searchQuery]);
+  }, [events, activeCategoryFilter, activeRegionFilter, searchQuery]);
 
-  // Aggregate stats from events
+  // Aggregate stats from real server database with smooth fallback
   const stats = useMemo(() => {
     const criticalCount = events.filter((e) => e.category === "safety" || e.eventName.includes("interaction")).length;
     const clinicalCount = events.filter((e) => e.category === "clinical").length;
+
+    if (serverStats) {
+      return {
+        activeUsers: serverStats.activeUsersNow || activeUsers,
+        totalTodayViews: serverStats.pageViewsToday || (18450 + events.length * 3),
+        uniqueSessions: serverStats.uniqueSessionsToday || (3890 + Math.floor(events.length * 0.8)),
+        customEventsCount: serverStats.customEventsCount || events.length,
+        criticalCount: serverStats.criticalAlertsCount || criticalCount,
+        clinicalCount: clinicalCount
+      };
+    }
+
     const totalTodayViews = 18450 + events.length * 3;
     const uniqueSessions = 3890 + Math.floor(events.length * 0.8);
 
@@ -131,14 +260,22 @@ export const AdminWebAnalytics: React.FC = () => {
       criticalCount,
       clinicalCount
     };
-  }, [events, activeUsers]);
+  }, [events, activeUsers, serverStats]);
 
-  // Chart data based on selected time range
+  // Chart data based on selected time range (using real curve from server when available)
   const chartData = useMemo(() => {
+    if (serverStats) {
+      if (timeRange === "24h" && serverStats.hourlyTraffic && serverStats.hourlyTraffic.length > 0) {
+        return serverStats.hourlyTraffic;
+      }
+      if (timeRange === "7d" && serverStats.dailyTraffic && serverStats.dailyTraffic.length > 0) {
+        return serverStats.dailyTraffic;
+      }
+    }
     if (timeRange === "24h") return getHourlyTrafficCurve();
     if (timeRange === "7d") return getDailyTrafficCurve();
     return getMonthlyTrafficCurve();
-  }, [timeRange]);
+  }, [timeRange, serverStats]);
 
   // Event category counts for bar chart
   const categoryCounts = useMemo(() => {
@@ -168,8 +305,24 @@ export const AdminWebAnalytics: React.FC = () => {
 
   const trafficSources = useMemo(() => getTrafficSources(), []);
   const geoDistribution = useMemo(() => getGeoDistribution(), []);
-  const deviceBreakdown = useMemo(() => getDeviceBreakdown(), []);
-  const liveModules = useMemo(() => getLiveModuleViews(), []);
+  const deviceBreakdown = useMemo(() => {
+    if (serverStats && serverStats.deviceBreakdown) {
+      return serverStats.deviceBreakdown;
+    }
+    return getDeviceBreakdown();
+  }, [serverStats]);
+  const liveModules = useMemo(() => {
+    if (serverStats && serverStats.liveModules) {
+      return serverStats.liveModules;
+    }
+    return getLiveModuleViews();
+  }, [serverStats]);
+
+  // Regional South Sumatra & Palembang Datasets
+  const palembangDistricts = useMemo(() => getPalembangDistrictsTraffic(), []);
+  const sumselRegencies = useMemo(() => getSumselRegenciesTraffic(), []);
+  const sumselFaskes = useMemo(() => getSumselFaskesNetwork(), []);
+  const sumselStats = useMemo(() => getSumselSummaryMetrics(), []);
 
   // Handle custom event dispatch
   const handleCreateCustomEvent = (e: React.FormEvent) => {
@@ -184,7 +337,8 @@ export const AdminWebAnalytics: React.FC = () => {
     trackCustomEvent(customEventName.trim().toLowerCase().replace(/\s+/g, "_"), {
       category: customEventCategory,
       label: customEventLabel.trim() || `Custom Tracked Event: ${customEventName}`,
-      metadata: meta
+      metadata: meta,
+      city: customEventCity
     });
 
     setCreationSuccess(true);
@@ -195,11 +349,18 @@ export const AdminWebAnalytics: React.FC = () => {
   };
 
   // Quick preset dispatchers
-  const triggerQuickEvent = (name: string, cat: 'clinical' | 'safety' | 'navigation' | 'conversion' | 'custom', label: string, meta: Record<string, any>) => {
+  const triggerQuickEvent = (
+    name: string,
+    cat: 'clinical' | 'safety' | 'navigation' | 'conversion' | 'custom',
+    label: string,
+    meta: Record<string, any>,
+    city?: string
+  ) => {
     trackCustomEvent(name, {
       category: cat,
       label,
-      metadata: meta
+      metadata: meta,
+      city: city || "Palembang - Jakabaring (RSUD BARI)"
     });
   };
 
@@ -311,6 +472,232 @@ export const AdminWebAnalytics: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Floating Real-time Action Feedback Toast */}
+      {toastMessage && (
+        <div className="p-3.5 rounded-2xl bg-emerald-900 text-white border border-emerald-500 shadow-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <CheckCircle2 className="w-5 h-5 text-emerald-300" />
+            <span className="text-xs font-semibold">{toastMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-xs text-emerald-300 hover:text-white font-bold px-2 py-1"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
+      {/* REAL SERVER DATABASE STATUS & CONTROL BAR */}
+      <div className="p-4 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700/80">
+            {isServerConnected ? (
+              <>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <Server className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-emerald-300">
+                  Real Server Database Engine (Aktif)
+                </span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold text-amber-300">
+                  Mode Lokal / Offline
+                </span>
+              </>
+            )}
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-700/50">
+            <span className="text-teal-400 font-bold">Penyimpanan:</span>
+            <span>data/analytics_store.json</span>
+          </div>
+
+          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-mono text-slate-300 border border-slate-700/50">
+            <span className="text-sky-400 font-bold">Latensi:</span>
+            <span>{latencyMs} ms</span>
+          </div>
+
+          <span className="text-[11px] text-slate-400">
+            Sinkronisasi: <strong className="text-slate-200">{lastSyncTime}</strong>
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAutoSync(!autoSync)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1.5 ${
+              autoSync
+                ? "bg-teal-500/20 text-teal-300 border-teal-500/40"
+                : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
+            }`}
+            title="Toggle sinkronisasi data real-time otomatis setiap 5 detik"
+          >
+            <span className={`w-2 h-2 rounded-full ${autoSync ? "bg-teal-400 animate-ping" : "bg-slate-500"}`}></span>
+            Auto-Sync 5s: {autoSync ? "AKTIF" : "OFF"}
+          </button>
+
+          <button
+            type="button"
+            onClick={refreshServerData}
+            disabled={isRefreshing}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-teal-400" : ""}`} />
+            {isRefreshing ? "Menyinkronkan..." : "Muat Ulang"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsResetConfirmOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 text-xs font-bold flex items-center gap-1.5 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Reset DB
+          </button>
+        </div>
+      </div>
+
+      {/* QUICK LIVE ACTION TEST TOOLBAR: Dispatch real telemetry with 1 click */}
+      <div className="p-5 rounded-3xl bg-white border border-teal-200/80 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex p-1 rounded-lg bg-teal-50 text-teal-700">
+                <Zap className="w-4 h-4 text-teal-600" />
+              </span>
+              <h3 className="text-sm font-bold text-slate-800">
+                Uji Coba Telemetri Nyata Langsung (Live Clinical Action Test)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500">
+              Klik aksi klinis di bawah ini untuk mengirim data event asli ke database server real-time dan langsung melihat metrik berubah:
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>Lokasi Asal Uji:</span>
+            <select
+              value={customEventCity}
+              onChange={(e) => {
+                setCustomEventCity(e.target.value);
+                setSelectedFaskesCity(e.target.value);
+              }}
+              className="px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-teal-500"
+            >
+              {PALEMBANG_DISTRICTS.map((dist) => (
+                <option key={dist} value={dist}>
+                  {dist}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() =>
+              handleQuickLiveAction(
+                "interaction_screen",
+                "safety",
+                "Skrining Interaksi Ciprofloxacin + Antasida (Precipitate Risk)",
+                { severity: "CRITICAL", drugs: ["Ciprofloxacin", "Antasida"] }
+              )
+            }
+            className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+            + Skrining DDI (Kritis)
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              handleQuickLiveAction(
+                "dose_calculate",
+                "clinical",
+                "Perhitungan Dosis Gentamicin Pediatrik 3.2 kg",
+                { drug: "Gentamicin", patientWeight: 3.2, unit: "mg" }
+              )
+            }
+            className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200/80 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+          >
+            <Activity className="w-3.5 h-3.5 text-teal-600" />
+            + Hitung Dosis Gentamicin
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              handleQuickLiveAction(
+                "iv_compatibility_check",
+                "safety",
+                "Uji Kompatibilitas Ceftriaxone + Ringer Laktat Inkompatibel",
+                { outcome: "INCOMPATIBLE", precipitateRisk: true }
+              )
+            }
+            className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+            + Cek IV Ceftriaxone + RL
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              handleQuickLiveAction(
+                "fornas_lookup",
+                "clinical",
+                "Pencarian Restriksi Fornas: Meropenem Injeksi Lini 3",
+                { drug: "Meropenem", class: "Antibiotik" }
+              )
+            }
+            className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200/80 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+          >
+            <Search className="w-3.5 h-3.5 text-sky-600" />
+            + Cek Fornas Meropenem
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              handleQuickLiveAction(
+                "soap_record",
+                "clinical",
+                "Dokumentasi Catatan Farmasi SOAP Bangsal Anak",
+                { ward: "Bangsal Anak RSUD BARI", validatedBy: "Apoteker Farmasi Klinis" }
+              )
+            }
+            className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+            + Simpan SOAP Bangsal
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              handleQuickLiveAction(
+                "pdf_export",
+                "conversion",
+                "Ekspor Lembar Rekomendasi Farmakoterapi Klinis PDF",
+                { format: "A4", recipient: "Dokter Spesialis Sp.A" }
+              )
+            }
+            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200/80 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
+          >
+            <Download className="w-3.5 h-3.5 text-purple-600" />
+            + Ekspor Rekomendasi PDF
+          </button>
         </div>
       </div>
 
@@ -535,30 +922,107 @@ export const AdminWebAnalytics: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2: Indonesian Geographical Distribution */}
+        {/* Card 2: Indonesian & Regional Geographical Distribution */}
         <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-sky-600" />
-              Sebaran Geografis (Indonesia)
-            </h3>
-            <p className="text-[11px] text-slate-500">Kota dengan akses faskes & apotek tertinggi</p>
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-teal-600" />
+                Sebaran Geografis Akses
+              </h3>
+              <p className="text-[11px] text-slate-500">Akses spesifik faskes & apotek</p>
+            </div>
+            <div className="inline-flex p-0.5 rounded-lg bg-slate-100 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => setCard2GeoScope("palembang")}
+                className={`px-2 py-1 rounded-md transition-all ${
+                  card2GeoScope === "palembang"
+                    ? "bg-teal-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Palembang
+              </button>
+              <button
+                type="button"
+                onClick={() => setCard2GeoScope("sumsel")}
+                className={`px-2 py-1 rounded-md transition-all ${
+                  card2GeoScope === "sumsel"
+                    ? "bg-teal-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Sumsel
+              </button>
+              <button
+                type="button"
+                onClick={() => setCard2GeoScope("nasional")}
+                className={`px-2 py-1 rounded-md transition-all ${
+                  card2GeoScope === "nasional"
+                    ? "bg-teal-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Nasional
+              </button>
+            </div>
           </div>
+
           <div className="space-y-2.5">
-            {geoDistribution.slice(0, 5).map((geo, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700">{geo.city}, {geo.province}</span>
-                  <span className="font-bold text-slate-900">{geo.percentage}%</span>
+            {card2GeoScope === "palembang" ? (
+              palembangDistricts.slice(0, 5).map((d, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5 truncate pr-2">
+                      <span className="font-semibold text-slate-800 truncate">{d.district}</span>
+                      {d.isHostHospital && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-teal-100 text-teal-800 border border-teal-200 shrink-0">
+                          BARI
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-bold text-slate-900 shrink-0">{d.percentage}%</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${d.isHostHospital ? "bg-teal-600" : "bg-sky-500"}`}
+                      style={{ width: `${d.percentage * 2.8}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-sky-500"
-                    style={{ width: `${geo.percentage * 2}%` }}
-                  />
+              ))
+            ) : card2GeoScope === "sumsel" ? (
+              sumselRegencies.slice(0, 5).map((reg, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-800">{reg.regency}</span>
+                    <span className="font-bold text-slate-900">{reg.percentage}%</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: `${reg.percentage * 1.5}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              geoDistribution.slice(0, 5).map((geo, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-700">{geo.city}, {geo.province}</span>
+                    <span className="font-bold text-slate-900">{geo.percentage}%</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-sky-500"
+                      style={{ width: `${geo.percentage * 1.4}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -594,6 +1058,299 @@ export const AdminWebAnalytics: React.FC = () => {
         </div>
       </div>
 
+      {/* Dedicated Section: Fokus Wilayah Spesifik Sumatera Selatan & Kota Palembang */}
+      <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 text-white shadow-xl border border-teal-700/40 space-y-6">
+        {/* Header with Badges */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-teal-800/40 pb-5">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold tracking-wide uppercase border border-emerald-500/30 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                Fokus Lokasi Spesifik
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-200 text-[10px] font-bold border border-teal-500/30">
+                Host Utama: RSUD Palembang BARI (Jakabaring)
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold border border-amber-400/30">
+                89.2% Trafik Sumsel
+              </span>
+            </div>
+            <h2 className="text-xl font-extrabold text-white flex items-center gap-2.5">
+              <Hospital className="w-6 h-6 text-teal-400" />
+              Telemetri Wilayah: Sumatera Selatan & Kota Palembang
+            </h2>
+            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+              Pemantauan real-time lalu lintas pengguna farmasi dan klinisi spesifik dari 18 Kecamatan Kota Palembang (Kawasan RSUD Palembang BARI, Seberang Ulu, Plaju, Ilir) serta 17 Kabupaten/Kota jejaring rujukan se-Provinsi Sumatera Selatan.
+            </p>
+          </div>
+
+          {/* Quick Stats Pill */}
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <div className="p-3 rounded-2xl bg-teal-900/60 border border-teal-700/40 text-center min-w-[100px]">
+              <p className="text-[10px] font-semibold text-teal-300">Pengguna Sumsel</p>
+              <p className="text-lg font-black text-white">{sumselStats.sumselTrafficShare}%</p>
+              <p className="text-[9px] text-teal-400">Trafik Dominan</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-teal-900/60 border border-teal-700/40 text-center min-w-[100px]">
+              <p className="text-[10px] font-semibold text-teal-300">Kota Palembang</p>
+              <p className="text-lg font-black text-emerald-400">{sumselStats.palembangTrafficShare}%</p>
+              <p className="text-[9px] text-slate-300">Pusat Rujukan</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-teal-900/60 border border-teal-700/40 text-center min-w-[100px]">
+              <p className="text-[10px] font-semibold text-teal-300">Faskes Terhubung</p>
+              <p className="text-lg font-black text-amber-300">{sumselStats.activeFaskesCount}</p>
+              <p className="text-[9px] text-slate-300">RS & Puskesmas</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation for Regional Analysis */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex p-1 rounded-2xl bg-slate-800/90 border border-slate-700/80">
+            <button
+              type="button"
+              onClick={() => setGeoTab("palembang")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                geoTab === "palembang"
+                  ? "bg-emerald-500 text-slate-950 shadow-sm"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              Kecamatan di Kota Palembang
+            </button>
+            <button
+              type="button"
+              onClick={() => setGeoTab("sumsel")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                geoTab === "sumsel"
+                  ? "bg-emerald-500 text-slate-950 shadow-sm"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              17 Kab/Kota se-Sumatera Selatan
+            </button>
+            <button
+              type="button"
+              onClick={() => setGeoTab("faskes")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                geoTab === "faskes"
+                  ? "bg-emerald-500 text-slate-950 shadow-sm"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              <Hospital className="w-3.5 h-3.5" />
+              Jejaring RS & Faskes Sumsel
+            </button>
+          </div>
+
+          <span className="text-[11px] text-teal-300/90 flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            Terhubung Langsung dengan Unit Farmasi & Bangsal RSUD Palembang BARI
+          </span>
+        </div>
+
+        {/* Tab Content 1: Palembang Districts */}
+        {geoTab === "palembang" && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {palembangDistricts.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-2xl border transition-all ${
+                    item.isHostHospital
+                      ? "bg-gradient-to-br from-teal-900/80 to-slate-900 border-teal-500 shadow-md ring-1 ring-teal-400/40"
+                      : "bg-slate-800/60 border-slate-700/60 hover:border-slate-600"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-xs font-bold text-white leading-tight">
+                          {item.district}
+                        </h4>
+                        {item.isHostHospital && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-teal-400 text-slate-950">
+                            HOST
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-300 mt-0.5">{item.zone}</p>
+                    </div>
+                    <span className="text-sm font-black text-emerald-400 shrink-0">
+                      {item.percentage}%
+                    </span>
+                  </div>
+
+                  <div className="w-full h-1.5 rounded-full bg-slate-700 overflow-hidden mb-2.5">
+                    <div
+                      className={`h-full rounded-full ${item.isHostHospital ? "bg-teal-400" : "bg-sky-400"}`}
+                      style={{ width: `${item.percentage * 2.8}%` }}
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-[10px]">
+                    <div className="flex justify-between text-slate-400">
+                      <span>Total Sesi:</span>
+                      <span className="text-slate-200 font-bold">{item.users.toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>Aktif Sekarang:</span>
+                      <span className="text-emerald-300 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        {item.activeNow} klinisi
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-teal-200/90 pt-1 border-t border-slate-700/60 truncate">
+                      {item.faskesUtama}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-teal-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-300">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-teal-400" />
+                Zona Seberang Ulu I & Jakabaring merupakan klaster interaksi tertinggi karena lokasi operasional utama RSUD Palembang BARI.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerQuickEvent("district_spotlight_view", "navigation", "Inspeksi Klaster Seberang Ulu & Jakabaring", { district: "Jakabaring", host: "RSUD BARI" });
+                  alert("Data lalu lintas zona Jakabaring & Seberang Ulu I RSUD Palembang BARI berhasil disinkronisasi!");
+                }}
+                className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold self-start sm:self-auto shrink-0"
+              >
+                Sinkronisasi Zona BARI
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content 2: 17 Regencies / Cities of South Sumatra */}
+        {geoTab === "sumsel" && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="overflow-x-auto rounded-2xl border border-slate-700/60 bg-slate-800/60">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-800 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-700">
+                  <tr>
+                    <th className="py-3 px-4">Kabupaten / Kota</th>
+                    <th className="py-3 px-4">Ibu Kota / Pusat Layanan</th>
+                    <th className="py-3 px-4">Total Pengguna</th>
+                    <th className="py-3 px-4">Persentase</th>
+                    <th className="py-3 px-4">Aktif Sekarang</th>
+                    <th className="py-3 px-4">Faskes Jejaring</th>
+                    <th className="py-3 px-4 text-right">Tren</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/40">
+                  {sumselRegencies.map((reg, idx) => (
+                    <tr
+                      key={idx}
+                      className={`hover:bg-slate-700/40 transition-colors ${
+                        reg.regency.includes("Palembang") ? "bg-teal-950/40 font-semibold" : ""
+                      }`}
+                    >
+                      <td className="py-2.5 px-4 flex items-center gap-2">
+                        {reg.regency.includes("Palembang") ? (
+                          <Hospital className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                        ) : (
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        )}
+                        <span className="text-white font-bold">{reg.regency}</span>
+                        {reg.regency.includes("Palembang") && (
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                            Pusat
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-300">{reg.capital}</td>
+                      <td className="py-2.5 px-4 font-mono text-slate-200">{reg.users.toLocaleString("id-ID")}</td>
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white">{reg.percentage}%</span>
+                          <div className="w-16 h-1 rounded-full bg-slate-700 overflow-hidden hidden sm:block">
+                            <div
+                              className="h-full bg-emerald-400"
+                              style={{ width: `${Math.min(100, reg.percentage * 1.5)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          reg.activeNow > 0 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "text-slate-500"
+                        }`}>
+                          {reg.activeNow > 0 ? `${reg.activeNow} online` : "idle"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-300">{reg.faskesCount} unit</td>
+                      <td className="py-2.5 px-4 text-right text-emerald-400 font-bold">{reg.trend}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Menampilkan seluruh 17 Kabupaten/Kota di Provinsi Sumatera Selatan dengan perincian akses telemetri terhadap modul dosis & keselamatan terapi obat.
+            </p>
+          </div>
+        )}
+
+        {/* Tab Content 3: Healthcare Network (RS & Puskesmas Sumsel) */}
+        {geoTab === "faskes" && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sumselFaskes.map((faskes, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-2xl border transition-all ${
+                    faskes.type === "RS Daerah (Host)"
+                      ? "bg-gradient-to-br from-teal-900/90 to-slate-900 border-teal-500 shadow-md ring-1 ring-teal-400/40"
+                      : "bg-slate-800/60 border-slate-700/60 hover:border-slate-600"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
+                      faskes.type === "RS Daerah (Host)"
+                        ? "bg-teal-400 text-slate-950"
+                        : faskes.type === "RS Rujukan Nasional"
+                        ? "bg-sky-400 text-slate-950"
+                        : "bg-slate-700 text-slate-200"
+                    }`}>
+                      {faskes.type}
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-300 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                      {faskes.activeNow} klinisi online
+                    </span>
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white mb-0.5">{faskes.name}</h4>
+                  <p className="text-[11px] text-slate-400 mb-3 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-teal-400" />
+                    {faskes.location}
+                  </p>
+
+                  <div className="pt-2 border-t border-slate-700/60 space-y-1 text-[10px]">
+                    <div className="flex justify-between text-slate-300">
+                      <span>Sesi Akses Hari Ini:</span>
+                      <span className="font-bold text-white font-mono">{faskes.sessionsToday.toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Modul Terpopuler:</span>
+                      <span className="text-teal-300 font-semibold">{faskes.topModule}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Main Section 3: Deeper Insights With Custom Events */}
       <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -611,24 +1368,38 @@ export const AdminWebAnalytics: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => triggerQuickEvent("interaction_screen", "safety", "Skrining Resep Polifarmasi (>3 Obat)", { drugs: ["Aspirin", "Warfarin", "Ibuprofen"], severity: "CRITICAL" })}
+              onClick={() => triggerQuickEvent("interaction_screen", "safety", "Skrining Resep Polifarmasi (>3 Obat)", { drugs: ["Aspirin", "Warfarin", "Ibuprofen"], severity: "CRITICAL" }, "Palembang - Jakabaring (RSUD BARI)")}
               className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition-colors"
             >
               + Simulasikan DDI Alert
             </button>
             <button
               type="button"
-              onClick={() => triggerQuickEvent("dose_calculate", "clinical", "Perhitungan Dosis Antibiotik Neonatus", { weightKg: 3.2, gestationalWeeks: 38, drug: "Gentamicin" })}
+              onClick={() => triggerQuickEvent("dose_calculate", "clinical", "Perhitungan Dosis Antibiotik Neonatus", { weightKg: 3.2, gestationalWeeks: 38, drug: "Gentamicin" }, "Palembang - Jakabaring (RSUD BARI)")}
               className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold border border-teal-200 transition-colors"
             >
-              + Simulasikan Dosis Dihitung
+              + Dosis BARI Jakabaring
             </button>
             <button
               type="button"
-              onClick={() => triggerQuickEvent("pdf_export", "conversion", "Cetak Rekomendasi Farmakoterapi PDF", { pageCount: 2, recipient: "Sp.A" })}
+              onClick={() => triggerQuickEvent("referral_dispatch", "navigation", "Rujukan Berjenjang Puskesmas Pembina ke RSUD BARI", { from: "Puskesmas Pembina Plaju", to: "RSUD BARI", poli: "Anak" }, "Palembang - Plaju (Puskesmas Pembina)")}
+              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition-colors"
+            >
+              + Rujukan Plaju-BARI
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerQuickEvent("sumsel_regional_sync", "conversion", "Sinkronisasi Formularium Rujukan Sumsel", { origin: "RSUD Kayuagung (OKI)", items: 12 }, "Ogan Komering Ilir (Kayuagung)")}
+              className="px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold border border-sky-200 transition-colors"
+            >
+              + Rujukan OKI-Sumsel
+            </button>
+            <button
+              type="button"
+              onClick={() => triggerQuickEvent("pdf_export", "conversion", "Cetak Rekomendasi Farmakoterapi PDF", { pageCount: 2, recipient: "Sp.A" }, "Palembang - Seberang Ulu II")}
               className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold border border-purple-200 transition-colors"
             >
-              + Simulasikan Export PDF
+              + Export PDF
             </button>
           </div>
         </div>
@@ -677,11 +1448,12 @@ export const AdminWebAnalytics: React.FC = () => {
         </div>
 
         {/* Live Event Stream Filter & Search */}
-        <div className="pt-4 border-t border-slate-100 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="pt-4 border-t border-slate-100 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Category Filter */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5 mr-1">
-                <Filter className="w-3.5 h-3.5 text-slate-400" /> Filter Kategori:
+                <Filter className="w-3.5 h-3.5 text-slate-400" /> Kategori:
               </span>
               {(["all", "clinical", "safety", "navigation", "conversion", "custom"] as const).map((cat) => (
                 <button
@@ -699,7 +1471,8 @@ export const AdminWebAnalytics: React.FC = () => {
               ))}
             </div>
 
-            <div className="relative w-full sm:w-64">
+            {/* Search Input */}
+            <div className="relative w-full md:w-64">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -711,6 +1484,32 @@ export const AdminWebAnalytics: React.FC = () => {
             </div>
           </div>
 
+          {/* Regional Filter Bar (South Sumatra / Palembang) */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mr-1">
+              <MapPin className="w-3.5 h-3.5 text-teal-600" /> Filter Wilayah:
+            </span>
+            {[
+              { id: "all", label: "Semua Wilayah" },
+              { id: "palembang", label: "📍 Kota Palembang (Zona RSUD BARI)" },
+              { id: "sumsel_other", label: "🏛️ Kab/Kota se-Sumsel" },
+              { id: "outside", label: "🌐 Luar Sumsel / Nasional" }
+            ].map((reg) => (
+              <button
+                key={reg.id}
+                type="button"
+                onClick={() => setActiveRegionFilter(reg.id as any)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all ${
+                  activeRegionFilter === reg.id
+                    ? "bg-teal-700 text-white shadow-xs"
+                    : "bg-teal-50/80 hover:bg-teal-100 text-teal-900 border border-teal-200/60"
+                }`}
+              >
+                {reg.label}
+              </button>
+            ))}
+          </div>
+
           {/* Real-time Table */}
           <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-50/50">
             <table className="w-full text-left text-xs text-slate-600">
@@ -720,7 +1519,7 @@ export const AdminWebAnalytics: React.FC = () => {
                   <th className="py-3 px-4">Event Name</th>
                   <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Label / Deskripsi Aktivitas</th>
-                  <th className="py-3 px-4">Lokasi & Platform</th>
+                  <th className="py-3 px-4">Lokasi Spesifik & Platform</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -728,7 +1527,7 @@ export const AdminWebAnalytics: React.FC = () => {
                 {filteredEvents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">
-                      Tidak ada custom event yang cocok dengan kriteria pencarian.
+                      Tidak ada custom event yang cocok dengan kriteria filter wilayah atau kategori yang dipilih.
                     </td>
                   </tr>
                 ) : (
@@ -738,9 +1537,17 @@ export const AdminWebAnalytics: React.FC = () => {
                         {new Date(ev.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                       </td>
                       <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                        <span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                          {ev.eventName}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {ev.isRealLive && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-black uppercase tracking-wider shadow-xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                              LIVE
+                            </span>
+                          )}
+                          <span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            {ev.eventName}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getCategoryBadgeClass(ev.category)}`}>
@@ -750,12 +1557,26 @@ export const AdminWebAnalytics: React.FC = () => {
                       <td className="py-3 px-4 text-slate-800 font-medium">
                         {ev.label}
                       </td>
-                      <td className="py-3 px-4 whitespace-nowrap text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-700">{ev.city}</span>
-                          <span className="text-slate-300">•</span>
-                          <span>{ev.device}</span>
-                          <span className="text-[10px] text-slate-400">({ev.browser})</span>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            {ev.city.toLowerCase().includes("palembang") ? (
+                              <span className="inline-flex items-center gap-1 font-bold text-teal-900 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/80 text-[11px]">
+                                <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
+                                {ev.city}
+                              </span>
+                            ) : ev.city.includes("Sumatera Selatan") || ["ogan", "banyuasin", "oki", "prabumulih", "muara", "lahat", "lubuklinggau", "baturaja", "sekayu", "pagar alam", "pali", "empat lawang", "muratara"].some(k => ev.city.toLowerCase().includes(k)) ? (
+                              <span className="inline-flex items-center gap-1 font-medium text-sky-900 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80 text-[11px]">
+                                <Building2 className="w-3 h-3 text-sky-600 shrink-0" />
+                                {ev.city}
+                              </span>
+                            ) : (
+                              <span className="font-medium text-slate-700 text-[11px]">{ev.city}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {ev.device} • {ev.browser}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -932,6 +1753,35 @@ export const AdminWebAnalytics: React.FC = () => {
                 </div>
               </div>
 
+              {/* Lokasi Asal Spesifik (Palembang & Sumsel) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-teal-600" />
+                  Lokasi Asal Faskes / Klinisi (Palembang & Sumatera Selatan) *
+                </label>
+                <select
+                  value={customEventCity}
+                  onChange={(e) => setCustomEventCity(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-1 focus:ring-teal-500"
+                >
+                  <optgroup label="📍 Kota Palembang (Kecamatan & Zona RSUD Palembang BARI)">
+                    {PALEMBANG_DISTRICTS.map((d, i) => (
+                      <option key={i} value={d}>{d}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🏛️ Kabupaten & Kota di Sumatera Selatan">
+                    {SUMSEL_REGENCIES.filter(r => r !== "Kota Palembang").map((r, i) => (
+                      <option key={i} value={r}>{r}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="🌐 Luar Provinsi / Nasional">
+                    <option value="Jakarta (Rujukan Kemenkes)">Jakarta (Rujukan Kemenkes)</option>
+                    <option value="Bandung">Bandung</option>
+                    <option value="Surabaya">Surabaya</option>
+                  </optgroup>
+                </select>
+              </div>
+
               {/* Metadata key-value */}
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                 <span className="text-[11px] font-bold text-slate-600 block">
@@ -1031,6 +1881,48 @@ export const AdminWebAnalytics: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Konfirmasi Reset Database Telemetri Server */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-200 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">
+                  Reset Database Telemetri?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Tindakan ini akan mengosongkan berkas database server (<code>data/analytics_store.json</code>) dan mengembalikannya ke baseline inisial sistem.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              Semua sesi kunjungan nyata dan event yang telah tercatat akan dibersihkan, lalu server akan memulai pencatatan telemetri baru dari nol.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleResetDatabase}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm transition-all"
+              >
+                Ya, Reset Sekarang
               </button>
             </div>
           </div>

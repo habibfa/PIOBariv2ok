@@ -1,5 +1,6 @@
 export interface CustomEventRecord {
   id: string;
+  sessionId?: string;
   timestamp: number;
   eventName: string;
   category: 'clinical' | 'safety' | 'navigation' | 'conversion' | 'custom';
@@ -9,6 +10,7 @@ export interface CustomEventRecord {
   device: 'Mobile' | 'Desktop' | 'Tablet';
   browser: 'Chrome' | 'Safari' | 'Firefox' | 'Edge';
   durationMs?: number;
+  isRealLive?: boolean;
 }
 
 export interface RealtimeMetricSummary {
@@ -40,23 +42,125 @@ export interface DeviceMetric {
   count: number;
 }
 
+export interface PalembangDistrictTraffic {
+  district: string;
+  zone: string;
+  faskesUtama: string;
+  users: number;
+  percentage: number;
+  activeNow: number;
+  isHostHospital?: boolean;
+}
+
+export interface SumselRegencyTraffic {
+  regency: string;
+  capital: string;
+  users: number;
+  percentage: number;
+  activeNow: number;
+  faskesCount: number;
+  trend: string;
+}
+
+export interface SumselFaskesReferral {
+  name: string;
+  location: string;
+  type: 'RS Daerah (Host)' | 'RS Rujukan Nasional' | 'RSUD Provinsi' | 'Puskesmas Jejaring' | 'Apotek Jejaring';
+  sessionsToday: number;
+  activeNow: number;
+  topModule: string;
+}
+
 type EventListener = (event: CustomEventRecord) => void;
 
 const LISTENERS: Set<EventListener> = new Set();
-const STORAGE_KEY = "med_analytics_custom_events_v1";
+const STORAGE_KEY = "med_analytics_custom_events_v3";
+
+// Get persistent client session ID
+export function getClientSessionId(): string {
+  if (typeof window === "undefined") return "sess_ssr";
+  let id = sessionStorage.getItem("piobari_session_id");
+  if (!id) {
+    id = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    sessionStorage.setItem("piobari_session_id", id);
+  }
+  return id;
+}
+
+// User-chosen or detected city
+export function getSelectedOrDetectedCity(): string {
+  if (typeof window === "undefined") return "Palembang - Jakabaring (RSUD BARI)";
+  const custom = localStorage.getItem("piobari_preferred_faskes_city");
+  if (custom) return custom;
+  return "Palembang - Jakabaring (RSUD BARI)";
+}
+
+export function setSelectedFaskesCity(city: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("piobari_preferred_faskes_city", city);
+}
+
+// Specific locations in Palembang & Sumatera Selatan with high medical relevance
+export const PALEMBANG_DISTRICTS = [
+  "Palembang - Jakabaring (RSUD BARI)",
+  "Palembang - Seberang Ulu I",
+  "Palembang - Seberang Ulu II (Tangga Takat)",
+  "Palembang - Plaju (Puskesmas Pembina)",
+  "Palembang - Kertapati",
+  "Palembang - Ilir Barat I (Bukit Besar)",
+  "Palembang - Ilir Barat II (32 Ilir)",
+  "Palembang - Ilir Timur I (Pusat Kota)",
+  "Palembang - Ilir Timur II (Lemabang)",
+  "Palembang - Ilir Timur III",
+  "Palembang - Sukarami (KM 9)",
+  "Palembang - Alang-Alang Lebar",
+  "Palembang - Sako & Sematang Borang",
+  "Palembang - Kalidoni",
+  "Palembang - Kemuning",
+  "Palembang - Gandus & Bukit Kecil"
+];
+
+export const SUMSEL_REGENCIES = [
+  "Kota Palembang",
+  "Kab. Ogan Ilir (Indralaya)",
+  "Kab. Banyuasin (Talang Kelapa / Pangkalan Balai)",
+  "Kab. Ogan Komering Ilir (Kayuagung)",
+  "Kota Prabumulih",
+  "Kab. Muara Enim",
+  "Kab. Lahat",
+  "Kota Lubuklinggau",
+  "Kab. Ogan Komering Ulu (Baturaja)",
+  "Kab. Musi Banyuasin (Sekayu)",
+  "Kab. OKU Timur (Martapura)",
+  "Kab. OKU Selatan (Muaradua)",
+  "Kota Pagar Alam",
+  "Kab. PALI (Pendopo)",
+  "Kab. Empat Lawang",
+  "Kab. Musi Rawas",
+  "Kab. Musi Rawas Utara (Muratara)"
+];
 
 const INDONESIAN_CITIES = [
-  { city: "Jakarta", province: "DKI Jakarta" },
-  { city: "Surabaya", province: "Jawa Timur" },
+  { city: "Palembang - Jakabaring (RSUD BARI)", province: "Sumatera Selatan" },
+  { city: "Palembang - Seberang Ulu I", province: "Sumatera Selatan" },
+  { city: "Palembang - Seberang Ulu II", province: "Sumatera Selatan" },
+  { city: "Palembang - Plaju", province: "Sumatera Selatan" },
+  { city: "Palembang - Ilir Barat I", province: "Sumatera Selatan" },
+  { city: "Palembang - Ilir Timur I", province: "Sumatera Selatan" },
+  { city: "Palembang - Kertapati", province: "Sumatera Selatan" },
+  { city: "Palembang - Sukarami", province: "Sumatera Selatan" },
+  { city: "Ogan Ilir (Indralaya)", province: "Sumatera Selatan" },
+  { city: "Banyuasin (Pangkalan Balai)", province: "Sumatera Selatan" },
+  { city: "OKI (Kayuagung)", province: "Sumatera Selatan" },
+  { city: "Prabumulih", province: "Sumatera Selatan" },
+  { city: "Muara Enim", province: "Sumatera Selatan" },
+  { city: "Lahat", province: "Sumatera Selatan" },
+  { city: "Baturaja (OKU)", province: "Sumatera Selatan" },
+  { city: "Lubuklinggau", province: "Sumatera Selatan" },
+  { city: "Sekayu (Muba)", province: "Sumatera Selatan" },
+  { city: "Jakarta (Rujukan Kemenkes)", province: "DKI Jakarta" },
   { city: "Bandung", province: "Jawa Barat" },
-  { city: "Medan", province: "Sumatera Utara" },
-  { city: "Semarang", province: "Jawa Tengah" },
-  { city: "Makassar", province: "Sulawesi Selatan" },
-  { city: "Yogyakarta", province: "DIY Yogyakarta" },
-  { city: "Denpasar", province: "Bali" },
-  { city: "Palembang", province: "Sumatera Selatan" },
-  { city: "Malang", province: "Jawa Timur" },
-  { city: "Balikpapan", province: "Kalimantan Timur" }
+  { city: "Surabaya", province: "Jawa Timur" }
 ];
 
 const BROWSERS: Array<'Chrome' | 'Safari' | 'Firefox' | 'Edge'> = ['Chrome', 'Safari', 'Firefox', 'Edge'];
@@ -88,36 +192,36 @@ function generateSeedEvents(): CustomEventRecord[] {
   const seed: CustomEventRecord[] = [];
   const now = Date.now();
   const sampleEvents = [
-    { name: "drug_lookup", cat: "clinical" as const, label: "Pencarian Paracetamol Suspensi", meta: { drug: "Paracetamol", category: "Analgetik" } },
+    { name: "dose_calculate", cat: "clinical" as const, label: "Perhitungan Dosis Gentamicin Neonatus", meta: { drug: "Gentamicin", weightKg: 3.2, unit: "mg" } },
     { name: "interaction_screen", cat: "safety" as const, label: "Skrining Ciprofloxacin + Antasida", meta: { severity: "CRITICAL", drugCount: 2 } },
-    { name: "dose_calculate", cat: "clinical" as const, label: "Perhitungan Dosis Amoxicillin Anak", meta: { ageYears: 4, weightKg: 16, unit: "mg" } },
-    { name: "pdf_export", cat: "conversion" as const, label: "Unduh Lembar Dosis PDF", meta: { format: "A4", patientGroup: "Pediatrik" } },
+    { name: "fornas_lookup", cat: "clinical" as const, label: "Pencarian Restriksi Fornas: Meropenem Injeksi", meta: { drug: "Meropenem", category: "Antibiotik" } },
+    { name: "pdf_export", cat: "conversion" as const, label: "Cetak Rekomendasi Farmakoterapi PDF", meta: { format: "A4", recipient: "Sp.PD" } },
     { name: "ai_consultation", cat: "clinical" as const, label: "Tanya AI: Penyesuaian Dosis Gagal Ginjal", meta: { topic: "Renal Adjustment" } },
-    { name: "iv_compatibility", cat: "safety" as const, label: "Cek Kompatibilitas Ceftriaxone + Ringer Laktat", meta: { result: "INCOMPATIBLE_PRECIPITATE" } },
-    { name: "faskes_search", cat: "navigation" as const, label: "Pencarian Apotek 24 Jam Terdekat", meta: { type: "Pharmacy", city: "Surabaya" } },
-    { name: "device_guide_view", cat: "clinical" as const, label: "Edukasi Cara Pakai Inhaler MDI", meta: { device: "Inhaler" } },
-    { name: "soap_record", cat: "clinical" as const, label: "Pencatatan Rekam Farmasi SOAP", meta: { status: "Saved" } }
+    { name: "iv_compatibility_check", cat: "safety" as const, label: "Uji Kompatibilitas Ceftriaxone + RL (Precipitate)", meta: { outcome: "INCOMPATIBLE" } },
+    { name: "faskes_search", cat: "navigation" as const, label: "Rujukan Berjenjang Puskesmas Pembina ke RSUD BARI", meta: { faskes: "RSUD BARI" } },
+    { name: "soap_record", cat: "clinical" as const, label: "Dokumentasi Catatan Farmasi SOAP Bangsal Anak", meta: { status: "Saved" } }
   ];
 
-  for (let i = 0; i < 45; i++) {
-    const timeOffset = Math.floor(Math.random() * (12 * 3600 * 1000)); // past 12 hours
+  for (let i = 0; i < 40; i++) {
+    const timeOffset = Math.floor(Math.random() * (20 * 3600 * 1000));
     const tmpl = sampleEvents[i % sampleEvents.length];
-    const cityObj = INDONESIAN_CITIES[Math.floor(Math.random() * INDONESIAN_CITIES.length)];
+    const cityObj = INDONESIAN_CITIES[i % 12];
     seed.push({
       id: `evt_seed_${now - timeOffset}_${i}`,
+      sessionId: `sess_hist_${i % 10}`,
       timestamp: now - timeOffset,
       eventName: tmpl.name,
       category: tmpl.cat,
       label: tmpl.label,
       metadata: tmpl.meta,
       city: cityObj.city,
-      device: DEVICES[Math.floor(Math.random() * DEVICES.length)],
-      browser: BROWSERS[Math.floor(Math.random() * BROWSERS.length)],
-      durationMs: Math.floor(Math.random() * 2400) + 120
+      device: DEVICES[i % DEVICES.length],
+      browser: BROWSERS[i % BROWSERS.length],
+      durationMs: Math.floor(Math.random() * 800) + 120,
+      isRealLive: false
     });
   }
 
-  // Sort descending (newest first)
   return seed.sort((a, b) => b.timestamp - a.timestamp);
 }
 
@@ -148,11 +252,37 @@ export function getSavedCustomEvents(): CustomEventRecord[] {
 function saveCustomEvents(events: CustomEventRecord[]) {
   if (typeof window === "undefined") return;
   try {
-    // Keep max 250 most recent events to preserve performance
-    const trimmed = events.slice(0, 250);
+    const trimmed = events.slice(0, 300);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
   } catch (err) {
     console.error("Failed to save custom events:", err);
+  }
+}
+
+// Track a Page View (Real-time to server)
+export function trackPageView(module: string, path?: string, label?: string): void {
+  const sessionId = getClientSessionId();
+  const { device, browser } = detectClientDevice();
+  const currentCity = getSelectedOrDetectedCity();
+
+  try {
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventType: "pageview",
+        sessionId,
+        module,
+        path: path || `/${module}`,
+        label: label || `Akses Modul: ${module}`,
+        city: currentCity,
+        device,
+        browser,
+        referrer: typeof document !== "undefined" ? document.referrer : ""
+      })
+    }).catch(() => {});
+  } catch (err) {
+    // silently catch offline
   }
 }
 
@@ -167,10 +297,12 @@ export function trackCustomEvent(
   }
 ): CustomEventRecord {
   const { device, browser } = detectClientDevice();
-  const currentCity = params.city || INDONESIAN_CITIES[Math.floor(Math.random() * 4)].city; // Default to major metro
+  const currentCity = params.city || getSelectedOrDetectedCity();
+  const sessionId = getClientSessionId();
 
   const record: CustomEventRecord = {
     id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    sessionId,
     timestamp: Date.now(),
     eventName,
     category: params.category || 'custom',
@@ -179,14 +311,15 @@ export function trackCustomEvent(
     city: currentCity,
     device,
     browser,
-    durationMs: Math.floor(Math.random() * 800) + 150
+    durationMs: Math.floor(Math.random() * 400) + 110,
+    isRealLive: true
   };
 
   const existing = getSavedCustomEvents();
   const updated = [record, ...existing];
   saveCustomEvents(updated);
 
-  // Notify listeners
+  // Notify local listeners immediately
   LISTENERS.forEach(fn => {
     try {
       fn(record);
@@ -195,7 +328,94 @@ export function trackCustomEvent(
     }
   });
 
+  // Send to real backend server database
+  try {
+    fetch("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventType: "event",
+        sessionId,
+        eventName: record.eventName,
+        category: record.category,
+        label: record.label,
+        metadata: record.metadata,
+        city: record.city,
+        durationMs: record.durationMs
+      })
+    }).catch(() => {});
+  } catch (err) {
+    // silently catch
+  }
+
   return record;
+}
+
+// Fetch real aggregated analytics directly from server database
+export async function fetchRealAnalyticsStats(timeRange: '24h' | '7d' | '30d' = '24h') {
+  try {
+    const res = await fetch(`/api/analytics/stats?timeRange=${timeRange}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Fetch stored real events from server
+export async function fetchRealEvents(options?: {
+  category?: string;
+  region?: string;
+  search?: string;
+  limit?: number;
+}): Promise<CustomEventRecord[]> {
+  try {
+    const p = new URLSearchParams();
+    if (options?.category) p.append("category", options.category);
+    if (options?.region) p.append("region", options.region);
+    if (options?.search) p.append("search", options.search);
+    if (options?.limit) p.append("limit", options.limit.toString());
+    const res = await fetch(`/api/analytics/events?${p.toString()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.events || [];
+  } catch (err) {
+    return getSavedCustomEvents();
+  }
+}
+
+// Send real-time heartbeat to server
+export async function sendHeartbeat(currentModule: string, city?: string): Promise<number | null> {
+  try {
+    const res = await fetch("/api/analytics/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: getClientSessionId(),
+        currentModule,
+        city: city || getSelectedOrDetectedCity()
+      })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return json.activeUsers;
+    }
+  } catch (err) {}
+  return null;
+}
+
+// Reset database
+export async function resetServerDatabase(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/analytics/reset", { method: "POST" });
+    if (res.ok) {
+      clearAllCustomEvents();
+      return true;
+    }
+  } catch (err) {}
+  clearAllCustomEvents();
+  return false;
 }
 
 // Subscribe to real-time events
@@ -206,7 +426,7 @@ export function subscribeToAnalyticsEvents(listener: EventListener): () => void 
   };
 }
 
-// Clear all tracked events
+// Clear all tracked events locally
 export function clearAllCustomEvents(): void {
   if (typeof window !== "undefined") {
     localStorage.removeItem(STORAGE_KEY);
@@ -262,18 +482,204 @@ export function getTrafficSources(): TrafficSource[] {
   ];
 }
 
-// Geo Location Traffic Breakdown
+// Geo Location Traffic Breakdown (National + South Sumatra Highlight)
 export function getGeoDistribution(): GeoLocationTraffic[] {
   return [
-    { city: "Jakarta", province: "DKI Jakarta", users: 4320, percentage: 34.5 },
-    { city: "Surabaya", province: "Jawa Timur", users: 2410, percentage: 19.2 },
-    { city: "Bandung", province: "Jawa Barat", users: 1850, percentage: 14.8 },
-    { city: "Medan", province: "Sumatera Utara", users: 1120, percentage: 8.9 },
-    { city: "Semarang", province: "Jawa Tengah", users: 940, percentage: 7.5 },
-    { city: "Makassar", province: "Sulawesi Selatan", users: 780, percentage: 6.2 },
-    { city: "Yogyakarta", province: "DIY Yogyakarta", users: 610, percentage: 4.9 },
-    { city: "Denpasar", province: "Bali", users: 490, percentage: 4.0 }
+    { city: "Palembang", province: "Sumatera Selatan", users: 7980, percentage: 63.8 },
+    { city: "Ogan Ilir", province: "Sumatera Selatan", users: 1050, percentage: 8.4 },
+    { city: "Banyuasin", province: "Sumatera Selatan", users: 990, percentage: 7.9 },
+    { city: "OKI (Kayuagung)", province: "Sumatera Selatan", users: 640, percentage: 5.1 },
+    { city: "Jakarta (Rujukan)", province: "DKI Jakarta", users: 580, percentage: 4.6 },
+    { city: "Prabumulih", province: "Sumatera Selatan", users: 470, percentage: 3.8 },
+    { city: "Muara Enim", province: "Sumatera Selatan", users: 360, percentage: 2.9 },
+    { city: "Bandung / Surabaya", province: "Jawa Barat/Timur", users: 430, percentage: 3.5 }
   ];
+}
+
+// Detailed Districts Breakdown in Kota Palembang
+export function getPalembangDistrictsTraffic(): PalembangDistrictTraffic[] {
+  return [
+    {
+      district: "Jakabaring & Seberang Ulu I",
+      zone: "Kawasan RSUD Palembang BARI",
+      faskesUtama: "RSUD Palembang BARI, Puskesmas 7 Ulu, Pustu 8 Ulu",
+      users: 2580,
+      percentage: 32.4,
+      activeNow: 14,
+      isHostHospital: true
+    },
+    {
+      district: "Seberang Ulu II",
+      zone: "Tangga Takat & 14 Ulu",
+      faskesUtama: "Puskesmas Tangga Takat, Puskesmas Nagaswidak",
+      users: 1180,
+      percentage: 14.8,
+      activeNow: 6
+    },
+    {
+      district: "Plaju",
+      zone: "Kawasan Komering & Pertamina",
+      faskesUtama: "Puskesmas Pembina Plaju, RS Pertamina Plaju",
+      users: 940,
+      percentage: 11.8,
+      activeNow: 5
+    },
+    {
+      district: "Ilir Barat I & II",
+      zone: "Bukit Besar & Demang Lebar Daun",
+      faskesUtama: "RS Siti Khadijah, Puskesmas Padang Selasa, Puskesmas Makrayu",
+      users: 860,
+      percentage: 10.8,
+      activeNow: 4
+    },
+    {
+      district: "Ilir Timur I, II & III",
+      zone: "Pusat Kota & Lemabang",
+      faskesUtama: "RSUP Dr. Moh. Hoesin (RSMH), RS RK Charitas, RS Hermina",
+      users: 790,
+      percentage: 9.9,
+      activeNow: 4
+    },
+    {
+      district: "Kertapati",
+      zone: "Ogan Baru & Stasiun Kertapati",
+      faskesUtama: "Puskesmas Kertapati, Puskesmas Ogan Baru",
+      users: 620,
+      percentage: 7.8,
+      activeNow: 3
+    },
+    {
+      district: "Sukarami & Alang-Alang Lebar",
+      zone: "KM 9 - Bandara SMB II",
+      faskesUtama: "RSUD Siti Fatimah Prov. Sumsel, Puskesmas Sukarami",
+      users: 570,
+      percentage: 7.1,
+      activeNow: 2
+    },
+    {
+      district: "Sako, Kalidoni & Kemuning",
+      zone: "Palembang Timur",
+      faskesUtama: "Puskesmas Sako, Puskesmas Kalidoni",
+      users: 440,
+      percentage: 5.4,
+      activeNow: 2
+    }
+  ];
+}
+
+// 17 Regencies / Cities of South Sumatra (Provinsi Sumatera Selatan)
+export function getSumselRegenciesTraffic(): SumselRegencyTraffic[] {
+  return [
+    { regency: "Kota Palembang", capital: "Pusat Rujukan Provinsi", users: 7980, percentage: 63.8, activeNow: 28, faskesCount: 42, trend: "+14.2%" },
+    { regency: "Kab. Ogan Ilir", capital: "Indralaya", users: 1050, percentage: 8.4, activeNow: 4, faskesCount: 26, trend: "+18.5%" },
+    { regency: "Kab. Banyuasin", capital: "Pangkalan Balai", users: 990, percentage: 7.9, activeNow: 4, faskesCount: 33, trend: "+12.1%" },
+    { regency: "Kab. Ogan Komering Ilir (OKI)", capital: "Kayuagung", users: 640, percentage: 5.1, activeNow: 3, faskesCount: 29, trend: "+9.7%" },
+    { regency: "Kota Prabumulih", capital: "Prabumulih", users: 470, percentage: 3.8, activeNow: 2, faskesCount: 16, trend: "+11.4%" },
+    { regency: "Kab. Muara Enim", capital: "Muara Enim", users: 360, percentage: 2.9, activeNow: 2, faskesCount: 22, trend: "+8.3%" },
+    { regency: "Kab. Lahat", capital: "Lahat", users: 280, percentage: 2.2, activeNow: 1, faskesCount: 19, trend: "+6.5%" },
+    { regency: "Kota Lubuklinggau", capital: "Lubuklinggau", users: 210, percentage: 1.7, activeNow: 1, faskesCount: 14, trend: "+7.2%" },
+    { regency: "Kab. OKU (Baturaja)", capital: "Baturaja", users: 190, percentage: 1.5, activeNow: 1, faskesCount: 18, trend: "+5.9%" },
+    { regency: "Kab. Musi Banyuasin (Muba)", capital: "Sekayu", users: 160, percentage: 1.3, activeNow: 1, faskesCount: 24, trend: "+10.1%" },
+    { regency: "Kab. OKU Timur", capital: "Martapura", users: 110, percentage: 0.9, activeNow: 1, faskesCount: 17, trend: "+4.8%" },
+    { regency: "Kota Pagar Alam", capital: "Besemah", users: 95, percentage: 0.8, activeNow: 1, faskesCount: 9, trend: "+5.1%" },
+    { regency: "Kab. OKU Selatan", capital: "Muaradua", users: 75, percentage: 0.6, activeNow: 1, faskesCount: 15, trend: "+3.2%" },
+    { regency: "Kab. PALI", capital: "Talang Ubi (Pendopo)", users: 60, percentage: 0.5, activeNow: 1, faskesCount: 11, trend: "+4.4%" },
+    { regency: "Kab. Empat Lawang", capital: "Tebing Tinggi", users: 50, percentage: 0.4, activeNow: 0, faskesCount: 10, trend: "+2.9%" },
+    { regency: "Kab. Musi Rawas", capital: "Muara Beliti", users: 45, percentage: 0.4, activeNow: 0, faskesCount: 12, trend: "+3.6%" },
+    { regency: "Kab. Musi Rawas Utara", capital: "Rupit", users: 35, percentage: 0.3, activeNow: 0, faskesCount: 8, trend: "+2.1%" }
+  ];
+}
+
+// Healthcare Network (Faskes & Apotek) in South Sumatra & Palembang
+export function getSumselFaskesNetwork(): SumselFaskesReferral[] {
+  return [
+    {
+      name: "RSUD Palembang BARI",
+      location: "Jakabaring, Kota Palembang",
+      type: "RS Daerah (Host)",
+      sessionsToday: 4820,
+      activeNow: 18,
+      topModule: "Kalkulator Dosis & Skrining DDI"
+    },
+    {
+      name: "RSUP Dr. Mohammad Hoesin (RSMH)",
+      location: "Ilir Timur I, Kota Palembang",
+      type: "RS Rujukan Nasional",
+      sessionsToday: 1640,
+      activeNow: 6,
+      topModule: "Kompatibilitas IV & Restriksi Fornas"
+    },
+    {
+      name: "RSUD Siti Fatimah Prov. Sumsel",
+      location: "KM 6, Kota Palembang",
+      type: "RSUD Provinsi",
+      sessionsToday: 980,
+      activeNow: 4,
+      topModule: "Katalog Informasi Obat & Dosis"
+    },
+    {
+      name: "Puskesmas Pembina (Plaju)",
+      location: "Plaju, Kota Palembang",
+      type: "Puskesmas Jejaring",
+      sessionsToday: 720,
+      activeNow: 3,
+      topModule: "Informasi Obat & Rekam SOAP"
+    },
+    {
+      name: "Puskesmas 7 Ulu (Seberang Ulu)",
+      location: "Seberang Ulu I, Kota Palembang",
+      type: "Puskesmas Jejaring",
+      sessionsToday: 650,
+      activeNow: 3,
+      topModule: "DDI Alert & Kalkulator Dosis Anak"
+    },
+    {
+      name: "Puskesmas Ogan Baru",
+      location: "Kertapati, Kota Palembang",
+      type: "Puskesmas Jejaring",
+      sessionsToday: 540,
+      activeNow: 2,
+      topModule: "Katalog Obat & Penyakit"
+    },
+    {
+      name: "RSUD Kayuagung (OKI)",
+      location: "Kabupaten Ogan Komering Ilir",
+      type: "Puskesmas Jejaring",
+      sessionsToday: 490,
+      activeNow: 2,
+      topModule: "Konsultasi Apoteker & DDI"
+    },
+    {
+      name: "RSUD Ibnu Sutowo Baturaja",
+      location: "Kabupaten Ogan Komering Ulu",
+      type: "Puskesmas Jejaring",
+      sessionsToday: 380,
+      activeNow: 1,
+      topModule: "Kalkulator Medis & Ginjal"
+    },
+    {
+      name: "Jejaring Apotek Kimia Farma / K-24",
+      location: "Kota Palembang (Multiple)",
+      type: "Apotek Jejaring",
+      sessionsToday: 810,
+      activeNow: 3,
+      topModule: "Cek Interaksi Multi-Obat"
+    }
+  ];
+}
+
+// Summary Metrics for South Sumatra Region
+export function getSumselSummaryMetrics() {
+  return {
+    province: "Sumatera Selatan",
+    primaryCity: "Kota Palembang",
+    hostHospital: "RSUD Palembang BARI (Jakabaring)",
+    sumselTrafficShare: 89.2, // 89.2% of portal traffic is from South Sumatra
+    palembangTrafficShare: 63.8, // 63.8% is from Palembang City
+    topDistrict: "Jakabaring & Seberang Ulu I (32.4%)",
+    activeFaskesCount: 38,
+    onlineSumselNow: 38
+  };
 }
 
 // Device Breakdown

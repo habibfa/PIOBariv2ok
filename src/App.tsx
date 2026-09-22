@@ -21,7 +21,7 @@ const DiseasesConditions = lazy(() => import("./DiseasesConditions").then(m => (
 const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => ({ default: m.MedicalCalculators })));
 const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
 const AdminWebAnalytics = lazy(() => import("./components/AdminWebAnalytics"));
-import { trackCustomEvent } from "./services/analyticsService";
+import { trackCustomEvent, trackPageView, sendHeartbeat } from "./services/analyticsService";
 
 const TabLoadingFallback = () => (
   <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -1331,13 +1331,24 @@ export default function App() {
     setDescPage(1);
   }, [descSearchQuery, descSearchScope, descSelectedCategory, descSelectedAlphabet, descOnlyWithInteractions]);
 
-  // Telemetry: Auto-track page navigation
+  // Telemetry: Auto-track page navigation & real pageview
   useEffect(() => {
+    trackPageView(activeTab, `/${activeTab}`, `Navigasi ke modul ${activeTab.toUpperCase()}`);
     trackCustomEvent("page_view", {
       category: "navigation",
       label: `Navigasi ke modul ${activeTab.toUpperCase()}`,
       metadata: { tab: activeTab }
     });
+    // Send immediate heartbeat on tab change
+    sendHeartbeat(activeTab);
+  }, [activeTab]);
+
+  // Periodic heartbeat every 25 seconds for real-time active user telemetry
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sendHeartbeat(activeTab);
+    }, 25000);
+    return () => clearInterval(timer);
   }, [activeTab]);
 
   // Telemetry: Track drug formularium search (debounced)

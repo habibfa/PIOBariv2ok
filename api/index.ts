@@ -1,6 +1,14 @@
 import express from "express";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import {
+  initAnalyticsEngine,
+  trackTelemetry,
+  recordHeartbeat,
+  getAggregatedAnalytics,
+  getStoredEvents,
+  resetAnalyticsStore
+} from "../server/analyticsEngine";
 
 dotenv.config();
 
@@ -464,6 +472,59 @@ ${patientData}`;
   } catch (routeError: any) {
     console.error("Critical error in /api/soap-ai:", routeError);
     res.status(500).json({ error: "Terjadi kesalahan internal server saat memproses permintaan AI." });
+  }
+});
+
+// Analytics Endpoints
+initAnalyticsEngine();
+
+app.post(["/api/analytics/track", "/analytics/track"], (req, res) => {
+  try {
+    const result = trackTelemetry(req.body, req);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post(["/api/analytics/heartbeat", "/analytics/heartbeat"], (req, res) => {
+  try {
+    const result = recordHeartbeat(req.body, req);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get(["/api/analytics/stats", "/analytics/stats"], (req, res) => {
+  try {
+    const timeRange = (req.query.timeRange as '24h' | '7d' | '30d') || '24h';
+    const stats = getAggregatedAnalytics(timeRange);
+    res.json(stats);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get(["/api/analytics/events", "/analytics/events"], (req, res) => {
+  try {
+    const category = req.query.category as string | undefined;
+    const region = req.query.region as string | undefined;
+    const search = req.query.search as string | undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 150;
+    const events = getStoredEvents({ category, region, search, limit });
+    res.json({ events });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post(["/api/analytics/reset", "/analytics/reset"], (req, res) => {
+  try {
+    const result = resetAnalyticsStore();
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -4,6 +4,14 @@ import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import {
+  initAnalyticsEngine,
+  trackTelemetry,
+  recordHeartbeat,
+  getAggregatedAnalytics,
+  getStoredEvents,
+  resetAnalyticsStore
+} from "./server/analyticsEngine";
 
 dotenv.config();
 
@@ -448,6 +456,71 @@ ${patientData}`;
     } catch (routeError: any) {
       console.error("Critical error in /api/soap-ai:", routeError);
       res.status(500).json({ error: "Terjadi kesalahan internal server saat memproses permintaan AI." });
+    }
+  });
+
+  // ==========================================
+  // REAL DATA WEB ANALYTICS & TELEMETRY ROUTES
+  // ==========================================
+  initAnalyticsEngine();
+
+  // 1. Ingest real telemetry (events & pageviews)
+  app.post("/api/analytics/track", (req, res) => {
+    try {
+      const result = trackTelemetry(req.body, req);
+      res.json(result);
+    } catch (err: any) {
+      console.error("[Analytics Track Error]", err);
+      res.status(500).json({ error: "Gagal mencatat telemetri real-time: " + err.message });
+    }
+  });
+
+  // 2. Real-time active session heartbeat
+  app.post("/api/analytics/heartbeat", (req, res) => {
+    try {
+      const result = recordHeartbeat(req.body, req);
+      res.json(result);
+    } catch (err: any) {
+      console.error("[Analytics Heartbeat Error]", err);
+      res.status(500).json({ error: "Gagal memperbarui heartbeat: " + err.message });
+    }
+  });
+
+  // 3. Real aggregated statistics
+  app.get("/api/analytics/stats", (req, res) => {
+    try {
+      const timeRange = (req.query.timeRange as '24h' | '7d' | '30d') || '24h';
+      const stats = getAggregatedAnalytics(timeRange);
+      res.json(stats);
+    } catch (err: any) {
+      console.error("[Analytics Stats Error]", err);
+      res.status(500).json({ error: "Gagal mengambil data statistik analitik: " + err.message });
+    }
+  });
+
+  // 4. Real event stream log (filtered)
+  app.get("/api/analytics/events", (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const region = req.query.region as string | undefined;
+      const search = req.query.search as string | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 150;
+      const events = getStoredEvents({ category, region, search, limit });
+      res.json({ events });
+    } catch (err: any) {
+      console.error("[Analytics Events Error]", err);
+      res.status(500).json({ error: "Gagal mengambil log events: " + err.message });
+    }
+  });
+
+  // 5. Reset or clear real-time database
+  app.post("/api/analytics/reset", (req, res) => {
+    try {
+      const result = resetAnalyticsStore();
+      res.json(result);
+    } catch (err: any) {
+      console.error("[Analytics Reset Error]", err);
+      res.status(500).json({ error: "Gagal mereset database telemetri: " + err.message });
     }
   });
 
