@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, Save, X, Download, Trash2, Sparkles, Layers, ArrowRight, Table } from 'lucide-react';
+import { Upload, Save, X, Download, Trash2, Sparkles, Layers, ArrowRight, ArrowLeft, Table } from 'lucide-react';
 import { Droplets, Info, Search, AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
 import { ChemoRegimensView } from './components/ChemoRegimensView';
 
@@ -2599,6 +2599,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
 
   const [mainViewMode, setMainViewMode] = useState<"iv_checker" | "chemo_regimens">("iv_checker");
   const [activeTab, setActiveTab] = useState<"drugs" | "matrix">("drugs");
+  const [mobileIvTab, setMobileIvTab] = useState<"drugs" | "results">("drugs");
 
   const [selectedDrugs, setSelectedDrugs] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -2683,6 +2684,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
       setSelectedDrugs(validIds.slice(0, 8));
     }
     setMainViewMode("iv_checker");
+    setMobileIvTab("results");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -2815,10 +2817,10 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full">
+    <div className="w-full flex flex-col gap-6">
 
       {/* TOP NAVIGATION: IV COMPATIBILITY vs CHEMO REGIMENS */}
-      <div className="col-span-12 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs">
+      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs">
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl">
           <button
             type="button"
@@ -2862,259 +2864,413 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
       </div>
 
       {mainViewMode === "chemo_regimens" ? (
-        <div className="col-span-12 w-full">
+        <div className="w-full">
           <ChemoRegimensView onSelectRegimenForIvCheck={handleSelectRegimenForIvCheck} />
         </div>
       ) : (
-        <>
-      {/* LEFT COLUMN: Drug Selection */}
-      <section className="lg:col-span-4 space-y-6">
-        {isAdmin && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-            <h2 className="text-sm font-bold text-slate-800 mb-2">Administrasi Data IV</h2>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setIsUpdateModalOpen(true)}
-                className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
-              >
-                <Upload className="w-4 h-4" />
-                Update Data Kompatibilitas
-              </button>
-              <button
-                onClick={() => setIsConfirmClearOpen(true)}
-                className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition-colors shadow-xs"
-              >
-                <Trash2 className="w-4 h-4" />
-                Hapus Semua Data
-              </button>
-            </div>
-          </div>
-        )}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-              <Droplets className="w-4 h-4" />
-            </div>
-            <h2 className="text-base font-bold text-slate-800">Obat & Cairan IV</h2>
+        <div className="w-full space-y-6">
+          {/* MOBILE SUB-NAVIGATION (Hanya terlihat di layar ponsel < lg) */}
+          <div className="lg:hidden flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setMobileIvTab("drugs")}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                mobileIvTab === "drugs"
+                  ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Droplets className="w-4 h-4 text-emerald-600" />
+              <span>1. Daftar Obat ({selectedDrugs.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileIvTab("results")}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                mobileIvTab === "results"
+                  ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <ShieldAlert className="w-4 h-4 text-emerald-600" />
+              <span>2. Hasil Matriks</span>
+              {selectedDrugs.length >= 2 ? (
+                <span className="bg-emerald-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  Siap
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-400">
+                  (Pilih min 2)
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari obat atau cairan..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-            />
-          </div>
-
-          <div className="h-[calc(100vh-320px)] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-            {filteredDrugs.map(drug => {
-              const isSelected = selectedDrugs.includes(drug.id);
-              return (
-                <button
-                  key={drug.id}
-                  onClick={() => toggleDrug(drug.id)}
-                  className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group ${
-                    isSelected 
-                    ? "bg-emerald-50 border-emerald-200 shadow-sm" 
-                    : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50"
-                  }`}
-                >
-                  <div>
-                    <h3 className={`text-sm font-bold ${isSelected ? "text-emerald-700" : "text-slate-700"}`}>
-                      {drug.name}
-                    </h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{drug.category}</p>
+          {/* MAIN GRID: Kolom Bersebelahan di Layar Lebar (lg+), Bergantian di Ponsel */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+            {/* LEFT COLUMN: Drug Selection */}
+            <section className={`w-full lg:col-span-4 space-y-4 ${mobileIvTab === "drugs" ? "block" : "hidden lg:block"}`}>
+              {isAdmin && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                  <h2 className="text-sm font-bold text-slate-800 mb-2">Administrasi Data IV</h2>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => setIsUpdateModalOpen(true)}
+                      className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Update Data Kompatibilitas
+                    </button>
+                    <button
+                      onClick={() => setIsConfirmClearOpen(true)}
+                      className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition-colors shadow-xs"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Hapus Semua Data
+                    </button>
                   </div>
-                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
-                    isSelected 
-                    ? "bg-emerald-600 border-emerald-600 text-white" 
-                    : "bg-white border-slate-300 group-hover:border-emerald-400"
-                  }`}>
-                    {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                </div>
+              )}
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                      <Droplets className="w-4 h-4" />
+                    </div>
+                    <h2 className="text-base font-bold text-slate-800">Obat & Cairan IV</h2>
                   </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* RIGHT COLUMN: Compatibility Matrix & Details */}
-      <section className="lg:col-span-8 space-y-6">
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-          <div className="bg-slate-900 p-4 flex items-center gap-3 text-white">
-            <div className="p-2 bg-emerald-500/20 rounded-lg">
-              <ShieldAlert className="w-5 h-5 text-emerald-300" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black tracking-tight">Hasil Kompatibilitas IV (Y-Site)</h2>
-              <p className="text-xs text-emerald-200">Pilih minimal 2 obat/cairan untuk melihat hasil</p>
-            </div>
-          </div>
-
-          <div className="p-6">
-            {selectedDrugs.length < 2 ? (
-              <div className="text-center py-16 px-4">
-                <Droplets className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                <h3 className="text-slate-500 font-medium text-sm">Belum ada cukup data</h3>
-                <p className="text-slate-400 text-xs mt-1">Pilih minimal dua obat atau cairan dari daftar di sebelah kiri untuk melihat matriks kompatibilitas.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                
-                {/* Cross-Compatibility Matrix */}
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3 border-r border-slate-200 w-48">Obat / Cairan</th>
-                        {selectedDrugs.map(id => (
-                          <th key={`col-${id}`} className="px-4 py-3 text-center min-w-[120px]">
-                            {ivDrugsState.find(d => d.id === id)?.name}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {selectedDrugs.map(rowId => {
-                        const rowDrug = ivDrugsState.find(d => d.id === rowId) || { id: rowId, name: "Unknown", category: "" };
-                        return (
-                          <tr key={`row-${rowId}`} className="hover:bg-slate-50/50">
-                            <td className="px-4 py-3 font-semibold text-slate-700 border-r border-slate-200">
-                              {rowDrug.name}
-                            </td>
-                            {selectedDrugs.map(colId => {
-                              const comp = checkCompatibility(rowId, colId);
-                              return (
-                                <td key={`cell-${rowId}-${colId}`} className="px-4 py-3 text-center align-middle">
-                                  {rowId === colId ? (
-                                    <span className="text-slate-300 text-lg">-</span>
-                                  ) : (
-                                    <div className="flex justify-center">
-                                      {getStatusBadge(comp.status)}
-                                    </div>
-                                  )}
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  {selectedDrugs.length > 0 && (
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {selectedDrugs.length} Dipilih
+                    </span>
+                  )}
                 </div>
 
-                {/* Compatibility Details List */}
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <Info className="w-4 h-4 text-emerald-500" />
-                    Catatan Interaksi Spesifik
-                  </h3>
-                  <div className="space-y-3">
-                    {(() => {
-                      const notes: React.ReactNode[] = [];
-                      const processedPairs = new Set<string>();
+                {/* Selected Drugs Chips Preview */}
+                {selectedDrugs.length > 0 && (
+                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Terpilih ({selectedDrugs.length}):
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDrugs([])}
+                        className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold hover:underline"
+                      >
+                        Reset Semua
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar">
+                      {selectedDrugs.map(id => {
+                        const d = ivDrugsState.find(item => item.id === id);
+                        return (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-emerald-300 text-xs font-semibold text-emerald-800 shadow-2xs"
+                          >
+                            <span className="truncate max-w-[140px]">{d?.name || id}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleDrug(id)}
+                              className="text-slate-400 hover:text-rose-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {selectedDrugs.length >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileIvTab("results");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="lg:hidden w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-2xs transition-colors mt-1"
+                      >
+                        <span>Lihat Hasil Kompatibilitas ({selectedDrugs.length})</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
 
-                      for (let i = 0; i < selectedDrugs.length; i++) {
-                        for (let j = i + 1; j < selectedDrugs.length; j++) {
-                          const id1 = selectedDrugs[i];
-                          const id2 = selectedDrugs[j];
-                          
-                          // create a unique key for the pair
-                          const pairKey = [id1, id2].sort().join("-");
-                          if (processedPairs.has(pairKey)) continue;
-                          processedPairs.add(pairKey);
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari obat atau cairan..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  />
+                </div>
 
-                          const comp = checkCompatibility(id1, id2);
-                          const d1 = ivDrugsState.find(d => d.id === id1) || { id: id1, name: "Unknown", category: "" };
-                          const d2 = ivDrugsState.find(d => d.id === id2) || { id: id2, name: "Unknown", category: "" };
+                <div className="max-h-[55vh] lg:max-h-[calc(100vh-320px)] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                  {filteredDrugs.map(drug => {
+                    const isSelected = selectedDrugs.includes(drug.id);
+                    return (
+                      <button
+                        key={drug.id}
+                        onClick={() => toggleDrug(drug.id)}
+                        className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group ${
+                          isSelected 
+                          ? "bg-emerald-50 border-emerald-200 shadow-sm" 
+                          : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div>
+                          <h3 className={`text-sm font-bold ${isSelected ? "text-emerald-700" : "text-slate-700"}`}>
+                            {drug.name}
+                          </h3>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{drug.category}</p>
+                        </div>
+                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors shrink-0 ml-2 ${
+                          isSelected 
+                          ? "bg-emerald-600 border-emerald-600 text-white" 
+                          : "bg-white border-slate-300 group-hover:border-emerald-400"
+                        }`}>
+                          {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
 
-                          if (comp.status === "I" || comp.notes) {
-                            notes.push(
-                              <div key={pairKey} className={`p-4 rounded-xl border ${comp.status === 'I' ? 'bg-red-50 border-red-100' : comp.status === 'C' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
-                                <div className="flex items-start gap-3">
-                                  <div className="mt-0.5">
-                                    {getStatusBadge(comp.status)}
-                                  </div>
-                                  <div>
-                                    <h4 className="text-sm font-bold text-slate-800">
-                                      {d1.name} + {d2.name}
-                                    </h4>
-                                    {comp.notes && (
-                                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                                        {comp.notes}
-                                      </p>
-                                    )}
-                                  </div>
+            {/* RIGHT COLUMN: Compatibility Matrix & Details */}
+            <section className={`w-full lg:col-span-8 space-y-6 ${mobileIvTab === "results" ? "block" : "hidden lg:block"}`}>
+              {/* Mobile Back Shortcut */}
+              <div className="lg:hidden flex items-center justify-between bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200/80 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setMobileIvTab("drugs")}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950"
+                >
+                  <ArrowLeft className="w-4 h-4 text-emerald-700" />
+                  <span>← Ubah Pilihan Obat ({selectedDrugs.length} dipilih)</span>
+                </button>
+                {selectedDrugs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDrugs([])}
+                    className="text-[11px] font-bold text-rose-600 hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-slate-900 p-4 flex items-center gap-3 text-white">
+                  <div className="p-2 bg-emerald-500/20 rounded-lg shrink-0">
+                    <ShieldAlert className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black tracking-tight">Hasil Kompatibilitas IV (Y-Site)</h2>
+                    <p className="text-xs text-emerald-200">Pilih minimal 2 obat/cairan untuk melihat hasil</p>
+                  </div>
+                </div>
+
+                <div className="p-4 sm:p-6">
+                  {selectedDrugs.length < 2 ? (
+                    <div className="text-center py-16 px-4">
+                      <Droplets className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                      <h3 className="text-slate-500 font-medium text-sm">Belum ada cukup data</h3>
+                      <p className="text-slate-400 text-xs mt-1 max-w-sm mx-auto">
+                        Pilih minimal dua obat atau cairan dari daftar untuk melihat matriks kompatibilitas.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setMobileIvTab("drugs")}
+                        className="lg:hidden mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-700"
+                      >
+                        <Droplets className="w-3.5 h-3.5" /> Buka Daftar Pilihan Obat
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      
+                      {/* Cross-Compatibility Matrix */}
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-3 border-r border-slate-200 w-48">Obat / Cairan</th>
+                              {selectedDrugs.map(id => (
+                                <th key={`col-${id}`} className="px-4 py-3 text-center min-w-[120px]">
+                                  {ivDrugsState.find(d => d.id === id)?.name}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {selectedDrugs.map(rowId => {
+                              const rowDrug = ivDrugsState.find(d => d.id === rowId) || { id: rowId, name: "Unknown", category: "" };
+                              return (
+                                <tr key={`row-${rowId}`} className="hover:bg-slate-50/50">
+                                  <td className="px-4 py-3 font-semibold text-slate-700 border-r border-slate-200">
+                                    {rowDrug.name}
+                                  </td>
+                                  {selectedDrugs.map(colId => {
+                                    const comp = checkCompatibility(rowId, colId);
+                                    return (
+                                      <td key={`cell-${rowId}-${colId}`} className="px-4 py-3 text-center align-middle">
+                                        {rowId === colId ? (
+                                          <span className="text-slate-300 text-lg">-</span>
+                                        ) : (
+                                          <div className="flex justify-center">
+                                            {getStatusBadge(comp.status)}
+                                          </div>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Compatibility Details List */}
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                          <Info className="w-4 h-4 text-emerald-500" />
+                          Catatan Interaksi Spesifik
+                        </h3>
+                        <div className="space-y-3">
+                          {(() => {
+                            const notes: React.ReactNode[] = [];
+                            const processedPairs = new Set<string>();
+
+                            for (let i = 0; i < selectedDrugs.length; i++) {
+                              for (let j = i + 1; j < selectedDrugs.length; j++) {
+                                const id1 = selectedDrugs[i];
+                                const id2 = selectedDrugs[j];
+                                
+                                // create a unique key for the pair
+                                const pairKey = [id1, id2].sort().join("-");
+                                if (processedPairs.has(pairKey)) continue;
+                                processedPairs.add(pairKey);
+
+                                const comp = checkCompatibility(id1, id2);
+                                const d1 = ivDrugsState.find(d => d.id === id1) || { id: id1, name: "Unknown", category: "" };
+                                const d2 = ivDrugsState.find(d => d.id === id2) || { id: id2, name: "Unknown", category: "" };
+
+                                if (comp.status === "I" || comp.notes) {
+                                  notes.push(
+                                    <div key={pairKey} className={`p-4 rounded-xl border ${comp.status === 'I' ? 'bg-red-50 border-red-100' : comp.status === 'C' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+                                      <div className="flex items-start gap-3">
+                                        <div className="mt-0.5">
+                                          {getStatusBadge(comp.status)}
+                                        </div>
+                                        <div>
+                                          <h4 className="text-sm font-bold text-slate-800">
+                                            {d1.name} + {d2.name}
+                                          </h4>
+                                          {comp.notes && (
+                                            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                              {comp.notes}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              }
+                            }
+
+                            if (notes.length === 0) {
+                              return (
+                                <div className="text-xs text-slate-500 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                  Tidak ada catatan spesifik atau peringatan inkompatibilitas untuk kombinasi yang dipilih. Namun, selalu lakukan inspeksi visual untuk partikel atau perubahan warna sebelum pemberian.
                                 </div>
+                              );
+                            }
+                            
+                            return notes;
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Beyond Use Date (BUD) Details */}
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-emerald-500" />
+                          Beyond Use Date (Waktu Kedaluwarsa Setelah Dibuka/Diramu)
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {selectedDrugs.map(id => {
+                            const drug = ivDrugsState.find(d => d.id === id) || { id, name: "Unknown", category: "", bud: "", storageTemp: "", reference: "" };
+                            return (
+                              <div key={`bud-${id}`} className="p-4 rounded-xl border bg-slate-50 border-slate-200">
+                                <h4 className="text-sm font-bold text-slate-800 mb-1">{drug.name}</h4>
+                                <p className="text-[11px] text-slate-500 mb-1.5"><span className="font-semibold text-slate-600">Suhu Penyimpanan:</span> {drug.storageTemp || "Suhu Ruang (20-25°C)"}</p>
+                                <p className="text-xs text-slate-600 font-medium mb-1">BUD: <span className="text-emerald-700">{drug.bud || 'Tidak ada data'}</span></p>
+                                <p className="text-[10px] text-slate-400 italic">Ref: {drug.reference || "Trissel's Handbook on Injectable Drugs"}</p>
                               </div>
                             );
-                          }
-                        }
-                      }
-
-                      if (notes.length === 0) {
-                        return (
-                          <div className="text-xs text-slate-500 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            Tidak ada catatan spesifik atau peringatan inkompatibilitas untuk kombinasi yang dipilih. Namun, selalu lakukan inspeksi visual untuk partikel atau perubahan warna sebelum pemberian.
-                          </div>
-                        );
-                      }
-                      
-                      return notes;
-                    })()}
-                  </div>
-                </div>
-
-                {/* Beyond Use Date (BUD) Details */}
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-emerald-500" />
-                    Beyond Use Date (Waktu Kedaluwarsa Setelah Dibuka/Diramu)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedDrugs.map(id => {
-                      const drug = ivDrugsState.find(d => d.id === id) || { id, name: "Unknown", category: "", bud: "", storageTemp: "", reference: "" };
-                      return (
-                        <div key={`bud-${id}`} className="p-4 rounded-xl border bg-slate-50 border-slate-200">
-                          <h4 className="text-sm font-bold text-slate-800 mb-1">{drug.name}</h4>
-                          <p className="text-[11px] text-slate-500 mb-1.5"><span className="font-semibold text-slate-600">Suhu Penyimpanan:</span> {drug.storageTemp || "Suhu Ruang (20-25°C)"}</p>
-                          <p className="text-xs text-slate-600 font-medium mb-1">BUD: <span className="text-emerald-700">{drug.bud || 'Tidak ada data'}</span></p>
-                          <p className="text-[10px] text-slate-400 italic">Ref: {drug.reference || "Trissel's Handbook on Injectable Drugs"}</p>
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
 
-                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex flex-col gap-3 text-emerald-800">
-                  <div className="flex gap-3">
-                    <Info className="w-5 h-5 shrink-0 text-emerald-600" />
-                    <div className="text-xs space-y-1.5">
-                      <p><strong>Disclaimer:</strong> Data kompatibilitas ini adalah panduan umum Y-site administration. Faktor seperti konsentrasi obat, pH pelarut, suhu, dan waktu kontak dapat memengaruhi hasil di lapangan.</p>
-                      <p>Jika ragu, selalu gunakan jalur IV terpisah atau bilas (flush) jalur dengan saline secara memadai di antara pemberian obat.</p>
-                      <p><strong>Sumber:</strong> Pedoman Pencampuran Obat Suntik dan Penanganan Sediaan Sitostatika, Depkes RI 2009.</p>
+                      <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex flex-col gap-3 text-emerald-800">
+                        <div className="flex gap-3">
+                          <Info className="w-5 h-5 shrink-0 text-emerald-600" />
+                          <div className="text-xs space-y-1.5">
+                            <p><strong>Disclaimer:</strong> Data kompatibilitas ini adalah panduan umum Y-site administration. Faktor seperti konsentrasi obat, pH pelarut, suhu, dan waktu kontak dapat memengaruhi hasil di lapangan.</p>
+                            <p>Jika ragu, selalu gunakan jalur IV terpisah atau bilas (flush) jalur dengan saline secara memadai di antara pemberian obat.</p>
+                            <p><strong>Sumber:</strong> Pedoman Pencampuran Obat Suntik dan Penanganan Sediaan Sitostatika, Depkes RI 2009.</p>
+                          </div>
+                        </div>
+                        <a 
+                          href="/pedoman_pencampuran.pdf" 
+                          download="Pedoman_Pencampuran_Obat_Suntik_2009.pdf"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors self-start mt-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download Sumber Pedoman (PDF)
+                        </a>
+                      </div>
+
                     </div>
-                  </div>
-                  <a 
-                    href="/pedoman_pencampuran.pdf" 
-                    download="Pedoman_Pencampuran_Obat_Suntik_2009.pdf"
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors self-start mt-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download Sumber Pedoman (PDF)
-                  </a>
+                  )}
                 </div>
-
               </div>
-            )}
+            </section>
           </div>
+
+          {/* FLOATING ACTION BAR ON MOBILE WHEN >= 2 DRUGS IN 'DRUGS' TAB */}
+          {mobileIvTab === "drugs" && selectedDrugs.length >= 2 && (
+            <div className="fixed bottom-20 left-4 right-4 z-40 lg:hidden flex justify-center animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileIvTab("results");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-full max-w-sm py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl shadow-xl border border-emerald-400/40 flex items-center justify-between font-bold text-xs active:scale-98 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-white text-emerald-800 flex items-center justify-center text-[11px] font-black">
+                    {selectedDrugs.length}
+                  </span>
+                  <span>Obat Terpilih</span>
+                </div>
+                <span className="flex items-center gap-1 text-white font-extrabold">
+                  Lihat Hasil Kompatibilitas <ArrowRight className="w-4 h-4" />
+                </span>
+              </button>
+            </div>
+          )}
         </div>
-      </section>
-      </>
       )}
 
       {isConfirmClearOpen && (
