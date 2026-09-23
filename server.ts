@@ -112,17 +112,17 @@ async function startServer() {
 
   // Resilient multi-model cascade with fast, stable models first
   const CANDIDATE_MODELS = [
-    "gemini-2.5-flash",      // ultra stable & fast (<1.5s response)
-    "gemini-3.1-flash-lite", // lightweight low latency
+    "gemini-3.1-flash-lite", // lightweight low latency & high throughput
+    "gemini-2.5-flash",      // stable fallback
     "gemini-3.8-flash"       // latest preview
   ];
 
   async function callGeminiWithFallback(
     ai: GoogleGenAI,
     prompt: string,
-    options?: { systemInstruction?: string; timeoutMs?: number; temperature?: number }
+    options?: { systemInstruction?: string; timeoutMs?: number; temperature?: number; maxOutputTokens?: number }
   ): Promise<string> {
-    const timeoutMs = options?.timeoutMs || 4500;
+    const timeoutMs = options?.timeoutMs || 25000;
     let lastError: any = null;
 
     for (const model of CANDIDATE_MODELS) {
@@ -132,6 +132,9 @@ async function startServer() {
         };
         if (options?.systemInstruction) {
           config.systemInstruction = options.systemInstruction;
+        }
+        if (options?.maxOutputTokens) {
+          config.maxOutputTokens = options.maxOutputTokens;
         }
 
         const res = await Promise.race([
@@ -188,7 +191,7 @@ Penafian (sertakan di paling bawah, cetak miring): *Catatan: Artikel ini ditujuk
 
       let finalResponse = "";
       try {
-        finalResponse = await callGeminiWithFallback(ai, prompt, { timeoutMs: 10000 });
+        finalResponse = await callGeminiWithFallback(ai, prompt, { timeoutMs: 25000, maxOutputTokens: 2500 });
       } catch (geminiErr: any) {
         console.warn("Disease-info Gemini error, using clinical fallback:", geminiErr?.message || geminiErr);
         finalResponse = generateClinicalDiseaseFallback(diseaseName);
@@ -425,7 +428,8 @@ FORMATTING:
         try {
           responseText = await callGeminiWithFallback(ai, prompt, {
             systemInstruction: "You are an elite Clinical Pharmacologist and Board-Certified Medical Dosage Expert. Use advanced reasoning to verify drug calculation setups, identify subtle clinical safety risks, detect errors, and explain medical rationale thoroughly. ALWAYS WRITE YOUR RESPONSE ENTIRELY IN INDONESIAN (BAHASA INDONESIA).",
-            timeoutMs: 9000
+            timeoutMs: 20000,
+            maxOutputTokens: 2000
           });
           res.json({ text: responseText });
         } catch (geminiError: any) {
@@ -482,7 +486,8 @@ FORMATTING:
       try {
         const text = await callGeminiWithFallback(ai, prompt, {
           systemInstruction: systemPrompt,
-          timeoutMs: 8000
+          timeoutMs: 18000,
+          maxOutputTokens: 1500
         });
         return res.json({ reply: text });
       } catch (geminiError: any) {
@@ -535,7 +540,8 @@ ${patientData}`;
       try {
         responseText = await callGeminiWithFallback(ai, prompt, {
           systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
-          timeoutMs: 10000
+          timeoutMs: 25000,
+          maxOutputTokens: 2000
         });
       } catch (geminiError: any) {
         console.warn("AI soap-ai failed, using structured SOAP fallback:", geminiError?.message || geminiError);

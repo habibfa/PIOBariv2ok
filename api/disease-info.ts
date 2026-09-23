@@ -38,7 +38,7 @@ const CANDIDATE_MODELS = [
 ];
 
 async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
-  const timeoutMs = 8500;
+  const timeoutMs = 20000;
   let lastError: any = null;
 
   for (const model of CANDIDATE_MODELS) {
@@ -48,7 +48,8 @@ async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
           model,
           contents: prompt,
           config: {
-            temperature: 0.2
+            temperature: 0.2,
+            maxOutputTokens: 2500
           }
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${model}`)), timeoutMs))
@@ -60,7 +61,6 @@ async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
     } catch (err: any) {
       console.warn(`[Vercel disease-info] Model ${model} failed:`, err?.message || err);
       lastError = err;
-      break;
     }
   }
 

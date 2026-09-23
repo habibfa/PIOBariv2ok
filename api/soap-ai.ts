@@ -38,7 +38,7 @@ const CANDIDATE_MODELS = [
 ];
 
 async function callGemini(ai: GoogleGenAI, prompt: string, systemInstruction: string): Promise<string> {
-  const timeoutMs = 8500;
+  const timeoutMs = 20000;
   let lastError: any = null;
 
   for (const model of CANDIDATE_MODELS) {
@@ -49,7 +49,8 @@ async function callGemini(ai: GoogleGenAI, prompt: string, systemInstruction: st
           contents: prompt,
           config: {
             systemInstruction,
-            temperature: 0.2
+            temperature: 0.2,
+            maxOutputTokens: 2000
           }
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${model}`)), timeoutMs))
@@ -61,8 +62,6 @@ async function callGemini(ai: GoogleGenAI, prompt: string, systemInstruction: st
     } catch (err: any) {
       console.warn(`[Vercel soap-ai] Model ${model} failed:`, err?.message || err);
       lastError = err;
-      // Break early on first timeout to stay well within Vercel's serverless duration
-      break;
     }
   }
 

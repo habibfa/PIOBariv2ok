@@ -32,13 +32,13 @@ function getAIClient(req?: any): GoogleGenAI | null {
 }
 
 const CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
   "gemini-3.1-flash-lite",
+  "gemini-2.5-flash",
   "gemini-3.8-flash"
 ];
 
 async function callGemini(ai: GoogleGenAI, prompt: string, systemInstruction: string): Promise<string> {
-  const timeoutMs = 7000;
+  const timeoutMs = 18000;
   let lastError: any = null;
 
   for (const model of CANDIDATE_MODELS) {
@@ -49,7 +49,8 @@ async function callGemini(ai: GoogleGenAI, prompt: string, systemInstruction: st
           contents: prompt,
           config: {
             systemInstruction,
-            temperature: 0.2
+            temperature: 0.2,
+            maxOutputTokens: 1500
           }
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${model} after ${timeoutMs}ms`)), timeoutMs))

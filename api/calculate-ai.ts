@@ -110,10 +110,11 @@ Berikan review klinis komprehensif dalam bahasa Indonesia terstruktur dengan ruj
             model,
             contents: prompt,
             config: {
-              temperature: 0.2
+              temperature: 0.2,
+              maxOutputTokens: 2000
             }
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${model}`)), 18000))
         ]) as any;
 
         if (result?.text) {
