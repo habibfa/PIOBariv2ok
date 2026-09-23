@@ -1,8 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { generateClinicalDiseaseFallback } from "../src/utils/clinicalAssistantFallback.ts";
 
 dotenv.config();
+
+function generateClinicalDiseaseFallback(diseaseName: string): string {
+  const name = diseaseName.trim() || "Kondisi Medis";
+  return `### Ikhtisar & Definisi: ${name}
+${name} merupakan kondisi klinis yang memerlukan evaluasi komprehensif mencakup etiologi, manifestasi klinis, serta manajemen farmakoterapi berbasis bukti.
+
+### Penatalaksanaan & Pengobatan
+1. **Terapi Farmakologis:** Terapi lini pertama disesuaikan dengan derajat keparahan dan profil komorbiditas pasien.
+2. **Terapi Non-Farmakologis:** Modifikasi gaya hidup, edukasi kepatuhan obat, dan pemantauan tanda bahaya (*red flags*).
+
+### Referensi Evidence-Based
+* Konsensus Nasional & Pedoman Praktik Klinis EBM.
+* *Catatan: Artikel ini ditujukan sebagai referensi informasi klinis dan bukan pengganti penilaian medis profesional secara langsung.*`;
+}
 
 function getApiKey(req?: any): string | undefined {
   const headerKey = req?.headers?.["x-api-key"] || req?.headers?.["authorization"]?.replace(/^Bearer\s+/i, "");

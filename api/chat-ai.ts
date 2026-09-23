@@ -1,13 +1,170 @@
+import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { generateClinicalChatFallback } from "../src/utils/clinicalAssistantFallback.ts";
-import {
-  getAIClient,
-  callGeminiAdaptive,
-  CHAT_SYSTEM_INSTRUCTION,
-  buildChatPrompt
-} from "../src/utils/aiPrompts.ts";
 
 dotenv.config();
+
+function getApiKey(req?: any): string | undefined {
+  const headerKey = req?.headers?.["x-api-key"] || req?.headers?.["authorization"]?.replace(/^Bearer\s+/i, "");
+  return (
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    process.env.VITE_GOOGLE_API_KEY ||
+    process.env.API_KEY ||
+    process.env.GEMINI_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY ||
+    (typeof headerKey === "string" && headerKey.trim().length > 10 ? headerKey.trim() : undefined)
+  )?.trim();
+}
+
+function getAIClient(req?: any): GoogleGenAI | null {
+  const apiKey = getApiKey(req);
+  if (!apiKey) return null;
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
+}
+
+const CANDIDATE_MODELS = [
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash",
+  "gemini-3.8-flash"
+];
+
+const CHAT_SYSTEM_INSTRUCTION =
+  `Kamu adalah "Asisten AI Klinis PIOBARI" (Pelayanan Informasi Obat RSUD Palembang BARI).
+Tugasmu adalah memberikan konsultasi klinis farmakologi, perhitungan dosis obat, skrining interaksi obat, kompatibilitas IV, keamanan kehamilan/laktasi FDA, penyesuaian gangguan ginjal/hati, dan Evidence-Based Medicine (EBM).
+Karakter: Sangat profesional, presisi, ramah, berbasis sains farmasi klinis dan Formularium Nasional/RSUD Palembang BARI.
+Format: Gunakan format markdown yang rapi dengan heading, poin-poin tebal yang jelas, dan referensi resmi di bagian bawah jika relevan.
+Bahasa: Bahasa Indonesia formal medis yang mudah dipahami tenaga kesehatan maupun pasien.`;
+
+function buildChatPrompt(message: string, history?: any[]): string {
+  let conversationContext = "";
+  if (Array.isArray(history) && history.length > 0) {
+    const safeHistory = history.slice(-6);
+    conversationContext = safeHistory
+      .map((h: any) => {
+        const role = h.role === "user" ? "Pengguna" : "Asisten AI Klinis";
+        const content = typeof h.content === "string" ? h.content.slice(0, 2000) : "";
+        return `${role}: ${content}`;
+      })
+      .filter((line: string) => line.length > 0)
+      .join("\n");
+  }
+
+  return conversationContext
+    ? `Riwayat Percakapan Sebelumnya:\n${conversationContext}\n\nPertanyaan Terbaru Pengguna: ${message}\n\nJawaban Asisten AI Klinis:`
+    : `Pertanyaan Pengguna: ${message}\n\nJawaban Asisten AI Klinis:`;
+}
+
+function generateClinicalChatFallback(message: string): string {
+  const query = (message || "").toLowerCase().trim();
+
+  // 1. IV Compatibility (Ceftriaxone + RL)
+  if (
+    (query.includes("kompatibilitas") || query.includes("iv") || query.includes("campur")) &&
+    (query.includes("ceftriaxone") || query.includes("seftriakson")) &&
+    (query.includes("ringer") || query.includes("rl") || query.includes("kalsium"))
+  ) {
+    return `### Peringatan Kompatibilitas IV: Ceftriaxone & Ringer Laktat (RL)
+
+* **Status:** **INKOMPATIBEL (KONTRAINDIKASI MUTLAK)**
+* **Bahaya Klinis:** Pengendapan Garam Kalsium-Seftriakson (*Ceftriaxone-Calcium Precipitation*).
+* **Rekomendasi Farmasi Klinis:**
+  1. **Dilarang keras mencampur** atau memberikan Ceftriaxone bersamaan melalui jalur IV yang sama dengan larutan yang mengandung kalsium (seperti **Ringer Laktat** atau Hartmann's Solution).
+  2. Endapan kristal ceftriaxone-kalsium dapat memicu emboli organ fatal, terutama pada paru-paru dan ginjal.
+  3. **Pada Neonatus (≤28 hari):** Penggunaan bersamaan merupakan kontraindikasi mutlak bahkan jika menggunakan jalur infus terpisah.
+  4. **Pelarut yang Direkomendasikan:** Gunakan **NaCl 0.9% (Normal Saline)** atau **Dextrose 5% (D5W)** untuk rekonstitusi dan infus Ceftriaxone. Bilas jalur secara menyeluruh (*flush*) dengan NaCl 0.9% jika beralih cairan.
+
+*(Rujukan: FDA Drug Safety Communication & Pedoman Kompatibilitas Sediaan Steril RSUD Palembang BARI)*`;
+  }
+
+  // 2. Warfarin + Ciprofloxacin
+  if (
+    (query.includes("interaksi") || query.includes("+") || query.includes("dan")) &&
+    query.includes("warfarin") && (query.includes("ciprofloxacin") || query.includes("siprofloksasin"))
+  ) {
+    return `### Skrining Interaksi Obat: Warfarin + Ciprofloxacin
+
+* **Tingkat Keparahan:** **BERAT / MAJOR (Klinis Signifikan)**
+* **Mekanisme Interaksi:** Ciprofloxacin menghambat enzim sitokrom **CYP1A2** dan **CYP3A4** di hati yang memetabolisme S-warfarin & R-warfarin, serta menekan flora normal usus penghasil Vitamin K.
+* **Dampak Klinis:** Peningkatan drastis kadar plasma Warfarin dan perpanjangan nilai **INR (International Normalized Ratio)**, yang sangat meningkatkan risiko perdarahan mayor (GIT bleed, hematuria, stroke hemoragik).
+* **Rekomendasi Klinis Apoteker:**
+  1. Hindari kombinasi jika ada antibiotik alternatif (misal Ceftriaxone atau Amoxicillin-Clavulanate jika spektrum kuman sesuai).
+  2. Jika kombinasi mutlak diperlukan, turunkan dosis empiris Warfarin sebesar 30%–50% dan pantau INR serial setiap 48–72 jam.
+  3. Edukasi pasien waspada tanda perdarahan (gusi berdarah, memar spontan, melena).
+
+*(Rujukan: Drug Interaction Facts & Database Pelayanan Informasi Obat PIOBARI)*`;
+  }
+
+  // 3. Pediatric Paracetamol
+  if (
+    (query.includes("dosis") || query.includes("anak") || query.includes("sirup")) &&
+    (query.includes("paracetamol") || query.includes("parasetamol") || query.includes("pct"))
+  ) {
+    const weightMatch = query.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilo)/);
+    const weight = weightMatch ? parseFloat(weightMatch[1].replace(',', '.')) : 12;
+
+    const minDose = Math.round(weight * 10);
+    const maxDose = Math.round(weight * 15);
+    const dailyMax = Math.round(weight * 60);
+
+    const ml120Min = (minDose / 24).toFixed(1);
+    const ml120Max = (maxDose / 24).toFixed(1);
+
+    return `### Perhitungan Dosis Paracetamol Sirup Anak (BB ${weight} kg)
+
+* **Rentang Dosis Standar:** **10 – 15 mg/kgBB/kali**, diberikan tiap 4–6 jam (maksimal 4–5 kali sehari).
+* **Dosis Tunggal:** **${minDose} mg – ${maxDose} mg** per kali minum.
+* **Dosis Maksimal Harian:** **${dailyMax} mg/hari** (maksimal 60 mg/kgBB/hari).
+
+#### Rekomendasi Takaran Sediaan Sirup:
+1. **Sirup Standar (120 mg / 5 mL):**
+   * Dosis sekali minum: **${ml120Min} mL – ${ml120Max} mL** (sekitar ¾ – 1 sendok takar 5 mL).
+2. **Sirup Forte (250 mg / 5 mL - jika anak >3 tahun):**
+   * Dosis sekali minum: **${(minDose / 50).toFixed(1)} mL – ${(maxDose / 50).toFixed(1)} mL**.
+
+#### Catatan Keamanan Farmasi:
+* Berikan interval minimal 4 jam antar dosis.
+* Pastikan menggunakan sendok takar obat resmi (bukan sendok makan rumah tangga).
+* Jika demam berlanjut >3 hari atau suhu >39°C, rujuk ke dokter spesialis anak.
+
+*(Rujukan: Formularium Spesialistik IDAI & RSUD Palembang BARI)*`;
+  }
+
+  // 4. Pregnancy / FDA
+  if (query.includes("kehamilan") || query.includes("hamil") || query.includes("fda") || query.includes("bumil")) {
+    if (query.includes("metformin")) {
+      return `### Keamanan Kehamilan FDA: Metformin
+
+* **Kategori Kehamilan FDA:** **Kategori B** (Tidak ada bukti risiko teratogenik pada manusia).
+* **Status Klinis:** Sering digunakan sebagai lini kedua untuk Diabetes Gestasional atau PCOS setelah terapi diet, namun **Insulin tetap merupakan lini pertama (*gold standard*)** selama masa kehamilan karena tidak menembus sawar plasenta.
+* **Keamanan Trimester:** Relatif aman pada seluruh trimester bila diindikasikan oleh dokter spesialis kandungan/endokrin.
+* **Laktasi / Menyusui:** Ekskresi ke ASI dalam jumlah minimal (kompatibel/aman dengan pengawasan).
+
+*(Rujukan: ADA Standards of Care in Diabetes & FDA Pregnancy Guidance)*`;
+    }
+  }
+
+  // General Clinical Guidance
+  return `### Konsultasi Klinis PIOBARI
+
+Terima kasih atas pertanyaan Anda. Terkait pertanyaan: **"${message}"**
+
+#### Rekomendasi Farmasi Klinis:
+1. **Prinsip Evaluasi:** Pastikan penyesuaian dosis memperhitungkan berat badan aktual, usia, fungsi ginjal (klirens kreatinin/eGFR), serta fungsi hepar pasien.
+2. **Pencegahan DRP:** Selalu lakukan skrining potensi interaksi farmakodinamik dan farmakokinetik pada penggunaan lebih dari 2 jenis obat bersamaan.
+3. **Monitoring:** Evaluasi tercapainya target luaran terapi serta pemantauan efek samping obat (ESO) secara berkala.
+
+Silakan masukkan detail kondisi klinis pasien (usia, berat badan, hasil lab, atau riwayat penyakit) untuk telaah dosis dan farmakoterapi yang lebih spesifik.
+
+*(Sumber: Pelayanan Informasi Obat PIOBARI & Formularium Nasional)*`;
+}
 
 export default async function handler(req: any, res: any) {
   // CORS & Security headers
@@ -25,9 +182,18 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const rawMessage = req.body?.message;
-    const history = Array.isArray(req.body?.history) ? req.body.history : [];
-    const message = typeof rawMessage === "string" ? rawMessage.trim().slice(0, 3000) : "";
+    let body = req.body;
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch (_) {
+        body = {};
+      }
+    }
+
+    const rawMessage = body?.message;
+    const history = Array.isArray(body?.history) ? body.history : [];
+    const message = typeof rawMessage === "string" ? rawMessage.trim().slice(0, 4000) : "";
 
     if (!message) {
       return res.status(400).json({ error: "Pesan tidak boleh kosong." });
@@ -40,23 +206,46 @@ export default async function handler(req: any, res: any) {
     }
 
     const prompt = buildChatPrompt(message, history);
+    const startTime = Date.now();
+    const maxTotalTimeMs = 8500;
+    let replyText = "";
 
-    try {
-      const reply = await callGeminiAdaptive(ai, prompt, {
-        systemInstruction: CHAT_SYSTEM_INSTRUCTION,
-        maxTotalTimeMs: 8500,
-        maxOutputTokens: 1200,
-        temperature: 0.2,
-        tag: "Vercel chat-ai"
-      });
-      return res.status(200).json({ reply });
-    } catch (geminiError: any) {
-      console.warn("[Vercel chat-ai] Gemini error, returning clinical fallback:", geminiError?.message);
-      const fallbackReply = generateClinicalChatFallback(message);
-      return res.status(200).json({ reply: fallbackReply });
+    for (const model of CANDIDATE_MODELS) {
+      const remainingTime = maxTotalTimeMs - (Date.now() - startTime);
+      if (remainingTime < 2500) break;
+
+      try {
+        const result = await Promise.race([
+          ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              systemInstruction: CHAT_SYSTEM_INSTRUCTION,
+              temperature: 0.2,
+              maxOutputTokens: 1200
+            }
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout ${model} after ${remainingTime}ms`)), remainingTime)
+          )
+        ]) as any;
+
+        if (result?.text) {
+          replyText = result.text;
+          break;
+        }
+      } catch (modelErr: any) {
+        console.warn(`[Vercel chat-ai] Model ${model} failed:`, modelErr?.message || modelErr);
+      }
     }
+
+    if (!replyText) {
+      replyText = generateClinicalChatFallback(message);
+    }
+
+    return res.status(200).json({ reply: replyText });
   } catch (err: any) {
-    console.error("[Vercel chat-ai] Unexpected error:", err);
+    console.error("[Vercel chat-ai] Fatal error caught:", err);
     const safeFallback = generateClinicalChatFallback(req.body?.message || "");
     return res.status(200).json({ reply: safeFallback });
   }
