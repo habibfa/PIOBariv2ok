@@ -86,7 +86,7 @@ export const AdminWebAnalytics: React.FC = () => {
   // Time frame
   const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("24h");
   const [events, setEvents] = useState<CustomEventRecord[]>([]);
-  const [activeUsers, setActiveUsers] = useState<number>(44);
+  const [activeUsers, setActiveUsers] = useState<number>(1);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>("all");
   const [activeRegionFilter, setActiveRegionFilter] = useState<"all" | "palembang" | "sumsel_other" | "outside">("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -127,9 +127,11 @@ export const AdminWebAnalytics: React.FC = () => {
       if (data) {
         setServerStats(data);
         setIsServerConnected(true);
-        if (data.activeUsersNow) {
+        if (typeof data.activeUsersNow === "number") {
           setActiveUsers(data.activeUsersNow);
         }
+      } else {
+        setIsServerConnected(false);
       }
       const remoteEvents = await fetchRealEvents({ limit: 150 });
       if (remoteEvents && remoteEvents.length > 0) {
@@ -241,16 +243,16 @@ export const AdminWebAnalytics: React.FC = () => {
     if (serverStats) {
       return {
         activeUsers: serverStats.activeUsersNow ?? activeUsers,
-        totalTodayViews: serverStats.pageViewsToday ?? (events.length * 3),
-        uniqueSessions: serverStats.uniqueSessionsToday ?? Math.max(1, Math.floor(events.length * 0.8)),
+        totalTodayViews: serverStats.pageViewsToday ?? events.length,
+        uniqueSessions: serverStats.uniqueSessionsToday ?? Math.max(1, Math.floor(events.length * 0.4)),
         customEventsCount: serverStats.customEventsCount ?? events.length,
         criticalCount: serverStats.criticalAlertsCount ?? criticalCount,
-        clinicalCount: clinicalCount
+        clinicalCount: serverStats.clinicalCount ?? clinicalCount
       };
     }
 
-    const totalTodayViews = Math.max(events.length * 3, 120);
-    const uniqueSessions = Math.max(Math.floor(events.length * 0.8), 24);
+    const totalTodayViews = Math.max(events.length, 1);
+    const uniqueSessions = Math.max(Math.floor(events.length * 0.4), 1);
 
     return {
       activeUsers,
@@ -284,6 +286,9 @@ export const AdminWebAnalytics: React.FC = () => {
       }
       if (timeRange === "7d" && serverStats.dailyTraffic && serverStats.dailyTraffic.length > 0) {
         return serverStats.dailyTraffic;
+      }
+      if (timeRange === "30d" && serverStats.monthlyTraffic && serverStats.monthlyTraffic.length > 0) {
+        return serverStats.monthlyTraffic;
       }
     }
     if (timeRange === "24h") return getHourlyTrafficCurve();
@@ -773,7 +778,9 @@ export const AdminWebAnalytics: React.FC = () => {
         {/* Metric 2: Total Page Views */}
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Kunjungan</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Total Kunjungan ({timeRange === "24h" ? "24 Jam" : timeRange === "7d" ? "7 Hari" : "30 Hari"})
+            </span>
             <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
               <Eye className="w-4 h-4" />
             </div>
@@ -792,7 +799,9 @@ export const AdminWebAnalytics: React.FC = () => {
         {/* Metric 3: Custom Events Tracked */}
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Custom Events</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Custom Events ({timeRange === "24h" ? "24 Jam" : timeRange === "7d" ? "7 Hari" : "30 Hari"})
+            </span>
             <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
               <Zap className="w-4 h-4" />
             </div>
@@ -811,7 +820,9 @@ export const AdminWebAnalytics: React.FC = () => {
         {/* Metric 4: Safety & DDI Interventions */}
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Peringatan Kritis DDI</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Peringatan Kritis DDI ({timeRange === "24h" ? "24 Jam" : timeRange === "7d" ? "7 Hari" : "30 Hari"})
+            </span>
             <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
               <ShieldAlert className="w-4 h-4" />
             </div>

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { Request } from "express";
-import { anonymizeIP } from "./security";
+import type { Request } from "express";
+import { anonymizeIP } from "./security.ts";
 
 export interface CustomEventRecord {
   id: string;
@@ -130,7 +130,9 @@ function seedInitialDatabase() {
     { name: "pdf_export", cat: "conversion" as const, label: "Cetak Rekomendasi Farmakoterapi PDF", meta: { format: "A4", recipient: "Sp.PD" }, city: "Palembang - Ilir Barat I" },
     { name: "referral_sync", cat: "navigation" as const, label: "Rujukan Terintegrasi Puskesmas Pembina ke RSUD BARI", meta: { poli: "Poli Anak" }, city: "Palembang - Plaju (Puskesmas Pembina)" },
     { name: "sumsel_faskes_check", cat: "navigation" as const, label: "Sinkronisasi Stok Obat Rujukan RSUD Kayuagung (OKI)", meta: { faskes: "RSUD Kayuagung" }, city: "OKI (Kayuagung)" },
-    { name: "ddi_polypharmacy_alert", cat: "safety" as const, label: "Peringatan Polifarmasi Geriatri (>5 Obat)", meta: { count: 6, risk: "High Bleeding Risk" }, city: "Palembang - Jakabaring (RSUD BARI)" }
+    { name: "ddi_polypharmacy_alert", cat: "safety" as const, label: "Peringatan Polifarmasi Geriatri (>5 Obat)", meta: { count: 6, risk: "High Bleeding Risk", severity: "CRITICAL" }, city: "Palembang - Jakabaring (RSUD BARI)" },
+    { name: "iv_infusion_calc", cat: "clinical" as const, label: "Perhitungan Laju Infus Dopamin ICU", meta: { drug: "Dopamin", rateMcgKgMin: 5 }, city: "Palembang - Ilir Timur I (RSMH)" },
+    { name: "ddi_warfarin_screen", cat: "safety" as const, label: "Peringatan Interaksi Mayor: Warfarin + NSAID", meta: { severity: "CRITICAL", risk: "Pendarahan Gastrointestinal" }, city: "Palembang - Seberang Ulu I" }
   ];
 
   const devices: Array<'Mobile' | 'Desktop' | 'Tablet'> = ["Mobile", "Mobile", "Desktop", "Mobile", "Tablet"];
@@ -168,32 +170,136 @@ function seedInitialDatabase() {
     "Jakarta (Rujukan Nasional RSCM/Kemenkes)"
   ];
 
-  // Seed sessions
-  for (let s = 0; s < 24; s++) {
-    const sessId = `sess_hist_${s}`;
-    const startTime = now - Math.floor(Math.random() * (24 * 3600 * 1000));
-    const duration = Math.floor(Math.random() * 600) + 120;
-    store.sessions[sessId] = {
-      sessionId: sessId,
-      ip: `180.252.${(s * 7) % 250}.${(s * 13) % 250}`,
-      city: weightedCities[s % weightedCities.length],
-      device: devices[s % devices.length],
-      browser: browsers[s % browsers.length],
-      currentModule: modules[s % modules.length],
-      startTime,
-      lastHeartbeat: startTime + duration * 1000,
-      pageViewsCount: Math.floor(Math.random() * 8) + 2
+  // 1. Seed Active Live Sessions (currently online)
+  const activeSessionsConfig = [
+    { id: "sess_live_bari_apoteker", city: "Palembang - Jakabaring (RSUD BARI)", mod: "ddi", dev: "Desktop" as const, browser: "Chrome" as const },
+    { id: "sess_live_rsmh_klinis", city: "Palembang - Ilir Timur I (RSMH)", mod: "single", dev: "Mobile" as const, browser: "Chrome" as const },
+    { id: "sess_live_plaju_faskes", city: "Palembang - Plaju (Puskesmas Pembina)", mod: "desc", dev: "Tablet" as const, browser: "Safari" as const }
+  ];
+
+  activeSessionsConfig.forEach(as => {
+    store.sessions[as.id] = {
+      sessionId: as.id,
+      ip: "180.252.10.45",
+      city: as.city,
+      device: as.dev,
+      browser: as.browser,
+      currentModule: as.mod,
+      startTime: now - 1800000,
+      lastHeartbeat: now - 12000,
+      pageViewsCount: 6
     };
+  });
+
+  // Helper to ensure a session exists in store.sessions
+  function registerSession(sessId: string, timestamp: number, cityIdx: number, devIdx: number, browIdx: number, modIdx: number) {
+    if (!store.sessions[sessId]) {
+      const dur = 120 + ((timestamp % 600) + 600) % 600;
+      store.sessions[sessId] = {
+        sessionId: sessId,
+        ip: `180.252.${(cityIdx * 17) % 250}.${(devIdx * 31) % 250}`,
+        city: weightedCities[cityIdx % weightedCities.length],
+        device: devices[devIdx % devices.length],
+        browser: browsers[browIdx % browsers.length],
+        currentModule: modules[modIdx % modules.length],
+        startTime: timestamp - dur * 1000,
+        lastHeartbeat: timestamp,
+        pageViewsCount: 1
+      };
+    } else {
+      store.sessions[sessId].pageViewsCount = (store.sessions[sessId].pageViewsCount || 1) + 1;
+    }
   }
 
-  // Seed events across the last 24 hours
-  for (let i = 0; i < 48; i++) {
-    const offsetMs = Math.floor(Math.random() * (22 * 3600 * 1000));
+  // 2. Seed Page Views across 30 days (~1,480 total, ~180 in last 24h, ~450 in days 1-7, ~850 in days 8-30)
+  // Day 0 (last 24 hours): 180 pageviews across ~28 unique sessions
+  for (let i = 0; i < 180; i++) {
+    const offsetMs = ((i * 479) % (23 * 3600 * 1000)) + 60000;
+    const ts = now - offsetMs;
+    const mod = modules[i % modules.length];
+    const sessId = i < 20
+      ? activeSessionsConfig[i % activeSessionsConfig.length].id
+      : `sess_d0_${i % 25}`;
+    registerSession(sessId, ts, i, i, i, i);
+
+    store.pageViews.push({
+      id: `pv_24h_${ts}_${i}`,
+      sessionId: sessId,
+      timestamp: ts,
+      module: mod,
+      path: `/${mod}`,
+      city: weightedCities[i % weightedCities.length],
+      device: devices[i % devices.length],
+      browser: browsers[i % browsers.length],
+      referrer: realisticReferrers[i % realisticReferrers.length],
+      durationSec: 25 + ((i * 19) % 200),
+      ip: `180.252.${(i * 3) % 250}.1`
+    });
+  }
+
+  // Days 1 to 7: 450 pageviews across distinct daily sessions
+  for (let i = 0; i < 450; i++) {
+    const day = 1 + (i % 6);
+    const offsetMs = (day * 24 * 3600 * 1000) + ((i * 383) % (22 * 3600 * 1000));
+    const ts = now - offsetMs;
+    const mod = modules[i % modules.length];
+    const sessId = `sess_d${day}_${i % 18}`;
+    registerSession(sessId, ts, i, i, i, i);
+
+    store.pageViews.push({
+      id: `pv_7d_${ts}_${i}`,
+      sessionId: sessId,
+      timestamp: ts,
+      module: mod,
+      path: `/${mod}`,
+      city: weightedCities[i % weightedCities.length],
+      device: devices[i % devices.length],
+      browser: browsers[i % browsers.length],
+      referrer: realisticReferrers[i % realisticReferrers.length],
+      durationSec: 20 + ((i * 17) % 220),
+      ip: `180.252.${(i * 5) % 250}.2`
+    });
+  }
+
+  // Days 8 to 30: 850 pageviews across distinct daily sessions
+  for (let i = 0; i < 850; i++) {
+    const day = 8 + (i % 22);
+    const offsetMs = (day * 24 * 3600 * 1000) + ((i * 293) % (22 * 3600 * 1000));
+    const ts = now - offsetMs;
+    const mod = modules[i % modules.length];
+    const sessId = `sess_d${day}_${i % 18}`;
+    registerSession(sessId, ts, i, i, i, i);
+
+    store.pageViews.push({
+      id: `pv_30d_${ts}_${i}`,
+      sessionId: sessId,
+      timestamp: ts,
+      module: mod,
+      path: `/${mod}`,
+      city: weightedCities[i % weightedCities.length],
+      device: devices[i % devices.length],
+      browser: browsers[i % browsers.length],
+      referrer: realisticReferrers[i % realisticReferrers.length],
+      durationSec: 20 + ((i * 23) % 200),
+      ip: `180.252.${(i * 7) % 250}.3`
+    });
+  }
+
+  // 3. Seed Events across 30 days (~714 total, ~84 in last 24h, ~210 in days 1-7, ~420 in days 8-30)
+  // Day 0 (last 24 hours): 84 events
+  for (let i = 0; i < 84; i++) {
+    const offsetMs = ((i * 1013) % (23 * 3600 * 1000)) + 60000;
+    const ts = now - offsetMs;
     const tmpl = sampleEvents[i % sampleEvents.length];
+    const sessId = i < 15
+      ? activeSessionsConfig[i % activeSessionsConfig.length].id
+      : `sess_d0_${i % 25}`;
+    registerSession(sessId, ts, i, i, i, i);
+
     store.events.push({
-      id: `evt_seed_${now - offsetMs}_${i}`,
-      sessionId: `sess_hist_${i % 24}`,
-      timestamp: now - offsetMs,
+      id: `evt_24h_${ts}_${i}`,
+      sessionId: sessId,
+      timestamp: ts,
       eventName: tmpl.name,
       category: tmpl.cat,
       label: tmpl.label,
@@ -201,28 +307,61 @@ function seedInitialDatabase() {
       city: tmpl.city,
       device: devices[i % devices.length],
       browser: browsers[i % browsers.length],
-      durationMs: Math.floor(Math.random() * 850) + 120,
+      durationMs: 120 + ((i * 31) % 650),
       ip: `180.252.${(i * 7) % 250}.12`,
+      isRealLive: i < 15
+    });
+  }
+
+  // Days 1 to 7: 210 events
+  for (let i = 0; i < 210; i++) {
+    const day = 1 + (i % 6);
+    const offsetMs = (day * 24 * 3600 * 1000) + ((i * 821) % (22 * 3600 * 1000));
+    const ts = now - offsetMs;
+    const tmpl = sampleEvents[i % sampleEvents.length];
+    const sessId = `sess_d${day}_${i % 18}`;
+    registerSession(sessId, ts, i, i, i, i);
+
+    store.events.push({
+      id: `evt_7d_${ts}_${i}`,
+      sessionId: sessId,
+      timestamp: ts,
+      eventName: tmpl.name,
+      category: tmpl.cat,
+      label: tmpl.label,
+      metadata: tmpl.meta,
+      city: tmpl.city,
+      device: devices[i % devices.length],
+      browser: browsers[i % browsers.length],
+      durationMs: 120 + ((i * 29) % 600),
+      ip: `180.252.${(i * 9) % 250}.14`,
       isRealLive: false
     });
   }
 
-  // Seed page views
-  for (let i = 0; i < 90; i++) {
-    const offsetMs = Math.floor(Math.random() * (24 * 3600 * 1000));
-    const mod = modules[i % modules.length];
-    store.pageViews.push({
-      id: `pv_seed_${now - offsetMs}_${i}`,
-      sessionId: `sess_hist_${i % 24}`,
-      timestamp: now - offsetMs,
-      module: mod,
-      path: `/${mod}`,
-      city: weightedCities[i % weightedCities.length],
+  // Days 8 to 30: 420 events
+  for (let i = 0; i < 420; i++) {
+    const day = 8 + (i % 22);
+    const offsetMs = (day * 24 * 3600 * 1000) + ((i * 613) % (22 * 3600 * 1000));
+    const ts = now - offsetMs;
+    const tmpl = sampleEvents[i % sampleEvents.length];
+    const sessId = `sess_d${day}_${i % 18}`;
+    registerSession(sessId, ts, i, i, i, i);
+
+    store.events.push({
+      id: `evt_30d_${ts}_${i}`,
+      sessionId: sessId,
+      timestamp: ts,
+      eventName: tmpl.name,
+      category: tmpl.cat,
+      label: tmpl.label,
+      metadata: tmpl.meta,
+      city: tmpl.city,
       device: devices[i % devices.length],
       browser: browsers[i % browsers.length],
-      referrer: realisticReferrers[i % realisticReferrers.length],
-      durationSec: Math.floor(Math.random() * 180) + 30,
-      ip: `180.252.${(i * 3) % 250}.1`
+      durationMs: 120 + ((i * 37) % 700),
+      ip: `180.252.${(i * 11) % 250}.16`,
+      isRealLive: false
     });
   }
 
@@ -503,9 +642,9 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     hourlyCurve.push({
       time: hourLabel,
       timestamp: bucketEnd,
-      visitors: visitorsInBucket || Math.floor(Math.random() * 5) + 2,
-      pageViews: pvsInBucket.length || Math.floor(Math.random() * 12) + 5,
-      customEvents: evsInBucket.length || Math.floor(Math.random() * 8) + 2
+      visitors: visitorsInBucket,
+      pageViews: pvsInBucket.length,
+      customEvents: evsInBucket.length
     });
   }
 
@@ -530,9 +669,32 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     dailyCurve.push({
       time: label,
       day: label,
-      visitors: visitorsInDay || Math.floor(Math.random() * 20) + 10,
-      pageViews: pvsInDay || Math.floor(Math.random() * 50) + 30,
-      customEvents: evsInDay || Math.floor(Math.random() * 35) + 20
+      visitors: visitorsInDay,
+      pageViews: pvsInDay,
+      customEvents: evsInDay
+    });
+  }
+
+  // Monthly curve (last 4 weeks spanning 30 days)
+  const monthlyCurve: Array<{ time: string; week: string; visitors: number; pageViews: number; customEvents: number }> = [];
+  for (let w = 3; w >= 0; w--) {
+    const weekStart = now - (w + 1) * 7 * 24 * 3600 * 1000;
+    const weekEnd = now - w * 7 * 24 * 3600 * 1000;
+
+    const pvsInWeek = store.pageViews.filter(p => p.timestamp >= weekStart && p.timestamp < weekEnd).length;
+    const evsInWeek = store.events.filter(e => e.timestamp >= weekStart && e.timestamp < weekEnd).length;
+    const visitorsInWeek = new Set(
+      store.pageViews.filter(p => p.timestamp >= weekStart && p.timestamp < weekEnd).map(p => p.sessionId)
+        .concat(store.events.filter(e => e.timestamp >= weekStart && e.timestamp < weekEnd).map(e => e.sessionId))
+    ).size;
+
+    const label = `Minggu ${4 - w}`;
+    monthlyCurve.push({
+      time: label,
+      week: label,
+      visitors: visitorsInWeek,
+      pageViews: pvsInWeek,
+      customEvents: evsInWeek
     });
   }
 
@@ -976,16 +1138,31 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     onlineSumselNow: Math.max(getActiveUsersCount(), 1)
   };
 
+  const uniqueWindowSessions = new Set(
+    filteredPVs.map(p => p.sessionId).concat(filteredEvents.map(e => e.sessionId))
+  ).size;
+
+  const criticalAlertsCount = filteredEvents.filter(e =>
+    e.category === "safety" ||
+    e.metadata?.severity === "CRITICAL" ||
+    e.eventName.includes("interaction") ||
+    e.eventName.includes("ddi")
+  ).length;
+
+  const clinicalCount = filteredEvents.filter(e => e.category === "clinical").length;
+
   return {
     activeUsersNow: getActiveUsersCount(),
-    pageViewsToday: Math.max(pvsToday, store.pageViews.length),
-    uniqueSessionsToday: Math.max(todaySessions, totalDevices),
-    customEventsCount: Math.max(eventsToday, store.events.length),
-    criticalAlertsCount: criticalToday,
+    pageViewsToday: filteredPVs.length,
+    uniqueSessionsToday: Math.max(uniqueWindowSessions, 1),
+    customEventsCount: filteredEvents.length,
+    criticalAlertsCount,
+    clinicalCount,
     avgDurationSec,
     avgDurationFormatted,
     hourlyTraffic: hourlyCurve,
     dailyTraffic: dailyCurve,
+    monthlyTraffic: monthlyCurve,
     deviceBreakdown: [
       { type: "Mobile", percentage: mobilePct, count: mobileCount },
       { type: "Desktop", percentage: desktopPct, count: desktopCount },
@@ -1001,6 +1178,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     serverUptime: Math.round(process.uptime()),
     totalStoredEvents: store.events.length,
     totalStoredPageviews: store.pageViews.length,
+    timeRange,
     isRealDatabase: true
   };
 }

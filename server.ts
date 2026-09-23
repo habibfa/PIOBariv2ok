@@ -11,14 +11,14 @@ import {
   getAggregatedAnalytics,
   getStoredEvents,
   resetAnalyticsStore
-} from "./server/analyticsEngine";
+} from "./server/analyticsEngine.ts";
 import {
   corsMiddleware,
   securityHeadersMiddleware,
   createRateLimiter,
   sanitizeInputText,
   verifyAdminAuth
-} from "./server/security";
+} from "./server/security.ts";
 
 dotenv.config();
 
@@ -38,7 +38,7 @@ async function startServer() {
   app.use(compression());
   app.use(express.json({ limit: "500kb" }));
 
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Rate Limiters
   const aiRateLimiter = createRateLimiter({
