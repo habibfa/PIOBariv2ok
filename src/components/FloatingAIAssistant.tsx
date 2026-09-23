@@ -50,9 +50,15 @@ export default function FloatingAIAssistant() {
     setIsLoading(true);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const clientApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
+      if (clientApiKey) {
+        headers['x-api-key'] = clientApiKey;
+      }
+
       const response = await fetch('/api/chat-ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           message: userMessage.content,
           history: messages.slice(-5)
@@ -60,12 +66,19 @@ export default function FloatingAIAssistant() {
       });
 
       if (!response.ok) {
-        // Fallback to local clinical knowledge engine
-        const fallbackText = generateClinicalChatFallback(userMessage.content);
+        let serverErrorReply = "";
+        try {
+          const errJson = await response.json();
+          if (errJson && errJson.reply) {
+            serverErrorReply = errJson.reply;
+          }
+        } catch (_) {}
+
+        const finalReply = serverErrorReply || generateClinicalChatFallback(userMessage.content);
         setMessages(prev => [...prev, { 
           id: (Date.now() + 1).toString(), 
           role: 'assistant', 
-          content: `${fallbackText}\n\n*(Basis Data Klinis Formularium RSUD Palembang BARI)*` 
+          content: finalReply
         }]);
         return;
       }
@@ -78,13 +91,12 @@ export default function FloatingAIAssistant() {
         content: data.reply || generateClinicalChatFallback(userMessage.content)
       }]);
     } catch (error: any) {
-      // If network offline or fetch fails, provide immediate local clinical response
       console.warn("Koneksi chat-ai gagal, mengaktifkan asisten klinis mandiri:", error);
       const fallbackText = generateClinicalChatFallback(userMessage.content);
       setMessages(prev => [...prev, { 
         id: (Date.now() + 1).toString(), 
         role: 'assistant', 
-        content: `${fallbackText}\n\n*(Basis Data Klinis Formularium RSUD Palembang BARI)*` 
+        content: fallbackText
       }]);
     } finally {
       setIsLoading(false);

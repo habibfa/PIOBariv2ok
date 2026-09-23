@@ -77,7 +77,8 @@ const generalRateLimiter = createRateLimiter({
 });
 
 // Helper to reliably find Gemini API key across Vercel / Cloud Run / Local env names
-function getApiKey(): string | undefined {
+function getApiKey(req?: any): string | undefined {
+  const headerKey = req?.headers?.["x-api-key"] || req?.headers?.["authorization"]?.replace(/^Bearer\s+/i, "");
   return (
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
@@ -85,13 +86,25 @@ function getApiKey(): string | undefined {
     process.env.VITE_GOOGLE_API_KEY ||
     process.env.API_KEY ||
     process.env.GEMINI_KEY ||
-    process.env.GOOGLE_GENAI_API_KEY
+    process.env.GOOGLE_GENAI_API_KEY ||
+    (typeof headerKey === "string" && headerKey.trim().length > 10 ? headerKey.trim() : undefined)
   )?.trim();
 }
 
 // Initialize Gemini client safely (lazy)
 let aiClient: GoogleGenAI | null = null;
-function getAIClient(): GoogleGenAI | null {
+function getAIClient(req?: any): GoogleGenAI | null {
+  const customKey = getApiKey(req);
+  if (customKey && customKey !== process.env.GEMINI_API_KEY) {
+    return new GoogleGenAI({
+      apiKey: customKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+  }
   if (aiClient) return aiClient;
   const apiKey = getApiKey();
   if (apiKey) {

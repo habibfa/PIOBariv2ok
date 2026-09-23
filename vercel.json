@@ -41,24 +41,12 @@
   ],
   "rewrites": [
     {
-      "source": "/api/chat-ai",
-      "destination": "/api/chat-ai.ts"
+      "source": "/api/analytics/:path*",
+      "destination": "/api/analytics"
     },
     {
-      "source": "/api/disease-info",
-      "destination": "/api/disease-info.ts"
-    },
-    {
-      "source": "/api/soap-ai",
-      "destination": "/api/soap-ai.ts"
-    },
-    {
-      "source": "/api/calculate-ai",
-      "destination": "/api/calculate-ai.ts"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "source": "/((?!api/.*).*)",
+      "destination": "/index.html"
     }
   ]
 }

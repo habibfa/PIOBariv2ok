@@ -4,7 +4,8 @@ import { generateClinicalChatFallback } from "../src/utils/clinicalAssistantFall
 
 dotenv.config();
 
-function getApiKey(): string | undefined {
+function getApiKey(req?: any): string | undefined {
+  const headerKey = req?.headers?.["x-api-key"] || req?.headers?.["authorization"]?.replace(/^Bearer\s+/i, "");
   return (
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
@@ -12,25 +13,22 @@ function getApiKey(): string | undefined {
     process.env.VITE_GOOGLE_API_KEY ||
     process.env.API_KEY ||
     process.env.GEMINI_KEY ||
-    process.env.GOOGLE_GENAI_API_KEY
+    process.env.GOOGLE_GENAI_API_KEY ||
+    (typeof headerKey === "string" && headerKey.trim().length > 10 ? headerKey.trim() : undefined)
   )?.trim();
 }
 
-let aiClient: GoogleGenAI | null = null;
-function getAIClient(): GoogleGenAI | null {
-  if (aiClient) return aiClient;
-  const apiKey = getApiKey();
-  if (apiKey) {
-    aiClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
+function getAIClient(req?: any): GoogleGenAI | null {
+  const apiKey = getApiKey(req);
+  if (!apiKey) return null;
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
       },
-    });
-  }
-  return aiClient;
+    },
+  });
 }
 
 const CANDIDATE_MODELS = [
@@ -40,7 +38,7 @@ const CANDIDATE_MODELS = [
 ];
 
 async function callGemini(ai: GoogleGenAI, prompt: string, systemInstruction: string): Promise<string> {
-  const timeoutMs = 12000;
+  const timeoutMs = 7000;
   let lastError: any = null;
 
   for (const model of CANDIDATE_MODELS) {
@@ -93,10 +91,12 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Pesan tidak boleh kosong." });
     }
 
-    const ai = getAIClient();
+    const ai = getAIClient(req);
     if (!ai) {
       const fallback = generateClinicalChatFallback(message);
-      return res.status(200).json({ reply: fallback });
+      return res.status(200).json({ 
+        reply: `${fallback}\n\n*(Catatan Konfigurasi Vercel: Untuk mengaktifkan respon model Gemini AI secara langsung, tambahkan \`GEMINI_API_KEY\` pada Project Settings > Environment Variables di dashboard Vercel Anda)*` 
+      });
     }
 
     const systemInstruction = `Kamu adalah "Asisten AI Klinis PIOBARI" (Pelayanan Informasi Obat RSUD Palembang BARI).

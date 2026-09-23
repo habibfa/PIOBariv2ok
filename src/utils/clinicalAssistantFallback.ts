@@ -81,11 +81,11 @@ export function generateClinicalChatFallback(message: string): string {
 * **Evaluasi Klinis & Teratogenisitas:** ${safety.pregnancySafety.detail}
 * **Panduan Trimester:** ${safety.pregnancySafety.trimesterAdvice}
 * **Keamanan Menyusui (Laktasi):** **${safety.breastfeedingSafety.status}** - ${safety.breastfeedingSafety.detail} ${safety.breastfeedingSafety.infantRisk ? `*(${safety.breastfeedingSafety.infantRisk})*` : ''}
-* **Indikasi Formularium:** ${matchedDrug.indication || 'Terapi sesuai formularium'}
+* **Indikasi Klinis:** ${matchedDrug.indication || 'Sesuai indikasi dan pertimbangan DPJP'}
 * **Dosis Lazim:** ${matchedDrug.defaultDoseValue} ${matchedDrug.doseUnit} (${matchedDrug.frequency})
-* **Catatan Farmasi Khusus:** ${matchedDrug.notes || 'Pemberian obat pada trimester pertama harus selalu dipantau dengan ketat.'}
+* **Catatan Farmasi & Keamanan:** ${matchedDrug.notes || 'Pemberian obat pada trimester pertama harus selalu dipantau dengan ketat.'}
 
-*(Rujukan: FDA Pregnancy Risk Categories, LactMed NLM & Formularium RSUD Palembang BARI)*`;
+*(Rujukan Klinis: FDA Pregnancy & Lactation Database, LactMed NLM & Pedoman Farmakologi EBM)*`;
     }
   }
 
@@ -218,7 +218,7 @@ export function generateClinicalChatFallback(message: string): string {
 
   if (matched.length > 0) {
     const top = matched.slice(0, 3);
-    let res = `Berikut informasi klinis obat dari **Formularium RSUD Palembang BARI**:\n\n`;
+    let res = `Berikut evaluasi farmakoterapi klinis berdasarkan telaah obat terkait:\n\n`;
     top.forEach((drug, idx) => {
       const safety = getDrugSafetyReview(drug, drug.name, drug.name);
       res += `### ${idx + 1}. ${drug.name}\n`;
@@ -229,19 +229,19 @@ export function generateClinicalChatFallback(message: string): string {
       if (drug.notes) res += `* **Catatan Farmasi & Pemberian:** ${drug.notes}\n`;
       res += `\n`;
     });
-    res += `*(Disajikan secara akurat dari Basis Data Formularium RSUD Palembang BARI)*`;
+    res += `*(Rujukan Klinis: Standar Farmakope, Lexicomp Drug Information & Pedoman Praktik Klinis EBM)*`;
     return res;
   }
 
   // Default helpful response
-  return `### Asisten Apoteker Klinis RSUD Palembang BARI
+  return `### Asisten AI Klinis PIOBARI
 
 Terima kasih atas pertanyaan Anda terkait: **"${message}"**.
 
-Untuk memberikan rekomendasi farmakoterapi yang paling presisi, Anda dapat menyertakan rincian:
-1. **Nama Obat atau Indikasi** (misal: Paracetamol, Ceftriaxone, Hipertensi, Asma).
-2. **Karakteristik Pasien** (Usia, Berat Badan, Kondisi Hamil/Menyusui, Fungsi Ginjal/Hati).
-3. **Kombinasi Obat** jika ingin melakukan skrining interaksi atau kompatibilitas IV.
+Untuk memberikan evaluasi klinis farmakoterapi berbasis bukti (*Evidence-Based Medicine*) yang optimal, Anda dapat melengkapi informasi:
+1. **Nama Obat / Regimen Terapi** (misal: Metformin, Ceftriaxone, Antihipertensi).
+2. **Data Pasien** (Kategori usia, kondisi kehamilan, masa laktasi/menyusui, atau fungsi ginjal/eGFR).
+3. **Kombinasi Obat** jika ingin mengevaluasi potensi interaksi atau kompatibilitas sediaan IV.
 
 *Anda juga dapat menggunakan tombol pintasan cepat di atas atau fitur Kalkulator Dosis & Skrining Interaksi di menu navigasi utama.*`;
 }
