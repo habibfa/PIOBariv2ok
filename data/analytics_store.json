@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": 1790126691286,
-  "lastUpdated": 1790138181063,
+  "lastUpdated": 1790141912089,
   "sessions": {
     "sess_live_bari_apoteker": {
       "sessionId": "sess_live_bari_apoteker",
@@ -2695,11 +2695,45 @@
       "browser": "Chrome",
       "currentModule": "desc",
       "startTime": 1790136281465,
-      "lastHeartbeat": 1790138180064,
-      "pageViewsCount": 8
+      "lastHeartbeat": 1790141911089,
+      "pageViewsCount": 10
     }
   },
   "events": [
+    {
+      "id": "evt_1790138335304_73uv",
+      "sessionId": "sess_1790126028581_r37svu",
+      "timestamp": 1790138335304,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 277,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790138335299_isex",
+      "sessionId": "sess_1790126028581_r37svu",
+      "timestamp": 1790138335299,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 394,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
     {
       "id": "evt_1790138057488_xstq",
       "sessionId": "sess_1790126028581_r37svu",
@@ -15871,6 +15905,32 @@
     }
   ],
   "pageViews": [
+    {
+      "id": "pv_1790138335301_dh95",
+      "sessionId": "sess_1790126028581_r37svu",
+      "timestamp": 1790138335301,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790138335297_l95v",
+      "sessionId": "sess_1790126028581_r37svu",
+      "timestamp": 1790138335297,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
     {
       "id": "pv_1790138056613_9a88",
       "sessionId": "sess_1790126028581_r37svu",
