@@ -138,3 +138,46 @@ body {
   contain-intrinsic-size: 0 160px;
 }
 
+/* LASA / NORUM Subtle Pulsing Animation for Quick Formularium Screening */
+@keyframes lasaRowPulse {
+  0%, 100% {
+    background-color: rgba(254, 243, 199, 0.35); /* soft amber tint */
+    box-shadow: inset 4px 0 0 0 #f59e0b;
+  }
+  50% {
+    background-color: rgba(254, 240, 138, 0.72); /* warmer amber pulse */
+    box-shadow: inset 5px 0 0 0 #d97706, inset 0 0 14px rgba(245, 158, 11, 0.22);
+  }
+}
+
+@keyframes lasaBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+  }
+}
+
+.drug-table-row {
+  position: relative;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.drug-table-row.has-lasa,
+.drug-table-row-lasa {
+  animation: lasaRowPulse 2.4s ease-in-out infinite;
+}
+
+.drug-table-row.has-lasa:hover,
+.drug-table-row-lasa:hover {
+  background-color: rgba(254, 240, 138, 0.88) !important;
+}
+
+.drug-table-row.has-lasa .lasa-badge,
+.drug-table-row-lasa .lasa-badge {
+  animation: lasaBadgePulse 2.4s ease-in-out infinite;
+}
+

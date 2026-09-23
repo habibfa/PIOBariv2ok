@@ -399,201 +399,312 @@ const sanitizeDrugPresets = (list: DrugPreset[]): DrugPreset[] => {
   return result;
 };
 
-// Helper to categorize each drug
-const getDrugCategory = (id: string, name: string): { label: string; color: string; bg: string; border: string } => {
-  const lowercaseId = id.toLowerCase();
-  const lowercaseName = name.toLowerCase();
-
-  if (
-    lowercaseId.includes("amoxicillin") ||
-    lowercaseId.includes("cefixime") ||
-    lowercaseId.includes("gentamicin") ||
-    lowercaseId.includes("erythromycin") ||
-    lowercaseId.includes("ceftriaxone") ||
-    lowercaseId.includes("cefadroxil") ||
-    lowercaseId.includes("cotrimoxazole") ||
-    lowercaseId.includes("azithromycin") ||
-    lowercaseId.includes("metronidazole") ||
-    lowercaseId.includes("chloramphenicol") ||
-    lowercaseId.includes("clindamycin") ||
-    lowercaseId.includes("nystatin") ||
-    lowercaseId.includes("fluconazole") ||
-    lowercaseId.includes("clarithromycin") ||
-    lowercaseId.includes("cefaclor") ||
-    lowercaseId.includes("spiramycin") ||
-    lowercaseId.includes("colistin") ||
-    lowercaseId.includes("amove") ||
-    lowercaseId.includes("griseofulvin") ||
-    lowercaseId.includes("isoniazid") ||
-    lowercaseId.includes("josamycin") ||
-    lowercaseId.includes("ketoconazole") ||
-    lowercaseId.includes("levofloxacin") ||
-    lowercaseId.includes("neomycin") ||
-    lowercaseId.includes("rifampicin") ||
-    lowercaseId.includes("tetracycline") ||
-    lowercaseId.includes("vancomycin") ||
-    lowercaseId.includes("viccillin") ||
-    lowercaseId.includes("ampicillin") ||
-    lowercaseId.includes("cipro") ||
-    lowercaseId.includes("baquinor") ||
-    lowercaseId.includes("zidovudine") ||
-    lowercaseName.includes("ciprofloxacin") ||
-    lowercaseName.includes("antibiotik") ||
-    lowercaseName.includes("antivirus") ||
-    lowercaseName.includes("antifungal") ||
-    lowercaseName.includes("viccillin") ||
-    lowercaseName.includes("vancomycin")
-  ) {
-    return { label: "Antibiotik & Anti-infeksi", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
+// Helper to categorize each drug into accurate clinical therapeutic categories
+export const getDrugCategory = (id: string, name: string, indication?: string, notes?: string): { label: string; color: string; bg: string; border: string } => {
+  let combined = `${id} ${name} ${indication || ""} ${notes || ""}`.toLowerCase();
+  
+  if (!indication && !notes) {
+    const found = INITIAL_DRUG_PRESETS.find(p => p.id === id || p.name === name);
+    if (found) {
+      combined = `${id} ${name} ${found.indication || ""} ${found.notes || ""}`.toLowerCase();
+    }
   }
 
+  const has = (...terms: string[]) => terms.some(t => combined.includes(t.toLowerCase()));
+
+  // 1. Diagnostik & Khusus
   if (
-    lowercaseId.includes("valisanbe") ||
-    lowercaseId.includes("diazepam") ||
-    lowercaseId.includes("clobazam") ||
-    lowercaseId.includes("lorazepam") ||
-    lowercaseId.includes("alprazolam") ||
-    lowercaseId.includes("phenobarbital") ||
-    lowercaseId.includes("phenytoin") ||
-    lowercaseId.includes("carbamazepine") ||
-    lowercaseId.includes("gabapentin") ||
-    lowercaseName.includes("valisanbe") ||
-    lowercaseName.includes("diazepam")
+    has("iopamiro", "omnipaque", "hexiol", "media kontras", "bahan kontras", "betiatide", "jelly usg", "usg jelly", "lubrikan transduser", "sirplus", "ventisorb", "absorben karbon", "pelarut atau pemanis")
   ) {
-    return { label: "Sistem Saraf & Sedatif", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-100" };
+    return { label: "Diagnostik & Khusus", color: "text-stone-700", bg: "bg-stone-50", border: "border-stone-200" };
   }
 
+  // 2. Onkologi & Imunosupresan
   if (
-    lowercaseId.includes("paracetamol") ||
-    lowercaseId.includes("ibuprofen") ||
-    lowercaseId.includes("mefenamic") ||
-    lowercaseId.includes("diclofenac") ||
-    lowercaseId.includes("meloxicam") ||
-    lowercaseId.includes("ketorolac") ||
-    lowercaseId.includes("tramadol") ||
-    lowercaseId.includes("naproxen") ||
-    lowercaseId.includes("fentanyl") ||
-    lowercaseId.includes("indomethacin") ||
-    lowercaseId.includes("aspirin") ||
-    lowercaseId.includes("morphine") ||
-    lowercaseId.includes("noncort") ||
-    lowercaseName.includes("noncort") ||
-    lowercaseName.includes("nyeri") ||
-    lowercaseName.includes("demam") ||
-    lowercaseName.includes("tramadol")
+    has(
+      "doxorubicin", "doksorubisin", "carboplatin", "cisplatin", "paclitaxel", "tamoxifen",
+      "methotrexate", "fluorouracil", "cyclophosphamide", "vincristine", "vinblastine",
+      "bleomycin", "gemcitabine", "capecitabine", "rituximab", "trastuzumab", "imatinib",
+      "erlotinib", "cosibelimab", "dostarlimab", "durvalumab", "cemiplimab", "imuran",
+      "azathioprine", "azatioprin", "myfortic", "mycophenolate", "mikofenolat", "sandimmun",
+      "cyclosporine", "siklosporin", "tocilizumab", "sitostatika", "antineoplastik",
+      "kemoterapi", "kanker", "leukemia", "penolakan transplantasi", "penolakan organ", "badai sitokin"
+    ) || (has("onc") && !has("noncort"))
   ) {
-    return { label: "Analgetik & Antipiretik", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-100" };
+    return { label: "Onkologi & Imunosupresan", color: "text-fuchsia-700", bg: "bg-fuchsia-50", border: "border-fuchsia-100" };
   }
 
+  // 3. Vaksin & Imunologi
   if (
-    lowercaseId.includes("propranolol") ||
-    lowercaseId.includes("spironolactone") ||
-    lowercaseId.includes("bisoprolol") ||
-    lowercaseId.includes("concor") ||
-    lowercaseName.includes("concor") ||
-    lowercaseId.includes("digoxin") ||
-    lowercaseId.includes("digoksin") ||
-    lowercaseName.includes("digoksin") ||
-    lowercaseId.includes("diltiazem") ||
-    lowercaseName.includes("diltiazem") ||
-    lowercaseId.includes("dobutamin") ||
-    lowercaseName.includes("dobutamin") ||
-    lowercaseId.includes("dobutamine") ||
-    lowercaseId.includes("enalapril") ||
-    lowercaseId.includes("furosemide") ||
-    lowercaseId.includes("heparin") ||
-    lowercaseId.includes("clopidogrel") ||
-    lowercaseId.includes("nifedipine") ||
-    lowercaseId.includes("warfarin") ||
-    lowercaseId.includes("amlodipine") ||
-    lowercaseId.includes("candesartan") ||
-    lowercaseId.includes("captopril") ||
-    lowercaseId.includes("uperio") ||
-    lowercaseId.includes("sacubitril") ||
-    lowercaseId.includes("valsartan") ||
-    lowercaseId.includes("thrombophob") ||
-    lowercaseName.includes("uperio") ||
-    lowercaseName.includes("thrombophob")
+    has(
+      "vaksin", "vaccine", "imunisasi", "tetagam", "verorab", "rabies", "tetanus toxoid",
+      "diphteria antitoxin", "diphteri tetanus", "pentabio", "bcg", "campak", "polio",
+      "rotarix", "rotavirus", "covovax", "sinovac", "pfizer", "pneumococcal", "pcv",
+      "serum anti", "biosave", "immunoglobulin", "imunoglobulin", "cholera"
+    )
+  ) {
+    return { label: "Vaksin & Imunologi", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-100" };
+  }
+
+  // 4. Anestesi & Pelemas Otot
+  if (
+    has(
+      "anestesi", "anesthesia", "lidocaine", "lidokain", "bupivacaine", "bupivakain",
+      "propofol", "ketamine", "ketamin", "rocuronium", "atracurium", "vecuronium",
+      "isoflurane", "sevoflurane", "halothane", "terrell", "tiopol", "thiopental",
+      "xylocaine", "xylestesin", "pecuron", "notrixum", "tramus", "ecron", "dexmeto",
+      "dexmedetomidine", "icunes", "kabimidine", "relaksasi otot rangka", "intubasi",
+      "pelemas otot", "sedasi pasien di icu", "induksi anestesi"
+    )
+  ) {
+    return { label: "Anestesi & Pelemas Otot", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-100" };
+  }
+
+  // 5. Mata & THT
+  if (
+    has(
+      "glaukoma", "intraokular", "tetes mata", "eye drop", "timolol", "travatan",
+      "cendolyteers", "cendo", "latanoprost", "tetes telinga", "ear drop", "otopain",
+      "tarivid otic", "vasola", "flamar opht", "blephasep", "blefaritis", "genisone",
+      "salep mata", "phenol glycerol", "kotoran telinga", "radang mata", "katarak"
+    )
+  ) {
+    return { label: "Mata & THT", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-100" };
+  }
+
+  // 6. Cairan Intravena & Elektrolit
+  if (
+    has(
+      "ringer laktat", "ringer fundin", "rl ", "rl_", "tutofusin", "tutosol", "ka-en", "kaen",
+      "asering", "wida", "water for", "pelarut sediaan", "air steril untuk injeksi",
+      "nacl", "natrium klorida", "potassium chloride", "kalium klorida", "ksr",
+      "kalium aspartat", "kcl", "dextrose", "glukosa 5%", "glukosa 10%", "glukosa 40%",
+      "meylon", "natrium bikarbonat", "bikarbonat", "voluven", "volulyte", "manitol",
+      "mannitol", "martos 10", "gelafusal", "fimahes", "calcii gluconas", "kalsium glukonat",
+      "rumatan cairan", "rehidrasi", "hipovolemia", "asidosis metabolik",
+      "cairan dan nutrisi parenteral", "suplai karbohidrat dan cairan", "keseimbangan elektrolit"
+    )
+  ) {
+    return { label: "Cairan Intravena & Elektrolit", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-100" };
+  }
+
+  // 7. Dermatologi & Topikal
+  if (
+    has(
+      "bioplacenton", "burnazin", "silver sulfadiazine", "scabimite", "permethrin",
+      "urea krim", "keratolitik", "thrombogel", "trichloroacetic", "viorex", "antiseptik kulit",
+      "desinfeksi kulit", "luka bakar", "kaviodin", "povidon iodin", "softa man", "lanolin",
+      "kloderma", "lexacorton", "mofacort", "motaderm", "soft u derm", "pirotop", "ketomed scalp",
+      "liquor carbonatis", "bedak salisil", "salisil", "biang keringat", "carmed", "fusycom",
+      "gentamycin 5 gm", "desoximetasone", "chkm", "borax glycerin", "gom", "kenalog in orabase",
+      "degirol", "sariawan", "mukosa mulut", "saluran akar gigi", "psoriasis", "dermatitis seboroik",
+      "puting susu pecah", "kulit kering bersisik", "kutil", "kondiloma", "memar", "phlebitis", "hematoma"
+    ) || (has("krim", "salep", "gel ") && !has("oral", "mata", "telinga", "injeksi"))
+  ) {
+    return { label: "Dermatologi & Topikal", color: "text-amber-800", bg: "bg-amber-50", border: "border-amber-200" };
+  }
+
+  // 8. Kardiovaskular & Diuretik (Evaluasi utama sebelum Nutrisi/Suplemen)
+  if (
+    has(
+      "propranolol", "spironolactone", "bisoprolol", "concor", "digoxin", "digoksin",
+      "diltiazem", "dobutamin", "dobutamine", "enalapril", "furosemide", "heparin",
+      "clopidogrel", "nifedipine", "nifedipin", "warfarin", "amlodipine", "amlodipin", "candesartan", "captopril",
+      "uperio", "sacubitril", "valsartan", "losartan", "irbesartan", "telmisartan",
+      "thrombophob", "nicardipine", "verapamil", "ramipril", "lisinopril", "atenolol",
+      "carvedilol", "hct", "hydrochlorothiazide", "dopamine", "dopamin", "cetadop",
+      "epinephrine", "epinefrin", "norepinephrine", "norepinefrin", "norephinephrine",
+      "enoxaparin", "fondaparinux", "xarelto", "rivaroxaban", "ticagrelor", "aspilets",
+      "thrombo aspilets", "cholestat", "simvastatin", "atorvastatin", "rosuvastatin",
+      "fenofibrate", "gemfibrozil", "tiaryt", "amiodarone", "trovilon", "tranexamic",
+      "traneksamat", "cilostazol", "pletaal", "inviclot", "lovenox", "dikumarol",
+      "hemapo", "renogen", "hipertensi", "angina", "aritmia", "jantung", "antiplatelet",
+      "antikoagulan", "tromboemboli", "perdarahan", "klaudikasio intermiten",
+      "anemia akibat gagal ginjal", "syok kardiogenik", "calcium channel blocker", "saluran kalsium"
+    )
   ) {
     return { label: "Kardiovaskular & Diuretik", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
   }
 
+  // 9. Antibiotik & Anti-infeksi
   if (
-    lowercaseId.includes("salbutamol") ||
-    lowercaseId.includes("ambroxol") ||
-    lowercaseId.includes("glyceryl") ||
-    lowercaseId.includes("pseudoephedrine") ||
-    lowercaseId.includes("theophylline") ||
-    lowercaseId.includes("acetylcysteine") ||
-    lowercaseId.includes("aminophylline") ||
-    lowercaseId.includes("ipratropium") ||
-    lowercaseId.includes("dextromethorphan") ||
-    lowercaseId.includes("diphenhydramine") ||
-    lowercaseId.includes("bromhexine") ||
-    lowercaseId.includes("budesonide") ||
-    lowercaseId.includes("xylometazoline") ||
-    lowercaseId.includes("vectrine") ||
-    lowercaseId.includes("erdosteine") ||
-    lowercaseId.includes("cetirizine") ||
-    lowercaseName.includes("cetirizine") ||
-    lowercaseName.includes("asma") ||
-    lowercaseName.includes("batuk") ||
-    lowercaseName.includes("vectrine")
+    has(
+      "amoxicillin", "amoksisilin", "cefixime", "sefiksim", "gentamicin", "erythromycin",
+      "ceftriaxone", "seftriakson", "cefadroxil", "cotrimoxazole", "azithromycin",
+      "metronidazole", "chloramphenicol", "clindamycin", "nystatin", "fluconazole",
+      "clarithromycin", "cefaclor", "spiramycin", "colistin", "amove", "griseofulvin",
+      "isoniazid", "josamycin", "ketoconazole", "levofloxacin", "neomycin", "rifampicin",
+      "tetracycline", "vancomycin", "viccillin", "ampicillin", "cipro", "baquinor",
+      "zidovudine", "antibiotik", "antivirus", "antifungal", "antijamur", "antibakteri",
+      "terpacef", "vancep", "zidifec", "zistic", "zovirax", "acyclovir", "asiklovir",
+      "valacyclovir", "oseltamivir", "favipiravir", "itraconazole", "amphotericin",
+      "albendazole", "mebendazole", "pyrantel", "pyrazinamide", "ethambutol", "streptomycin",
+      "claneksi", "erysanbe", "ofloxacin", "tenofovir", "vagizol", "zoloral", "demeclocycline",
+      "dirithromycin", "biothicol", "thiamphenicol", "remdesivir", "desrem", "remeva",
+      "remidia", "movfor", "molnupiravir", "covid", "chloroquin", "klorokuin", "primaquine",
+      "primakuin", "dhp", "frimal", "riboquin", "sulfadoxin", "pirimetamin", "malaria",
+      "infeksi bakteri", "infeksi jamur", "infeksi virus", "tbc", "tuberkulosis"
+    )
+  ) {
+    return { label: "Antibiotik & Anti-infeksi", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
+  }
+
+  // 10. Sistem Saraf & Psikiatri
+  if (
+    has(
+      "valisanbe", "diazepam", "clobazam", "lorazepam", "alprazolam", "braxidin",
+      "chlordiazepoxide", "phenobarbital", "fenobarbital", "phenytoin", "fenitoin",
+      "carbamazepine", "karbamazepin", "gabapentin", "pregabalin", "valproic", "valproat",
+      "zypraz", "zolpidem", "trihexyphenidyl", "trifluoperazina", "haloperidol",
+      "chlorpromazine", "risperidone", "olanzapine", "quetiapine", "aripiprazole",
+      "clozapine", "fluoxetine", "sertraline", "amitriptyline", "levodopa", "parkinson",
+      "epilepsi", "kejang", "sedatif", "hipnotik", "ansiolitik", "cemas", "kecemasan",
+      "skizofrenia", "antipsikotik", "antidepresan", "depresi", "insomnia", "coffeinum",
+      "kofein", "caffeine", "ergotamin", "ericaf", "migrain", "vertigo", "meniere",
+      "vertikaf", "betahistine", "citicoline", "incetyl", "piracetam", "prohiper",
+      "methylphenidate", "adhd", "narkolepsi", "aricept", "donepezil", "demensia",
+      "alzheimer", "mestinon", "neostigmine", "miastenia gravis", "yohimbin"
+    )
+  ) {
+    return { label: "Sistem Saraf & Psikiatri", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-100" };
+  }
+
+  // 11. Analgetik & Antipiretik
+  if (
+    has(
+      "paracetamol", "acetaminophen", "ibuprofen", "mefenamic", "mefenamat", "diclofenac",
+      "diklofenak", "meloxicam", "ketorolac", "ketorolak", "tramadol", "naproxen",
+      "fentanyl", "fentanil", "indomethacin", "aspirin", "asetosal", "morphine", "morfin",
+      "pethidine", "petidin", "kodein", "codeine", "noncort", "nyeri", "demam", "analgetik",
+      "antipiretik", "nsaid", "antiinflamasi", "anti-inflamasi", "voltadex", "trolac",
+      "ketoprofen", "piroxicam", "celecoxib", "etoricoxib", "allopurinol", "kolkisin",
+      "colchicine", "febuxostat", "asam urat", "gout", "artritis"
+    )
+  ) {
+    return { label: "Analgetik & Antipiretik", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-100" };
+  }
+
+  // 12. Pernapasan & Alergi
+  if (
+    has(
+      "salbutamol", "ambroxol", "glyceryl", "pseudoephedrine", "theophylline", "teofilin",
+      "acetylcysteine", "asetilsistein", "aminophylline", "aminofilin", "ipratropium",
+      "dextromethorphan", "diphenhydramine", "difenhidramin", "bromhexine", "budesonide",
+      "xylometazoline", "vectrine", "erdosteine", "cetirizine", "asma", "batuk",
+      "theobron", "tremenza", "tuzalos", "ventolin", "resfar", "rhinos neo", "epexol",
+      "mucohexin", "survanta", "neokaf", "apnea", "tiotropium", "fluticasone", "loratadine",
+      "ctm", "chlorpheniramine", "fexofenadine", "bronkospasme", "ppok", "pilek", "flu",
+      "rhinitis", "alergi", "sesak", "dahak", "mukolitik", "dekongestan"
+    )
   ) {
     return { label: "Pernapasan & Alergi", color: "text-cyan-700", bg: "bg-cyan-50", border: "border-cyan-100" };
   }
 
+  // 13. Gastrointestinal
   if (
-    lowercaseId.includes("metoclopramide") ||
-    lowercaseId.includes("ranitidine") ||
-    lowercaseId.includes("domperidone") ||
-    lowercaseId.includes("domperidon") ||
-    lowercaseName.includes("domperidon") ||
-    lowercaseId.includes("zinc") ||
-    lowercaseId.includes("zinkid") ||
-    lowercaseId.includes("lactulose") ||
-    lowercaseId.includes("omeprazole") ||
-    lowercaseId.includes("ondansetron") ||
-    lowercaseId.includes("sucralfate") ||
-    lowercaseId.includes("loperamide") ||
-    lowercaseId.includes("hyoscine") ||
-    lowercaseId.includes("ursodeoxycholic") ||
-    lowercaseId.includes("lansoprazole") ||
-    lowercaseName.includes("zinkid")
+    has(
+      "metoclopramide", "ranitidine", "domperidone", "domperidon", "zinc", "zinkid",
+      "lactulose", "laktulosa", "lactulax", "omeprazole", "ondansetron", "sucralfate",
+      "sukralfat", "loperamide", "hyoscine", "hiosin", "ursodeoxycholic", "urdafalk",
+      "lansoprazole", "pantoprazole", "esomeprazole", "rabeprazole", "cimetidine",
+      "famotidine", "ulsidex", "vometa", "vosedon", "vesperum", "bisacodyl", "dulcolax",
+      "oralit", "salofalk", "mesalazine", "balsalazide", "borraginol", "antihemoroid",
+      "wasir", "hemoroid", "hepabal", "lambung", "maag", "tukak", "gerd", "mual",
+      "muntah", "antiemetik", "diare", "laksatif", "konstipasi", "pencahar", "dispepsia",
+      "kembung", "spasme", "antasida", "antacid", "fungsi hati", "kolitis ulseratif"
+    )
   ) {
     return { label: "Gastrointestinal", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-100" };
   }
 
+  // 14. Hormon & Kortikosteroid
   if (
-    lowercaseId.includes("prednisone") ||
-    lowercaseId.includes("dexamethasone") ||
-    lowercaseId.includes("methylprednisolone") ||
-    lowercaseId.includes("oxytocin") ||
-    lowercaseId.includes("insulin") ||
-    lowercaseId.includes("thiamazole") ||
-    lowercaseId.includes("triamcinolone") ||
-    lowercaseId.includes("cinolon") ||
-    lowercaseName.includes("cinolon") ||
-    lowercaseId.includes("cortidex") ||
-    lowercaseName.includes("cortidex") ||
-    lowercaseName.includes("thiamazole") ||
-    lowercaseName.includes("triamcinolone")
+    has(
+      "prednisone", "prednison", "dexamethasone", "deksametason", "methylprednisolone",
+      "metilprednisolon", "oxytocin", "oksitosin", "induxin", "insulin", "thiamazole",
+      "tiamazol", "thyrozol", "triamcinolone", "triamsinolon", "cinolon", "cortidex",
+      "fartison", "trilac", "hydrocortisone", "hidrokortison", "fludrokortison",
+      "metformin", "glimepiride", "glibenclamide", "gliclazide", "acarbose", "pioglitazone",
+      "levothyroxine", "propiltiourasil", "ptu", "karbimazol", "progesteron", "utrogestan",
+      "luteron", "hystolan", "estrogen", "testosteron", "dienogest", "linestrenol",
+      "medroksi", "noretisteron", "levonorgestrel", "desogestrel", "clomifene", "infertilitas",
+      "ovulasi", "diethylstilbestrol", "somanovell", "somatropin", "growth hormone",
+      "kortikosteroid", "steroid", "hormon", "diabetes", "gula darah", "tiroid", "kontrasepsi",
+      "haid", "persalinan prematur", "insufisiensi adrenal"
+    )
   ) {
     return { label: "Hormon & Kortikosteroid", color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-100" };
   }
 
+  // 15. Urologi & Saluran Kemih
   if (
-    lowercaseId.includes("onc") || 
-    lowercaseId.includes("doxorubicin") || 
-    lowercaseId.includes("doksorubisin") || 
-    lowercaseName.includes("doxorubicin") || 
-    lowercaseName.includes("doksorubisin") || 
-    lowercaseId.includes("carboplatin")
+    has(
+      "harnal", "tamsulosin", "terazosin", "bph", "hiperplasia prostat", "prostat",
+      "urinter", "pipemidic", "asam pipemidat", "antiseptik urin", "alkalinisasi urin"
+    ) && !has("kontras")
   ) {
-    return { label: "Onkologi", color: "text-fuchsia-700", bg: "bg-fuchsia-50", border: "border-fuchsia-100" };
+    return { label: "Urologi & Saluran Kemih", color: "text-teal-800", bg: "bg-teal-50", border: "border-teal-200" };
   }
 
-  return { label: "Lain-lain & Suplemen", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-100" };
+  // 16. Nutrisi, Vitamin & Mineral (Suplemen)
+  const isCcbOrCardiac = has("saluran kalsium", "calcium channel", "hipertensi", "angina", "aritmia");
+  if (
+    has(
+      "vitamin", "vit ", "vit_", "vitcee", "vitacimin", "vitacee", "suplemen", "multivitamin",
+      "calcitriol", "asam folat", "folic acid", "tiamin", "thiamine", "piridoksin",
+      "pyridoxine", "kobalamin", "cyanocobalamin", "mecobalamin", "megabal", "rincobal",
+      "neurobion", "sangobion", "vipalbumin", "zamel", "becom", "curcuma", "curvit",
+      "oscal", "osfit", "osteosan", "stimuno", "tablet tambah darah", "lactamor",
+      "nutriflam", "zat besi", "ferrous", "maltofer", "iron", "albumin", "retinol",
+      "defisiensi vitamin", "asam amino", "nutrisi parenteral", "daya tahan tubuh",
+      "sistem imun", "antioksidan", "tumbuh kembang", "kesehatan tulang", "neuropati perifer"
+    ) || (!isCcbOrCardiac && has("kalsium", "calcium"))
+  ) {
+    return { label: "Nutrisi, Vitamin & Mineral", color: "text-lime-700", bg: "bg-lime-50", border: "border-lime-200" };
+  }
+
+  return { label: "Lain-lain & Khusus", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-100" };
+};
+
+export const THERAPEUTIC_CATEGORIES = [
+  { id: "all", label: "Semua Kategori" },
+  { id: "antibiotik", label: "Antibiotik & Anti-infeksi" },
+  { id: "analgetik", label: "Analgetik & Antipiretik" },
+  { id: "kardio", label: "Kardiovaskular & Diuretik" },
+  { id: "saraf", label: "Sistem Saraf & Psikiatri" },
+  { id: "pernapasan", label: "Pernapasan & Alergi" },
+  { id: "gastro", label: "Gastrointestinal" },
+  { id: "hormon", label: "Hormon & Kortikosteroid" },
+  { id: "nutrisi", label: "Nutrisi, Vitamin & Mineral" },
+  { id: "cairan", label: "Cairan Intravena & Elektrolit" },
+  { id: "anestesi", label: "Anestesi & Pelemas Otot" },
+  { id: "mata_tht", label: "Mata & THT" },
+  { id: "dermatologi", label: "Dermatologi & Topikal" },
+  { id: "onkologi", label: "Onkologi & Imunosupresan" },
+  { id: "vaksin", label: "Vaksin & Imunologi" },
+  { id: "urologi", label: "Urologi & Saluran Kemih" },
+  { id: "khusus", label: "Diagnostik & Khusus" },
+];
+
+export const isCategoryMatched = (catId: string, categoryLabel: string): boolean => {
+  if (catId === "all") return true;
+  if (catId === "antibiotik") return categoryLabel === "Antibiotik & Anti-infeksi";
+  if (catId === "analgetik") return categoryLabel === "Analgetik & Antipiretik";
+  if (catId === "kardio") return categoryLabel === "Kardiovaskular & Diuretik";
+  if (catId === "saraf") return categoryLabel === "Sistem Saraf & Psikiatri";
+  if (catId === "pernapasan") return categoryLabel === "Pernapasan & Alergi";
+  if (catId === "gastro") return categoryLabel === "Gastrointestinal";
+  if (catId === "hormon") return categoryLabel === "Hormon & Kortikosteroid";
+  if (catId === "nutrisi") return categoryLabel === "Nutrisi, Vitamin & Mineral";
+  if (catId === "cairan") return categoryLabel === "Cairan Intravena & Elektrolit";
+  if (catId === "anestesi") return categoryLabel === "Anestesi & Pelemas Otot";
+  if (catId === "mata_tht") return categoryLabel === "Mata & THT";
+  if (catId === "dermatologi") return categoryLabel === "Dermatologi & Topikal";
+  if (catId === "onkologi") return categoryLabel === "Onkologi & Imunosupresan";
+  if (catId === "vaksin") return categoryLabel === "Vaksin & Imunologi";
+  if (catId === "urologi") return categoryLabel === "Urologi & Saluran Kemih";
+  if (catId === "khusus" || catId === "lainnya") return categoryLabel === "Diagnostik & Khusus" || categoryLabel === "Lain-lain & Khusus";
+  return true;
 };
 
 // Helper to determine the drug formulation/route based on preset details
@@ -1705,15 +1816,7 @@ export default function App() {
 
       // Category filter
       if (descSelectedCategory !== "all") {
-        const label = info.label.toLowerCase();
-        if (descSelectedCategory === "antibiotik" && !(label.includes("antibiotik") || label.includes("anti-infeksi"))) return false;
-        if (descSelectedCategory === "analgetik" && !label.includes("analgetik")) return false;
-        if (descSelectedCategory === "kardio" && !label.includes("kardiovaskular")) return false;
-        if (descSelectedCategory === "pernapasan" && !label.includes("pernapasan")) return false;
-        if (descSelectedCategory === "gastro" && !label.includes("gastrointestinal")) return false;
-        if (descSelectedCategory === "hormon" && !label.includes("hormon")) return false;
-        if (descSelectedCategory === "onkologi" && !label.includes("onkologi")) return false;
-        if (descSelectedCategory === "lainnya" && !(label.includes("lain-lain") || label.includes("suplemen"))) return false;
+        if (!isCategoryMatched(descSelectedCategory, info.label)) return false;
       }
 
       // Alphabet filter
@@ -4318,45 +4421,27 @@ export default function App() {
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kategori Terapi</label>
-              <div className="space-y-1">
-                {[
-                  { id: "all", label: "Semua Kategori" },
-                  { id: "antibiotik", label: "Antibiotik & Anti-infeksi" },
-                  { id: "analgetik", label: "Analgetik & Antipiretik" },
-                  { id: "kardio", label: "Kardiovaskular & Diuretik" },
-                  { id: "pernapasan", label: "Pernapasan & Alergi" },
-                  { id: "gastro", label: "Gastrointestinal" },
-                  { id: "hormon", label: "Hormon & Kortikosteroid" },
-                  { id: "onkologi", label: "Onkologi" },
-                  { id: "lainnya", label: "Lain-lain & Suplemen" }
-                ].map((cat) => {
+              <div className="space-y-1 max-h-[380px] overflow-y-auto pr-1">
+                {THERAPEUTIC_CATEGORIES.map((cat) => {
                   const count = cat.id === "all" 
                     ? drugPresets.length 
                     : drugPresets.filter(p => {
                         const info = getDrugCategory(p.id, p.name);
-                        const label = info.label.toLowerCase();
-                        if (cat.id === "antibiotik") return label.includes("antibiotik") || label.includes("anti-infeksi");
-                        if (cat.id === "analgetik") return label.includes("analgetik");
-                        if (cat.id === "kardio") return label.includes("kardiovaskular");
-                        if (cat.id === "pernapasan") return label.includes("pernapasan");
-                        if (cat.id === "gastro") return label.includes("gastrointestinal");
-                        if (cat.id === "hormon") return label.includes("hormon");
-                        if (cat.id === "onkologi") return label.includes("onkologi");
-                        return label.includes("lain-lain") || label.includes("suplemen");
+                        return isCategoryMatched(cat.id, info.label);
                       }).length;
 
                   return (
                     <button
                       key={cat.id}
                       onClick={() => setDescSelectedCategory(cat.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition-all ${
+                      className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                         descSelectedCategory === cat.id
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-150"
                           : "text-slate-600 hover:bg-slate-50 border border-transparent"
                       }`}
                     >
-                      <span>{cat.label}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      <span className="truncate pr-1 text-left">{cat.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 ${
                         descSelectedCategory === cat.id ? "bg-emerald-200 text-emerald-800" : "bg-slate-100 text-slate-500"
                       }`}>
                         {count}

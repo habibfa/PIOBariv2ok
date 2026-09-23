@@ -12,7 +12,9 @@ import {
   Heart, 
   Activity, 
   ChevronRight,
-  Sparkle
+  Sparkle,
+  Search,
+  X
 } from 'lucide-react';
 
 interface MedicalDashboardHeroProps {
@@ -24,6 +26,8 @@ interface MedicalDashboardHeroProps {
 
 export default function MedicalDashboardHero({
   onNavigateTab,
+  searchQuery = "",
+  onSearchChange,
   totalDrugsCount = 930
 }: MedicalDashboardHeroProps) {
   return (
@@ -46,10 +50,82 @@ export default function MedicalDashboardHero({
               Pusat Informasi Obat & Keamanan Resep
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-              Panduan terintegrasi untuk Apoteker, Dokter, dan Tenaga Kesehatan. Dilengkapi kalkulator klirens ginjal, skrining polifarmasi, kompatibilitas IV, dan formularium Fornas.
+              Panduan terintegrasi untuk Apoteker, Dokter, Perawat dan Tenaga Kesehatan lainnya. Dilengkapi kalkulator klirens ginjal, skrining polifarmasi, kompatibilitas IV, dan Formularium Nasional.
             </p>
           </div>
         </div>
+
+        {/* Quick Search Bar directly in Hero Greeting */}
+        {onSearchChange && (
+          <div className="relative z-10 mt-6 pt-5 border-t border-slate-100/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <Search className="w-4 h-4 text-emerald-600" />
+                <span>Pencarian Cepat Obat (Nama Generik / Merek Dagang)</span>
+              </label>
+              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 w-fit">
+                {totalDrugsCount}+ Obat Terdaftar
+              </span>
+            </div>
+            
+            <div className="relative">
+              <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  onSearchChange(e.target.value);
+                  onNavigateTab("desc");
+                }}
+                placeholder="Cari obat berdasarkan nama generik atau merek dagang (cth: Parasetamol, Sanmol, Bisoprolol, Concor, Lasix)..."
+                className="w-full bg-white/95 border-2 border-emerald-100 hover:border-emerald-300 focus:border-emerald-500 rounded-2xl py-3 pl-11 pr-10 text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden shadow-xs transition-all"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Suggestions Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cari Cepat:</span>
+              {[
+                { label: "Parasetamol", q: "paracetamol" },
+                { label: "Sanmol", q: "sanmol" },
+                { label: "Amoksisilin", q: "amoksisilin" },
+                { label: "Bisoprolol", q: "bisoprolol" },
+                { label: "Concor", q: "concor" },
+                { label: "Furosemid", q: "furosemid" },
+                { label: "Lasix", q: "lasix" },
+                { label: "Salbutamol", q: "salbutamol" },
+                { label: "Ventolin", q: "ventolin" },
+                { label: "Ceftriaxone", q: "ceftriaxone" },
+              ].map((chip) => (
+                <button
+                  key={chip.q}
+                  type="button"
+                  onClick={() => {
+                    onSearchChange(chip.q);
+                    onNavigateTab("desc");
+                  }}
+                  className={`text-[10px] px-2.5 py-1 rounded-xl font-semibold border transition-all cursor-pointer ${
+                    searchQuery.toLowerCase() === chip.q.toLowerCase()
+                      ? "bg-emerald-600 text-white border-emerald-700 shadow-2xs"
+                      : "bg-white/80 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border-slate-200/80 hover:border-emerald-200"
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3D "Health Overview" Bento Grid (Inspired by Reference Design) */}

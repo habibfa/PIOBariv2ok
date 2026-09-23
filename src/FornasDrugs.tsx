@@ -1,9 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, FileSpreadsheet, Plus, Minus, Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+  BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, 
+  FileSpreadsheet, Plus, Minus, Trash2, Info, ChevronDown, ChevronUp,
+  AlertTriangle, Repeat, ShieldAlert, AlertCircle, Sparkles
+} from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
 import { INITIAL_FORNAS_DATA, FornasDrug } from './data/fornasData';
+import { getDrugSafetyAlert, DrugSafetyAlert } from './data/drugSafetyAlerts';
 
 interface FornasDrugsProps {
   isAdmin?: boolean;
@@ -66,6 +71,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
   const [nameFilter, setNameFilter] = useState("");
   const [selectedAlphabet, setSelectedAlphabet] = useState("all");
   const [selectedFaskes, setSelectedFaskes] = useState("All");
+  const [safetyFilter, setSafetyFilter] = useState<'ALL' | 'HIGH_ALERT' | 'LASA' | 'ANY_ALERT'>('ALL');
+  const [selectedSafetyDrug, setSelectedSafetyDrug] = useState<{ drug: FornasDrug; safety: DrugSafetyAlert } | null>(null);
 
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -147,6 +154,22 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     }));
   };
 
+  // Safety Statistics across all drugs in dataset
+  const safetyStats = useMemo(() => {
+    let haCount = 0;
+    let lasaCount = 0;
+    let anyCount = 0;
+
+    fornasData.forEach(d => {
+      const alert = getDrugSafetyAlert(d);
+      if (alert.highAlert) haCount++;
+      if (alert.lasa) lasaCount++;
+      if (alert.highAlert || alert.lasa) anyCount++;
+    });
+
+    return { haCount, lasaCount, anyCount };
+  }, [fornasData]);
+
   const groupedData = useMemo(() => {
     const filtered = fornasData.filter((drug) => {
       const matchesSearch = 
@@ -167,7 +190,19 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
         matchesAlphabet = drug.namaObat.charAt(0).toUpperCase() === selectedAlphabet;
       }
 
-      return matchesSearch && matchesFaskes && matchesName && matchesAlphabet;
+      let matchesSafety = true;
+      if (safetyFilter !== 'ALL') {
+        const safety = getDrugSafetyAlert(drug);
+        if (safetyFilter === 'HIGH_ALERT') {
+          matchesSafety = Boolean(safety.highAlert);
+        } else if (safetyFilter === 'LASA') {
+          matchesSafety = Boolean(safety.lasa);
+        } else if (safetyFilter === 'ANY_ALERT') {
+          matchesSafety = Boolean(safety.highAlert || safety.lasa);
+        }
+      }
+
+      return matchesSearch && matchesFaskes && matchesName && matchesAlphabet && matchesSafety;
     });
 
     const groups: Record<string, FornasDrug[]> = {};
@@ -180,7 +215,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     });
 
     return Object.values(groups).sort((a, b) => a[0].namaObat.localeCompare(b[0].namaObat));
-  }, [searchTerm, nameFilter, selectedAlphabet, selectedFaskes, fornasData]);
+  }, [searchTerm, nameFilter, selectedAlphabet, selectedFaskes, safetyFilter, fornasData]);
 
   return (
     <div className="flex-1 p-4 lg:p-6 overflow-y-auto custom-scrollbar bg-slate-50 flex flex-col h-full">
@@ -299,6 +334,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
               </ul>
               <p><strong>l.</strong> Peresepan maksimal dituliskan di samping masing-masing kekuatan dan/atau bentuk sediaan zat aktif.</p>
               <p><strong>m.</strong> Tanda centang (√) dalam kolom OEN menunjukkan obat yang termasuk dalam obat esensial.</p>
+              <p><strong>n.</strong> Peringatan Visual <strong>High Alert</strong> (ikon segitiga merah) menandakan Obat Kewaspadaan Tinggi (High-Alert Medications) yang berisiko fatal jika terjadi kesalahan peresepan/pemberian sesuai standar KARS SNARS dan ISMP (seperti sitostatika, narkotika, insulin, elektrolit konsentrat pekat, pelemas otot, dan vasopresor). Wajib double-check independen.</p>
+              <p><strong>o.</strong> Peringatan Visual <strong>LASA / NORUM</strong> (ikon panah kuning/oranye) menandakan obat Look-Alike Sound-Alike (Nama Obat Rupa Ucapan Mirip). Disertai rekomendasi Tall-Man Lettering dan daftar obat pasangan yang rentan tertukar untuk mencegah medication error.</p>
             </div>
           )}
         </div>
@@ -336,6 +373,75 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 <option value="FPKTP">FPKTP</option>
                 <option value="FPKTL">FPKTL</option>
               </select>
+            </div>
+          </div>
+          
+          {/* Safety Category Filter Bar */}
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mr-1">
+                <ShieldAlert className="w-3.5 h-3.5 text-slate-500" />
+                Filter Kewaspadaan:
+              </span>
+              <button
+                type="button"
+                onClick={() => setSafetyFilter('ALL')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                  safetyFilter === 'ALL'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Semua ({fornasData.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSafetyFilter('HIGH_ALERT')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                  safetyFilter === 'HIGH_ALERT'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                High Alert ({safetyStats.haCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSafetyFilter('LASA')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                  safetyFilter === 'LASA'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                <Repeat className="w-3.5 h-3.5" />
+                LASA / NORUM ({safetyStats.lasaCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSafetyFilter('ANY_ALERT')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                  safetyFilter === 'ANY_ALERT'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                Semua Alert ({safetyStats.anyCount})
+              </button>
+            </div>
+
+            <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+              <span>💡 Klik ikon</span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
+                <AlertTriangle className="w-2.5 h-2.5" /> High Alert
+              </span>
+              <span>/</span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                <Repeat className="w-2.5 h-2.5" /> LASA
+              </span>
+              <span>untuk panduan</span>
             </div>
           </div>
           
@@ -398,16 +504,22 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                   const hasMultiple = group.length > 1;
                   const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
                   const isExpanded = expandedGroups[groupKey];
+                  const safety = getDrugSafetyAlert(drug);
+                  const isLasa = !!safety.lasa;
                   
                   return (
                   <React.Fragment key={groupKey}>
-                    <tr className="hover:bg-slate-50 transition-colors">
+                    <tr className={`drug-table-row transition-colors ${
+                      isLasa 
+                        ? "has-lasa drug-table-row-lasa" 
+                        : "hover:bg-slate-50"
+                    }`}>
                       <td className="px-4 py-3 align-top">
                         <div className="font-semibold text-slate-800">{drug.kelasTerapi}</div>
                         <div className="text-xs text-slate-500 mt-1">{drug.subKelasTerapi}</div>
                       </td>
-                      <td className="px-4 py-3 align-top font-bold text-emerald-700">
-                        <div className="flex items-center gap-2">
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-center gap-2 font-bold text-emerald-800">
                           {hasMultiple && (
                             <button 
                               onClick={() => toggleGroup(groupKey)}
@@ -416,13 +528,52 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                               {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                             </button>
                           )}
-                          {drug.namaObat}
+                          <span className="text-slate-900 font-bold">{drug.namaObat}</span>
                         </div>
+
+                        {/* Peringatan Visual: Icon Alert High Alert & LASA */}
+                        {(safety.highAlert || safety.lasa) && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            {safety.highAlert && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSafetyDrug({ drug, safety });
+                                }}
+                                title={`${safety.highAlert.categoryLabel}: Klik untuk melihat panduan keselamatan KARS/ISMP`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-all cursor-pointer shadow-2xs group"
+                              >
+                                <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 group-hover:scale-110 transition-transform" />
+                                <span>High Alert</span>
+                              </button>
+                            )}
+                            {safety.lasa && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSafetyDrug({ drug, safety });
+                                }}
+                                title={`LASA / NORUM: Waspada tertukar dengan ${safety.lasa.pairedWith.join(', ')}`}
+                                className="lasa-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-all cursor-pointer shadow-xs group"
+                              >
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-600"></span>
+                                </span>
+                                <Repeat className="w-3 h-3 text-amber-700 shrink-0 group-hover:rotate-180 transition-transform duration-300" />
+                                <span>LASA</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         {drug.catatan && drug.catatan !== "-" && (
-                            <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              {drug.catatan}
-                            </span>
-                          )}
+                          <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            {drug.catatan}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 align-top">
                         {hasMultiple && !isExpanded ? (
@@ -447,10 +598,52 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         {hasMultiple && !isExpanded ? "-" : (drug.oen && drug.oen !== "-" ? <span className="text-emerald-600 font-bold">{drug.oen}</span> : <span className="text-slate-300">-</span>)}
                       </td>
                       </tr>
-                    {hasMultiple && isExpanded && group.slice(1).map((subDrug) => (
-                      <tr key={subDrug.id} className="bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                    {hasMultiple && isExpanded && group.slice(1).map((subDrug) => {
+                      const subSafety = getDrugSafetyAlert(subDrug);
+                      const isSubLasa = !!subSafety.lasa;
+                      return (
+                      <tr key={subDrug.id} className={`drug-table-row transition-colors ${
+                        isSubLasa 
+                          ? "has-lasa drug-table-row-lasa" 
+                          : "bg-slate-50/50 hover:bg-slate-50"
+                      }`}>
                         <td className="px-4 py-3 align-top border-l-4 border-emerald-500"></td>
-                        <td className="px-4 py-3 align-top font-bold text-emerald-700 pl-10">
+                        <td className="px-4 py-3 align-top pl-8">
+                          <span className="text-xs text-slate-400 font-medium">↳ Varian Sediaan</span>
+                          {(subSafety.highAlert || subSafety.lasa) && (
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              {subSafety.highAlert && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSafetyDrug({ drug: subDrug, safety: subSafety });
+                                  }}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer"
+                                >
+                                  <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
+                                  High Alert
+                                </button>
+                              )}
+                              {subSafety.lasa && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSafetyDrug({ drug: subDrug, safety: subSafety });
+                                  }}
+                                  className="lasa-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 cursor-pointer"
+                                >
+                                  <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-600"></span>
+                                  </span>
+                                  <Repeat className="w-2.5 h-2.5 text-amber-700" />
+                                  LASA
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3 align-top">{subDrug.bentukSediaan}</td>
                         <td className="px-4 py-3 align-top text-xs leading-relaxed">
@@ -468,8 +661,9 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                         <td className="px-4 py-3 align-top font-medium text-center">
                           {subDrug.oen && subDrug.oen !== "-" ? <span className="text-emerald-600 font-bold">{subDrug.oen}</span> : <span className="text-slate-300">-</span>}
                         </td>
-                        </tr>
-                    ))}
+                      </tr>
+                      );
+                    })}
                   </React.Fragment>
                   );
                 })
@@ -491,10 +685,19 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
               const drug = group[0];
               const hasMultiple = group.length > 1;
               const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
-                  const isExpanded = expandedGroups[groupKey];
+              const isExpanded = expandedGroups[groupKey];
+              const safety = getDrugSafetyAlert(drug);
+              const isLasa = !!safety.lasa;
               
               return (
-              <div key={`mob-${groupKey}`} className="p-4 space-y-3">
+              <div 
+                key={`mob-${groupKey}`} 
+                className={`drug-table-row p-4 space-y-3 transition-all ${
+                  isLasa 
+                    ? "has-lasa drug-table-row-lasa border-l-4 border-amber-500 my-1 rounded-r-xl" 
+                    : "hover:bg-slate-50/60"
+                }`}
+              >
                 <div className="flex items-center gap-2">
                   {hasMultiple && (
                     <button 
@@ -504,8 +707,39 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                       {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                     </button>
                   )}
-                  <h3 className="font-bold text-emerald-700 text-base leading-tight">{drug.namaObat}</h3>
+                  <h3 className="font-bold text-slate-900 text-base leading-tight">{drug.namaObat}</h3>
                 </div>
+
+                {/* Mobile Peringatan Visual: High Alert & LASA */}
+                {(safety.highAlert || safety.lasa) && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {safety.highAlert && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSafetyDrug({ drug, safety })}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black uppercase bg-rose-50 text-rose-700 border border-rose-200 active:bg-rose-100"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>High Alert</span>
+                      </button>
+                    )}
+                    {safety.lasa && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSafetyDrug({ drug, safety })}
+                        className="lasa-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black uppercase bg-amber-100 text-amber-900 border border-amber-300 active:bg-amber-200"
+                      >
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-600"></span>
+                        </span>
+                        <Repeat className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>LASA / NORUM</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {drug.catatan && drug.catatan !== "-" && (
                     <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
                       {drug.catatan}
@@ -551,11 +785,39 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                   <div className="text-xs text-slate-500">{group.length} Varian Sediaan</div>
                 )}
 
-                {hasMultiple && isExpanded && group.slice(1).map((subDrug) => (
+                {hasMultiple && isExpanded && group.slice(1).map((subDrug) => {
+                  const subSafety = getDrugSafetyAlert(subDrug);
+                  return (
                   <div key={`mob-${subDrug.id}`} className="mt-4 pt-4 border-t border-slate-100 space-y-3 relative">
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full"></div>
                     <div className="pl-3 space-y-3">
-                      <div className="text-xs font-bold text-slate-800">{subDrug.bentukSediaan}</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-bold text-slate-800">{subDrug.bentukSediaan}</div>
+                        {(subSafety.highAlert || subSafety.lasa) && (
+                          <div className="flex flex-wrap items-center gap-1">
+                            {subSafety.highAlert && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSafetyDrug({ drug: subDrug, safety: subSafety })}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200"
+                              >
+                                <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
+                                High Alert
+                              </button>
+                            )}
+                            {subSafety.lasa && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSafetyDrug({ drug: subDrug, safety: subSafety })}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-50 text-amber-800 border border-amber-200"
+                              >
+                                <Repeat className="w-2.5 h-2.5 text-amber-600" />
+                                LASA
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${subDrug.fpktp && subDrug.fpktp !== "-" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-400 border-slate-100"}`}>
                           FPKTP
@@ -583,7 +845,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                       )}
                       </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               );
             })
@@ -665,6 +928,138 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
               >
                 <Save className="w-4 h-4" />
                 Simpan Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detail Peringatan Keselamatan Obat (High Alert & LASA) */}
+      {selectedSafetyDrug && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setSelectedSafetyDrug(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between p-5 border-b border-slate-100 bg-slate-50/80">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-200 text-slate-700">
+                    Patient Safety Alert
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">Fornas KMK 1199/2025</span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  {selectedSafetyDrug.drug.namaObat}
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 font-medium">
+                  {selectedSafetyDrug.drug.bentukSediaan} • {selectedSafetyDrug.drug.kelasTerapi}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedSafetyDrug(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-5 space-y-4 text-sm">
+              {/* High Alert Section */}
+              {selectedSafetyDrug.safety.highAlert && (
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-rose-800 font-black text-sm">
+                      <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                      <span>{selectedSafetyDrug.safety.highAlert.badgeText}</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-rose-200 text-rose-800">
+                      Risiko Fatal
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-rose-950 leading-relaxed font-medium">
+                    <strong className="block text-rose-950 font-bold mb-0.5">
+                      Kategori: {selectedSafetyDrug.safety.highAlert.categoryLabel}
+                    </strong>
+                    <p className="text-rose-900">{selectedSafetyDrug.safety.highAlert.reason}</p>
+                  </div>
+
+                  <div className="text-xs text-rose-950 bg-white/90 p-3 rounded-lg border border-rose-200/80 leading-relaxed shadow-2xs">
+                    <strong className="block text-rose-900 font-bold mb-1">
+                      🛡️ Pedoman Penanganan Rumah Sakit (KARS SNARS & ISMP):
+                    </strong>
+                    <p className="text-slate-700 font-normal">{selectedSafetyDrug.safety.highAlert.handlingGuideline}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* LASA / NORUM Section */}
+              {selectedSafetyDrug.safety.lasa && (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-amber-900 font-black text-sm">
+                      <Repeat className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span>LASA / NORUM</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-200 text-amber-900">
+                      Rupa / Bunyi Mirip
+                    </span>
+                  </div>
+
+                  <div className="bg-white/90 p-3 rounded-lg border border-amber-200/80 space-y-2.5 shadow-2xs">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block mb-1">
+                        Rekomendasi Tall-Man Lettering:
+                      </span>
+                      <div className="font-mono text-sm font-black text-amber-900 bg-amber-100/70 px-3 py-1.5 rounded border border-amber-300 inline-block tracking-wider">
+                        {selectedSafetyDrug.safety.lasa.tallMan}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block mb-1">
+                        Waspada Tertukar Dengan:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedSafetyDrug.safety.lasa.pairedWith.map((pair, idx) => (
+                          <span key={idx} className="px-2.5 py-1 rounded-md text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                            {pair}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-amber-950 bg-white/90 p-3 rounded-lg border border-amber-200/80 leading-relaxed shadow-2xs">
+                    <strong className="block text-amber-900 font-bold mb-1">
+                      ⚠️ Tindakan Pencegahan Kesalahan (Medication Error):
+                    </strong>
+                    <p className="text-slate-700 font-normal">{selectedSafetyDrug.safety.lasa.preventionTip}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Standard note */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-500 leading-relaxed">
+                <strong>Standar Akreditasi KARS & Permenkes RI:</strong> Penandaan High Alert dan LASA bertujuan mencegah Kejadian Nyaris Cedera (KNC) dan Kejadian Tidak Diharapkan (KTD). Selalu terapkan double-check independen oleh dua tenaga kesehatan sebelum pemberian obat.
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSafetyDrug(null)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                Tutup Panduan
               </button>
             </div>
           </div>
