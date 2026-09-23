@@ -2,6 +2,11 @@ import express from "express";
 import serverless from "serverless-http";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import {
+  generateClinicalChatFallback,
+  generateClinicalDiseaseFallback,
+  generateClinicalSoapFallback
+} from "../../src/utils/clinicalAssistantFallback";
 
 dotenv.config();
 
@@ -35,6 +40,53 @@ function getAIClient() {
   return aiClient;
 }
 
+// Resilient multi-model cascade with fast models first
+const CANDIDATE_MODELS = [
+  "gemini-3.1-flash-lite", // ultra fast, low latency, currently active
+  "gemini-flash-latest",   // standard fast alias
+  "gemini-2.5-flash",      // preview stable
+  "gemini-3.5-flash",      // general flash
+  "gemini-3.8-flash"       // latest preview
+];
+
+async function callGeminiWithFallback(
+  ai: GoogleGenAI,
+  prompt: string,
+  options?: { systemInstruction?: string; timeoutMs?: number; temperature?: number }
+): Promise<string> {
+  const timeoutMs = options?.timeoutMs || 8000;
+  let lastError: any = null;
+
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const config: any = {
+        temperature: options?.temperature ?? 0.2
+      };
+      if (options?.systemInstruction) {
+        config.systemInstruction = options.systemInstruction;
+      }
+
+      const res = await Promise.race([
+        ai.models.generateContent({
+          model,
+          contents: prompt,
+          config
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout model ${model} after ${timeoutMs}ms`)), timeoutMs))
+      ]) as any;
+
+      if (res && res.text) {
+        return res.text;
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini Fallback] Model ${model} failed:`, err?.message || err);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error("Semua model AI sedang tidak tersedia.");
+}
+
 app.post(["/api/disease-info", "/disease-info"], async (req, res) => {
   try {
     const { diseaseName } = req.body;
@@ -45,7 +97,7 @@ app.post(["/api/disease-info", "/disease-info"], async (req, res) => {
 
     const ai = getAIClient();
     if (!ai) {
-      return res.status(503).json({ error: "Gemini API key is not configured on the server." });
+      return res.json({ text: generateClinicalDiseaseFallback(diseaseName) });
     }
 
     const prompt = `Anda adalah sistem pakar medis seperti Medscape Diseases & Conditions.
@@ -64,15 +116,18 @@ Format dalam bahasa Indonesia yang sangat klinis, akurat, profesional, namun mud
 
 Penafian (sertakan di paling bawah, cetak miring): *Catatan: Artikel ini ditujukan sebagai referensi informasi klinis umum dan bukan pengganti penilaian medis profesional secara langsung.*`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    let finalResponse = "";
+    try {
+      finalResponse = await callGeminiWithFallback(ai, prompt, { timeoutMs: 10000 });
+    } catch (geminiErr: any) {
+      console.warn("Disease-info Gemini error, using clinical fallback:", geminiErr?.message || geminiErr);
+      finalResponse = generateClinicalDiseaseFallback(diseaseName);
+    }
 
-    res.json({ text: response.text });
+    res.json({ text: finalResponse });
   } catch (routeError: any) {
     console.error("Critical error in /api/disease-info:", routeError);
-    res.status(500).json({ error: "Terjadi kesalahan internal server saat mengambil info penyakit." });
+    res.json({ text: generateClinicalDiseaseFallback(req.body?.diseaseName || "Penyakit") });
   }
 });
 
@@ -297,34 +352,20 @@ FORMATTING:
 - Add an explicit, prominent Medical Disclaimer in Indonesian stating that this AI reasoning is a clinical support assistant for educational verification and does not substitute for independent professional medical judgment.
 `;
 
-      let response;
+      let responseText = "";
       try {
-        response = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: prompt,
-          config: {
-            systemInstruction: "You are an elite Clinical Pharmacologist and Board-Certified Medical Dosage Expert. Use advanced reasoning to verify drug calculation setups, identify subtle clinical safety risks, detect errors, and explain medical rationale thoroughly. ALWAYS WRITE YOUR RESPONSE ENTIRELY IN INDONESIAN (BAHASA INDONESIA).",
-          },
+        responseText = await callGeminiWithFallback(ai, prompt, {
+          systemInstruction: "You are an elite Clinical Pharmacologist and Board-Certified Medical Dosage Expert. Use advanced reasoning to verify drug calculation setups, identify subtle clinical safety risks, detect errors, and explain medical rationale thoroughly. ALWAYS WRITE YOUR RESPONSE ENTIRELY IN INDONESIAN (BAHASA INDONESIA).",
+          timeoutMs: 9000
         });
-      } catch (primaryError: any) {
-        console.warn("Primary model (gemini-3.5-flash) failed or rate-limited, trying fallback (gemini-3.1-flash-lite):", primaryError.message || primaryError);
-        try {
-          response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite",
-            contents: prompt,
-            config: {
-              systemInstruction: "You are an elite Clinical Pharmacologist and Board-Certified Medical Dosage Expert. Verify drug calculation setups, identify subtle safety risks, and explain medical rationale. ALWAYS WRITE YOUR RESPONSE ENTIRELY IN INDONESIAN (BAHASA INDONESIA).",
-            },
-          });
-        } catch (secondaryError: any) {
-          console.warn("Secondary model (gemini-3.1-flash-lite) failed. Throwing to fallback.", secondaryError.message || secondaryError);
-          throw secondaryError;
-        }
+        res.json({ text: responseText });
+      } catch (geminiError: any) {
+        console.warn("All Gemini API models failed. Resorting to rule-based fallback report:", geminiError?.message || geminiError);
+        const fallbackReport = getFallbackReport(inputs, calculated, preset, question);
+        res.json({ text: fallbackReport });
       }
-
-      res.json({ text: response.text });
     } catch (error: any) {
-      console.warn("All Gemini API models failed (rate limits or invalid key). Resorting to rule-based clinical fallback report:", error);
+      console.warn("Resorting to rule-based fallback report:", error);
       const fallbackReport = getFallbackReport(inputs, calculated, preset, question);
       res.json({ text: fallbackReport });
     }
@@ -334,9 +375,7 @@ FORMATTING:
   }
 });
 
-
-
-  const handleChatAi = async (req, res) => {
+  const handleChatAi = async (req: express.Request, res: express.Response) => {
     try {
       const { message, history } = req.body;
       if (!message) {
@@ -344,9 +383,8 @@ FORMATTING:
       }
       const ai = getAIClient();
       if (!ai) {
-        return res.json({
-          reply: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan GEMINI_API_KEY di menu Environment Variables pada dashboard Vercel/Netlify Anda, lalu lakukan deploy ulang."
-        });
+        const fallback = generateClinicalChatFallback(message);
+        return res.json({ reply: fallback });
       }
 
       let systemPrompt = "Anda adalah Asisten Apoteker Klinis dan Ahli Farmakologi yang ramah, ringkas, dan berbasis bukti (evidence-based medicine). Jawab pertanyaan pengguna mengenai obat, dosis, indikasi, atau interaksi secara jelas dalam Bahasa Indonesia.";
@@ -354,7 +392,7 @@ FORMATTING:
       let conversationContext = "";
       if (Array.isArray(history) && history.length > 0) {
         conversationContext = history
-          .map((h) => `${h.role === 'user' ? 'Pengguna' : 'Asisten'}: ${h.content}`)
+          .map((h: any) => `${h.role === 'user' ? 'Pengguna' : 'Asisten'}: ${h.content}`)
           .join("\n");
       }
 
@@ -362,44 +400,21 @@ FORMATTING:
         ? `Riwayat percakapan:\n${conversationContext}\n\nPertanyaan pengguna: ${message}\n\nJawaban:` 
         : `Pertanyaan pengguna: ${message}\n\nJawaban:`;
 
-      let response;
       try {
-        response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            systemInstruction: systemPrompt,
-            temperature: 0.2
-          }
+        const text = await callGeminiWithFallback(ai, prompt, {
+          systemInstruction: systemPrompt,
+          timeoutMs: 8000
         });
-      } catch (err) {
-        console.warn("gemini-2.5-flash failed, trying fallback to gemini-3.1-flash-lite", err.message || err);
-        try {
-          response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite",
-            contents: prompt,
-            config: {
-              systemInstruction: systemPrompt,
-              temperature: 0.2
-            }
-          });
-        } catch (secondaryErr) {
-          console.warn("gemini-3.1-flash-lite failed, trying gemini-3.5-flash", secondaryErr.message || secondaryErr);
-          response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
-            contents: prompt,
-            config: {
-              systemInstruction: systemPrompt,
-              temperature: 0.2
-            }
-          });
-        }
+        return res.json({ reply: text });
+      } catch (geminiError: any) {
+        console.warn("Semua model AI gagal/timeout. Menyajikan respons klinis formularium:", geminiError?.message || geminiError);
+        const fallbackReply = generateClinicalChatFallback(message);
+        return res.json({ reply: fallbackReply });
       }
-
-      res.json({ reply: response.text });
-    } catch (error) {
-      console.error("AI Chat Error:", error);
-      res.status(500).json({ error: "Gagal memproses pertanyaan AI: " + (error.message || error) });
+    } catch (error: any) {
+      console.error("AI Chat Unexpected Error:", error);
+      const safeFallback = generateClinicalChatFallback(req.body?.message || "");
+      return res.json({ reply: safeFallback });
     }
   };
 
@@ -415,8 +430,7 @@ FORMATTING:
 
     const ai = getAIClient();
     if (!ai) {
-      console.warn("Gemini API client not initialized (missing API key).");
-      return res.json({ text: "Sistem AI tidak terhubung (GEMINI_API_KEY tidak ditemukan). Harap tambahkan GEMINI_API_KEY di pengaturan Environment Variables pada dashboard Netlify/Vercel Anda, lalu trigger deploy ulang." });
+      return res.json({ text: generateClinicalSoapFallback(patientData) });
     }
 
     const prompt = `Role: Kamu adalah apoteker klinis di bangsal penyakit dalam yang menulis catatan SOAP untuk rekam medis.
@@ -439,32 +453,20 @@ Examples: Jika pasien memakai warfarin dan INR 4,5 -> Assessment: risiko perdara
 Data pasien:
 ${patientData}`;
 
-    let response;
+    let responseText = "";
     try {
-      response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
-        },
+      responseText = await callGeminiWithFallback(ai, prompt, {
+        systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
+        timeoutMs: 10000
       });
-    } catch (primaryError: any) {
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-lite",
-          contents: prompt,
-          config: {
-            systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
-          },
-        });
-      } catch (secondaryError: any) {
-        throw secondaryError;
-      }
+    } catch (geminiError: any) {
+      console.warn("AI soap-ai failed, using structured SOAP fallback:", geminiError?.message || geminiError);
+      responseText = generateClinicalSoapFallback(patientData);
     }
-    res.json({ text: response.text });
+    res.json({ text: responseText });
   } catch (routeError: any) {
     console.error("Critical error in /api/soap-ai:", routeError);
-    res.status(500).json({ error: "Terjadi kesalahan internal server saat memproses permintaan AI." });
+    res.json({ text: generateClinicalSoapFallback(req.body?.patientData || "") });
   }
 });
 

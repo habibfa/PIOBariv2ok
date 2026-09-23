@@ -49,6 +49,7 @@ export interface DrugPreset {
   weightMinKg?: number;
   weightMaxKg?: number;
   requiresRenalAdjustment?: boolean;
+  pregnancyCategory?: string;
   notes?: string;
 }
 

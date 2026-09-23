@@ -167,17 +167,20 @@ body {
 }
 
 .drug-table-row.has-lasa,
-.drug-table-row-lasa {
+.drug-table-row-lasa,
+.drug-table-row:has(.lasa-badge) {
   animation: lasaRowPulse 2.4s ease-in-out infinite;
 }
 
 .drug-table-row.has-lasa:hover,
-.drug-table-row-lasa:hover {
+.drug-table-row-lasa:hover,
+.drug-table-row:has(.lasa-badge):hover {
   background-color: rgba(254, 240, 138, 0.88) !important;
 }
 
 .drug-table-row.has-lasa .lasa-badge,
-.drug-table-row-lasa .lasa-badge {
+.drug-table-row-lasa .lasa-badge,
+.drug-table-row:has(.lasa-badge) .lasa-badge {
   animation: lasaBadgePulse 2.4s ease-in-out infinite;
 }
 

@@ -412,6 +412,14 @@ export const getDrugCategory = (id: string, name: string, indication?: string, n
 
   const has = (...terms: string[]) => terms.some(t => combined.includes(t.toLowerCase()));
 
+  // 0. Prioritas Utama: Antihipertensi & Penyekat Saluran Kalsium (CCB)
+  // Menjamin 100% Amlodipin dan CCB lainnya selalu masuk Kardiovaskular & Diuretik (bukan Nutrisi/Mineral meskipun memiliki mekanisme antagonis kalsium)
+  if (
+    has("amlodipin", "amlodipine", "norvask", "tensivask", "divask", "nifedipin", "nifedipine", "diltiazem", "nicardipine", "verapamil")
+  ) {
+    return { label: "Kardiovaskular & Diuretik", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" };
+  }
+
   // 1. Diagnostik & Khusus
   if (
     has("iopamiro", "omnipaque", "hexiol", "media kontras", "bahan kontras", "betiatide", "jelly usg", "usg jelly", "lubrikan transduser", "sirplus", "ventisorb", "absorben karbon", "pelarut atau pemanis")

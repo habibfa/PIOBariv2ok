@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Sparkles, Loader2, Minus, Bot, Pill, ShieldCheck, Activity } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { generateClinicalChatFallback } from '../utils/clinicalAssistantFallback';
 
 interface Message {
   id: string;
@@ -59,11 +60,14 @@ export default function FloatingAIAssistant() {
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        if (response.status === 404) {
-          throw new Error("Endpoint /api/chat-ai belum aktif. Pastikan server dev berjalan.");
-        }
-        throw new Error(errData.error || `Koneksi gagal (Status ${response.status})`);
+        // Fallback to local clinical knowledge engine
+        const fallbackText = generateClinicalChatFallback(userMessage.content);
+        setMessages(prev => [...prev, { 
+          id: (Date.now() + 1).toString(), 
+          role: 'assistant', 
+          content: `${fallbackText}\n\n*(Basis Data Klinis Formularium RSUD Palembang BARI)*` 
+        }]);
+        return;
       }
 
       const data = await response.json();
@@ -71,13 +75,16 @@ export default function FloatingAIAssistant() {
       setMessages(prev => [...prev, { 
         id: (Date.now() + 1).toString(), 
         role: 'assistant', 
-        content: data.reply 
+        content: data.reply || generateClinicalChatFallback(userMessage.content)
       }]);
     } catch (error: any) {
+      // If network offline or fetch fails, provide immediate local clinical response
+      console.warn("Koneksi chat-ai gagal, mengaktifkan asisten klinis mandiri:", error);
+      const fallbackText = generateClinicalChatFallback(userMessage.content);
       setMessages(prev => [...prev, { 
         id: (Date.now() + 1).toString(), 
         role: 'assistant', 
-        content: 'Maaf, terjadi kendala teknis: ' + (error?.message || 'Gagal menghubungi asisten AI.') 
+        content: `${fallbackText}\n\n*(Basis Data Klinis Formularium RSUD Palembang BARI)*` 
       }]);
     } finally {
       setIsLoading(false);
