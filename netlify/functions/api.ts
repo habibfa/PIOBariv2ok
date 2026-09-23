@@ -7,6 +7,12 @@ import {
   generateClinicalDiseaseFallback,
   generateClinicalSoapFallback
 } from "../../src/utils/clinicalAssistantFallback";
+import {
+  SOAP_SYSTEM_INSTRUCTION,
+  buildSoapPrompt,
+  CHAT_SYSTEM_INSTRUCTION,
+  buildChatPrompt
+} from "../../src/utils/aiPrompts";
 
 dotenv.config();
 
@@ -436,32 +442,14 @@ FORMATTING:
       return res.json({ text: generateClinicalSoapFallback(patientData) });
     }
 
-    const prompt = `Role: Kamu adalah apoteker klinis di bangsal penyakit dalam yang menulis catatan SOAP untuk rekam medis.
-
-Goal: Ubah data pasien mentah menjadi catatan SOAP terstruktur dengan fokus pada penilaian farmakoterapi.
-
-Context: Data pasien akan diberikan berupa keluhan, riwayat penyakit, daftar obat, hasil lab, dan tanda vital. Pembaca catatan adalah dokter dan apoteker lain.
-
-Requirements:
-- Kelompokkan menjadi empat bagian: Subjective, Objective, Assessment, Plan.
-- Pada Assessment, identifikasi setiap Drug Related Problem (DRP) dan beri alasan singkat.
-- Pada Plan, sertakan rencana monitoring (parameter, frekuensi, target).
-
-Output Format: Markdown dengan heading tiap bagian SOAP. Assessment dan Plan memakai daftar bernomor. Maksimal 500 kata.
-
-Restrictions: Jangan membuat data yang tidak diberikan. Jangan memberi dosis pasti tanpa data berat badan dan fungsi ginjal.
-
-Examples: Jika pasien memakai warfarin dan INR 4,5 -> Assessment: risiko perdarahan (DRP: dosis berlebih); Plan: tahan 1 dosis, cek INR ulang 24 jam.
-
-Data pasien:
-${patientData}`;
+    const prompt = buildSoapPrompt(patientData);
 
     let responseText = "";
     try {
       responseText = await callGeminiWithFallback(ai, prompt, {
-        systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
+        systemInstruction: SOAP_SYSTEM_INSTRUCTION,
         timeoutMs: 25000,
-        maxOutputTokens: 2000
+        maxOutputTokens: 1500
       });
     } catch (geminiError: any) {
       console.warn("AI soap-ai failed, using structured SOAP fallback:", geminiError?.message || geminiError);

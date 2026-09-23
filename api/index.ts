@@ -21,6 +21,12 @@ import {
   generateClinicalDiseaseFallback,
   generateClinicalSoapFallback
 } from "../src/utils/clinicalAssistantFallback";
+import {
+  SOAP_SYSTEM_INSTRUCTION,
+  buildSoapPrompt,
+  CHAT_SYSTEM_INSTRUCTION,
+  buildChatPrompt
+} from "../src/utils/aiPrompts";
 
 dotenv.config();
 
@@ -475,31 +481,14 @@ const handleChatAi = async (req: express.Request, res: express.Response) => {
       return res.json({ reply: fallback });
     }
 
-    const systemPrompt = "Anda adalah Asisten Apoteker Klinis dan Ahli Farmakologi yang ramah, ringkas, dan berbasis bukti (evidence-based medicine). Jawab pertanyaan pengguna mengenai obat, dosis, indikasi, atau interaksi secara jelas dalam Bahasa Indonesia.";
-
-    let conversationContext = "";
-    if (Array.isArray(req.body?.history) && req.body.history.length > 0) {
-      // Limit history to latest 10 turns and sanitize each turn
-      const safeHistory = req.body.history.slice(-10);
-      conversationContext = safeHistory
-        .map((h: any) => {
-          const role = h.role === "user" ? "Pengguna" : "Asisten";
-          const content = sanitizeInputText(h.content, 2000) || "";
-          return `${role}: ${content}`;
-        })
-        .filter((line: string) => line.length > 0)
-        .join("\n");
-    }
-
-    const prompt = conversationContext 
-      ? `Riwayat percakapan:\n${conversationContext}\n\nPertanyaan pengguna: ${message}\n\nJawaban:` 
-      : `Pertanyaan pengguna: ${message}\n\nJawaban:`;
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
+    const prompt = buildChatPrompt(message, history);
 
     try {
       const text = await callGeminiWithFallback(ai, prompt, {
-        systemInstruction: systemPrompt,
+        systemInstruction: CHAT_SYSTEM_INSTRUCTION,
         timeoutMs: 18000,
-        maxOutputTokens: 1500
+        maxOutputTokens: 1200
       });
       return res.json({ reply: text });
     } catch (geminiError: any) {
@@ -531,31 +520,14 @@ app.post(["/api/soap-ai", "/soap-ai"], aiRateLimiter, async (req, res) => {
       return res.json({ text: generateClinicalSoapFallback(patientData) });
     }
 
-    const prompt = `Role: Kamu adalah apoteker klinis di bangsal penyakit dalam yang menulis catatan SOAP untuk rekam medis.
-
-Goal: Ubah data pasien mentah menjadi catatan SOAP terstruktur dengan fokus pada penilaian farmakoterapi.
-
-Context: Data pasien akan diberikan berupa keluhan, riwayat penyakit, daftar obat, hasil lab, dan tanda vital. Pembaca catatan adalah dokter dan apoteker lain.
-
-Requirements:
-- Kelompokkan menjadi empat bagian: SUBJECTIVE, OBJECTIVE, ASSESSMENT, PLAN. PASTIKAN JUDUL BAGIAN INI DITULIS MENGGUNAKAN HURUF KAPITAL SEMUA (UPPERCASE).
-- Pada Assessment, identifikasi setiap Drug Related Problem (DRP) dan beri alasan singkat.
-- Pada Plan, sertakan rencana monitoring (parameter, frekuensi, target).
-- WAJIB Sertakan referensi Evidence-Based Medicine (EBM), literatur, jurnal, atau guideline medis pada bagian akhir.
-
-Output Format: Markdown dengan heading tiap bagian SOAP. Assessment dan Plan memakai daftar bernomor. Maksimal 500 kata.
-
-Restrictions: Jangan membuat data yang tidak diberikan. Jangan memberi dosis pasti tanpa data berat badan dan fungsi ginjal.
-
-Data pasien:
-${patientData}`;
+    const prompt = buildSoapPrompt(patientData);
 
     let responseText = "";
     try {
       responseText = await callGeminiWithFallback(ai, prompt, {
-        systemInstruction: "You are an elite Clinical Pharmacologist writing clinical SOAP notes.",
+        systemInstruction: SOAP_SYSTEM_INSTRUCTION,
         timeoutMs: 25000,
-        maxOutputTokens: 2000
+        maxOutputTokens: 1500
       });
     } catch (geminiError: any) {
       console.warn("AI soap-ai failed, using structured SOAP fallback:", geminiError?.message || geminiError);
