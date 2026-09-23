@@ -4,7 +4,8 @@ import { generateClinicalDiseaseFallback } from "../src/utils/clinicalAssistantF
 
 dotenv.config();
 
-function getApiKey(): string | undefined {
+function getApiKey(req?: any): string | undefined {
+  const headerKey = req?.headers?.["x-api-key"] || req?.headers?.["authorization"]?.replace(/^Bearer\s+/i, "");
   return (
     process.env.GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
@@ -12,35 +13,32 @@ function getApiKey(): string | undefined {
     process.env.VITE_GOOGLE_API_KEY ||
     process.env.API_KEY ||
     process.env.GEMINI_KEY ||
-    process.env.GOOGLE_GENAI_API_KEY
+    process.env.GOOGLE_GENAI_API_KEY ||
+    (typeof headerKey === "string" && headerKey.trim().length > 10 ? headerKey.trim() : undefined)
   )?.trim();
 }
 
-let aiClient: GoogleGenAI | null = null;
-function getAIClient(): GoogleGenAI | null {
-  if (aiClient) return aiClient;
-  const apiKey = getApiKey();
-  if (apiKey) {
-    aiClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
+function getAIClient(req?: any): GoogleGenAI | null {
+  const apiKey = getApiKey(req);
+  if (!apiKey) return null;
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
       },
-    });
-  }
-  return aiClient;
+    },
+  });
 }
 
 const CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
   "gemini-3.1-flash-lite",
+  "gemini-2.5-flash",
   "gemini-3.8-flash"
 ];
 
 async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
-  const timeoutMs = 5000;
+  const timeoutMs = 8500;
   let lastError: any = null;
 
   for (const model of CANDIDATE_MODELS) {
@@ -62,6 +60,7 @@ async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
     } catch (err: any) {
       console.warn(`[Vercel disease-info] Model ${model} failed:`, err?.message || err);
       lastError = err;
+      break;
     }
   }
 
@@ -71,7 +70,7 @@ async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key");
   res.setHeader("X-Content-Type-Options", "nosniff");
 
   if (req.method === "OPTIONS") {
@@ -90,7 +89,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: "Silakan berikan nama penyakit yang valid." });
     }
 
-    const ai = getAIClient();
+    const ai = getAIClient(req);
     if (!ai) {
       return res.status(200).json({ text: generateClinicalDiseaseFallback(diseaseName) });
     }

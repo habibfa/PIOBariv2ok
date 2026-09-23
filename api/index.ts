@@ -376,7 +376,7 @@ ${alertsList}
     };
 
     try {
-      const ai = getAIClient();
+      const ai = getAIClient(req);
       if (!ai) {
         console.warn("Gemini API client not initialized (missing API key). Resorting to rule-based fallback report.");
         const fallbackReport = getFallbackReport(inputs, calculated, preset, sanitizedQuestion);
@@ -465,7 +465,7 @@ const handleChatAi = async (req: express.Request, res: express.Response) => {
       return res.status(400).json({ error: "Pesan tidak boleh kosong (maksimal 4000 karakter)." });
     }
 
-    const ai = getAIClient();
+    const ai = getAIClient(req);
     if (!ai) {
       const fallback = generateClinicalChatFallback(message);
       return res.json({ reply: fallback });
@@ -521,7 +521,7 @@ app.post(["/api/soap-ai", "/soap-ai"], aiRateLimiter, async (req, res) => {
       return res.status(400).json({ error: "Data pasien diperlukan (maksimal 8000 karakter)." });
     }
 
-    const ai = getAIClient();
+    const ai = getAIClient(req);
     if (!ai) {
       return res.json({ text: generateClinicalSoapFallback(patientData) });
     }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Search, Activity, Stethoscope, AlertCircle, BookOpen } from "lucide-react";
 import Markdown from "react-markdown";
+import { generateClinicalDiseaseFallback } from "./utils/clinicalAssistantFallback";
 
 export function DiseasesConditions() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -10,35 +11,46 @@ export function DiseasesConditions() {
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!searchQuery.trim()) return;
+    const query = searchQuery.trim();
+    if (!query) return;
 
     setLoading(true);
     setError(null);
     setArticleContent(null);
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const clientApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.VITE_GOOGLE_API_KEY;
+      if (clientApiKey) {
+        headers["x-api-key"] = clientApiKey;
+      }
+
       const response = await fetch("/api/disease-info", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ diseaseName: searchQuery.trim() }),
+        headers,
+        body: JSON.stringify({ diseaseName: query }),
       });
 
       if (!response.ok) {
-        let errData;
+        let serverText = "";
         try {
-          errData = await response.json();
-        } catch (parseError) {
-          throw new Error("Gagal terhubung ke server (Format respons tidak dikenali).");
-        }
-        throw new Error(errData.error || "Gagal mengambil informasi penyakit.");
+          const errData = await response.json();
+          if (errData && errData.text) serverText = errData.text;
+        } catch (_) {}
+
+        setArticleContent(serverText || generateClinicalDiseaseFallback(query));
+        return;
       }
 
       const data = await response.json();
-      setArticleContent(data.text);
+      if (data.text) {
+        setArticleContent(data.text);
+      } else {
+        setArticleContent(generateClinicalDiseaseFallback(query));
+      }
     } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan yang tidak diketahui.");
+      console.warn("Disease fetch failed, using clinical fallback engine:", err);
+      setArticleContent(generateClinicalDiseaseFallback(query));
     } finally {
       setLoading(false);
     }

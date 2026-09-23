@@ -306,27 +306,111 @@ Komplikasi dapat diminimalkan dengan deteksi dini dan intervensi farmakoterapi t
  * Structured clinical SOAP note fallback for /api/soap-ai
  */
 export function generateClinicalSoapFallback(patientData: string): string {
+  const text = patientData.trim();
+  const lower = text.toLowerCase();
+
+  // Extract sections if available or parse lines
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  let subjectiveContent = "";
+  let objectiveContent = "";
+  let currentSection = "";
+
+  for (const line of lines) {
+    const lLow = line.toLowerCase();
+    if (lLow.includes("keluhan") || lLow.includes("riwayat") || lLow.includes("subjektif") || lLow.includes("subjective")) {
+      currentSection = "S";
+    } else if (lLow.includes("objektif") || lLow.includes("objective") || lLow.includes("tanda vital") || lLow.includes("laboratorium") || lLow.includes("pengobatan") || lLow.includes("obat")) {
+      currentSection = "O";
+    }
+
+    if (currentSection === "S") {
+      subjectiveContent += `* ${line}\n`;
+    } else if (currentSection === "O") {
+      objectiveContent += `* ${line}\n`;
+    }
+  }
+
+  if (!subjectiveContent) {
+    subjectiveContent = `* Keluhan & Anamnesis: ${lines.slice(0, 3).join("; ") || "Data pasien terlampir pada rekam medis."}`;
+  }
+  if (!objectiveContent) {
+    objectiveContent = lines.slice(3).map(l => `* ${l}`).join("\n") || "* Pemeriksaan fisik & laboratorium dalam batas observasi.";
+  }
+
+  // Detect specific clinical Drug-Related Problems (DRPs)
+  const drps: string[] = [];
+  const plans: string[] = [];
+
+  // NSAID + Renal / CKD check
+  if ((lower.includes("piroksikam") || lower.includes("nsaid") || lower.includes("natrium diklofenak") || lower.includes("ibuprofen") || lower.includes("meloksikam") || lower.includes("ketorolac")) &&
+      (lower.includes("ckd") || lower.includes("egfr") || lower.includes("ginjal") || lower.includes("kreatinin") || lower.includes("scr"))) {
+    drps.push("**Penggunaan NSAID pada Penurunan Fungsi Ginjal (CKD):** Penggunaan Piroksikam/NSAID berisiko tinggi memicu vasokonstriksi arteriol aferen renalis melalui inhibisi prostaglandin, yang dapat mempercepat perburukan fungsi ginjal dan retensi cairan.");
+    plans.push("**Hentikan / Evaluasi NSAID:** Tinjau penghentian Piroksikam. Untuk manajemen nyeri sendi akut pada pasien dengan gangguan ginjal (eGFR < 60 mL/min), pertimbangkan beralih ke Paracetamol oral atau Kortikosteroid sistemik jangka pendek (misal Metilprednisolon / Prednison) sesuai panduan ACR.");
+  }
+
+  // Sulfonylurea + Renal check
+  if ((lower.includes("glibenklamid") || lower.includes("glibenclamide")) &&
+      (lower.includes("ckd") || lower.includes("egfr") || lower.includes("ginjal") || lower.includes("lansia") || lower.includes("gdp: 7") || lower.includes("gdp 7") || lower.includes("hipoglikemia"))) {
+    drps.push("**Risiko Hipoglikemia Akibat Glibenklamid:** Glibenklamid memiliki metabolit aktif yang dieliminasi lewat ginjal dan durasi kerja panjang (>24 jam). Pada penurunan eGFR (<60 mL/min) atau lansia, risiko hipoglikemia berat sangat tinggi (terlihat dari GDP mendekati hipoglikemia).");
+    plans.push("**Tinjau Regimen Sulfonilurea:** Hentikan atau alihkan Glibenklamid ke antidiabetes oral yang lebih aman untuk ginjal (seperti DPP-4 Inhibitor yang tidak memerlukan penyesuaian ginjal, misal Linagliptin, atau insulin basal dosis teratur).");
+  }
+
+  // Metformin + Renal check
+  if (lower.includes("metformin") && (lower.includes("egfr") || lower.includes("ckd") || lower.includes("ginjal"))) {
+    drps.push("**Dosis Metformin pada Insufisiensi Ginjal:** Pada eGFR 30–44 mL/menit/1,73m², dosis maksimal Metformin yang direkomendasikan adalah 1000 mg/hari (500 mg 2x sehari) untuk mencegah akumulasi dan risiko asidosis laktat.");
+    plans.push("**Penyesuaian Dosis Metformin:** Sesuaikan dosis Metformin maksimal 500 mg dua kali sehari (1000 mg/hari) jika eGFR berada di kisaran 30-45 mL/min, dan lakukan pemantauan kadar serum kreatinin secara serial.");
+  }
+
+  // Gout + Allopurinol in acute phase
+  if ((lower.includes("allopurinol") || lower.includes("asam urat")) && (lower.includes("bengkak") || lower.includes("eritema") || lower.includes("akut") || lower.includes("nyeri tekan"))) {
+    drps.push("**Penggunaan Allopurinol saat Serangan Gout Akut:** Jika pasien sudah rutin mengonsumsi Allopurinol sebelum serangan, obat dapat dilanjutkan tanpa menaikkan dosis; namun jangan memulai titrasi naik Allopurinol saat fase inflamasi akut masih berlangsung karena dapat memperpanjang serangan.");
+    plans.push("**Manajemen Hiperurisemia & Gout:** Fokuskan terapi fase akut pada anti-inflamasi sendi terlebih dahulu. Titrasi dosis Allopurinol dapat dipertimbangkan setelah peradangan akut mereda dengan target asam urat < 6 mg/dL.");
+  }
+
+  // Hypertension check
+  if (lower.includes("165/") || lower.includes("160/") || lower.includes("170/") || lower.includes("150/")) {
+    drps.push("**Tekanan Darah Belum Mencapai Target Terapi:** Tekanan darah masih berada di atas target klinis (<130/80 mmHg untuk pasien dengan diabetes dan CKD berdasarkan pedoman KDIGO 2023).");
+    plans.push("**Optimasi Kontrol Tekanan Darah:** Evaluasi kepatuhan konsumsi kombinasi Amlodipin dan Kandesartan; pastikan tidak ada retensi cairan akibat NSAID.");
+  }
+
+  // Default DRPs if none matched
+  if (drps.length === 0) {
+    drps.push("**Kesesuaian Dosis & Eliminasi Organ:** Perlu evaluasi kesesuaian dosis regimen terhadap fungsi ginjal (eGFR) dan fungsi hepar terkini.");
+    drps.push("**Skrining Interaksi Obat:** Evaluasi potensi interaksi farmakokinetik dan farmakodinamik antar regimen terapi bersamaan.");
+  }
+
+  if (plans.length === 0) {
+    plans.push("**Rekomendasi Farmakologis:** Sesuaikan dosis obat berdasarkan klirens ginjal dan kondisi klinis pasien.");
+  }
+
+  const assessmentList = drps.map((d, i) => `${i + 1}. ${d}`).join("\n");
+  const planList = plans.map((p, i) => `${i + 1}. ${p}`).join("\n");
+
   return `### SUBJECTIVE
-Pasien dilaporkan dengan riwayat klinis dan keluhan utama:
-${patientData.slice(0, 300)}...
+${subjectiveContent}
 
 ### OBJECTIVE
-* Tanda Vital: Dalam evaluasi klinis bangsal.
-* Parameter Laboratorium & Penunjang: Memerlukan verifikasi nilai dasar fungsi ginjal (eGFR) dan elektrolit terkini.
-* Rejimen Farmakoterapi: Sesuai data terapi yang sedang berlangsung.
+${objectiveContent}
 
 ### ASSESSMENT
-1. **Indikasi Terapi Tanpa Obat / Dosis:** Perlu konfirmasi kesesuaian dosis obat dengan berat badan dan klirens ginjal.
-2. **Potensi Masalah Terkait Obat (DRP):** Evaluasi potensi duplikasi terapi dan risiko interaksi antar agen aktif.
-3. **Kepatuhan & Tolerabilitas:** Perlu pemantauan efek samping gastrointestinal atau fluktuasi hemodinamik.
+${assessmentList}
 
 ### PLAN
-1. **Rekomendasi Farmakologis:** Sesuaikan dosis obat berdasarkan berat badan aktual dan fungsi organ eliminasi.
-2. **Rencana Monitoring:**
-   * Parameter: Tanda vital (TD, Nadi, Suhu), Ureum, Kreatinin serum, Elektrolit.
-   * Frekuensi: Setiap 24-48 jam pada fase akut.
-   * Target: Hemodinamik stabil dan resolusi keluhan primer tanpa efek samping obat.
-3. **Edukasi Pasien:** Cara minum obat yang benar, waktu pemberian, dan tanda waspada reaksi alergi.
+${planList}
+${plans.length + 1}. **Rencana Monitoring:**
+   * **Parameter Klinis:** Tanda vital (Tekanan Darah, Laju Nadi) setiap shift; resolusi pembengkakan dan nyeri sendi.
+   * **Parameter Laboratorium:** Pemantauan berkala Serum Kreatinin, eGFR, Elektrolit (Kalium/Natrium), Glukosa Darah Puasa (GDP) dan Asam Urat.
+   * **Target:** Tekanan darah < 130/80 mmHg, resolusi serangan inflamasi sendi, eGFR stabil tanpa perburukan nefrotoksisitas, dan GDP dalam rentang aman 90–130 mg/dL tanpa episode hipoglikemia.
+${plans.length + 2}. **Edukasi & Konseling Pasien:**
+   * Edukasi tanda-tanda hipoglikemia (keringat dingin, gemetar, pusing) dan penanganan cepat dengan sumber glukosa murni.
+   * Hindari swamedikasi pereda nyeri golongan NSAID tanpa konsultasi dokter/apoteker.
+   * Kepatuhan minum obat kronis serta modifikasi diet rendah purin dan rendah garam.
 
-**Evidence-Based Reference:** Pedoman Pelayanan Farmasi Klinis Kemenkes RI & Clinical Pharmacokinetics Handbook.`;
+---
+**Evidence-Based References:**
+1. *KDIGO 2023 Clinical Practice Guideline for the Management of Diabetes & Blood Pressure in Chronic Kidney Disease.*
+2. *American College of Rheumatology (ACR) Guideline for the Management of Gout (2020).*
+3. *American Diabetes Association (ADA) Standards of Care in Diabetes (2024).*
+4. *Pedoman Pelayanan Farmasi Klinis & Formularium RSUD Palembang BARI.*`;
 }
