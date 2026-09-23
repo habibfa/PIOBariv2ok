@@ -1,4 +1,47 @@
 import { DRUG_PRESETS } from '../presets';
+import { getDrugSafetyReview } from '../data/drugSafetyMetadata';
+
+// Common stop words to ignore when isolating drug names from natural questions
+const CLINICAL_STOP_WORDS = new Set([
+  "kategori", "kehamilan", "hamil", "ibu", "bumil", "fda", "obat", "dosis", "efek",
+  "samping", "menyusui", "laktasi", "pada", "untuk", "oleh", "dengan", "dan", "atau",
+  "yang", "dari", "dalam", "apakah", "bagaimana", "aman", "indikasi", "aturan",
+  "minum", "pakai", "trimester", "kontraindikasi", "interaksi", "halo", "tolong",
+  "berikan", "info", "informasi", "tentang", "terkait", "bisa", "kah", "adakah",
+  "kandungan", "resep", "pasien", "usia", "tahun", "bulan", "hari", "kali", "mg", "tablet"
+]);
+
+function extractCandidateDrugNames(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(w => w.length >= 3 && !CLINICAL_STOP_WORDS.has(w));
+}
+
+function findPresetByQuery(query: string) {
+  const q = query.toLowerCase();
+  const candidateWords = extractCandidateDrugNames(q);
+
+  // 1. Direct whole name match or ID match
+  for (const p of DRUG_PRESETS) {
+    const id = p.id.toLowerCase();
+    const name = p.name.toLowerCase();
+    if (q.includes(id) || q.includes(name)) return p;
+  }
+
+  // 2. Candidate word matching
+  for (const word of candidateWords) {
+    // Prefer match at start of word
+    const match = DRUG_PRESETS.find(p => {
+      const id = p.id.toLowerCase();
+      const name = p.name.toLowerCase();
+      return id.includes(word) || name.includes(word);
+    });
+    if (match) return match;
+  }
+
+  return null;
+}
 
 /**
  * High-fidelity clinical knowledge engine that provides immediate evidence-based
@@ -27,28 +70,22 @@ export function generateClinicalChatFallback(message: string): string {
 *(Rujukan: FDA Drug Safety Communication & Pedoman Kompatibilitas Sediaan Steril RSUD Palembang BARI)*`;
   }
 
-  // 2. Pregnancy category questions (e.g., FDA Metformin, Paracetamol, etc.)
-  if (query.includes("kehamilan") || query.includes("hamil") || query.includes("fda") || query.includes("ibu hamil")) {
-    const matchedDrug = DRUG_PRESETS.find(p => query.includes(p.name.toLowerCase()));
+  // 2. Pregnancy category questions (e.g., FDA Metformin, Paracetamol, Captopril, Warfarin, etc.)
+  if (query.includes("kehamilan") || query.includes("hamil") || query.includes("fda") || query.includes("ibu hamil") || query.includes("bumil") || query.includes("laktasi") || query.includes("menyusui")) {
+    const matchedDrug = findPresetByQuery(query);
     if (matchedDrug) {
+      const safety = getDrugSafetyReview(matchedDrug, matchedDrug.name, matchedDrug.name);
       return `### Keamanan Kehamilan FDA: ${matchedDrug.name}
 
-* **Kategori Kehamilan FDA:** **Kategori ${matchedDrug.pregnancyCategory || 'B (Konsultasikan spesialis)'}**
-* **Indikasi Utama:** ${matchedDrug.indication || 'Terapi sesuai formularium'}
+* **Kategori Kehamilan FDA:** **Kategori ${safety.pregnancySafety.category}** (${safety.pregnancySafety.status})
+* **Evaluasi Klinis & Teratogenisitas:** ${safety.pregnancySafety.detail}
+* **Panduan Trimester:** ${safety.pregnancySafety.trimesterAdvice}
+* **Keamanan Menyusui (Laktasi):** **${safety.breastfeedingSafety.status}** - ${safety.breastfeedingSafety.detail} ${safety.breastfeedingSafety.infantRisk ? `*(${safety.breastfeedingSafety.infantRisk})*` : ''}
+* **Indikasi Formularium:** ${matchedDrug.indication || 'Terapi sesuai formularium'}
 * **Dosis Lazim:** ${matchedDrug.defaultDoseValue} ${matchedDrug.doseUnit} (${matchedDrug.frequency})
-* **Pertimbangan Klinis Ibu Hamil:**
-  ${
-    matchedDrug.pregnancyCategory === 'B' 
-      ? '- Tergolong relatif aman digunakan selama kehamilan jika ada indikasi medis yang jelas. Studi pada hewan tidak menunjukkan risiko pada janin, namun data kontrol pada wanita hamil terbatas.'
-      : matchedDrug.pregnancyCategory === 'C'
-      ? '- Penggunaan hanya jika potensi manfaat klinis melebihi risiko potensial pada janin. Disarankan evaluasi alternatif lini pertama yang lebih aman.'
-      : matchedDrug.pregnancyCategory === 'D' || matchedDrug.pregnancyCategory === 'X'
-      ? '- **Peringatan Tinggi:** Terdapat bukti risiko pada janin manusia atau teratogenik. Hindari penggunaan kecuali kondisi darurat jiwa (*life-saving*) tanpa ada pilihan lain.'
-      : '- Evaluasi manfaat risiko secara komprehensif bersama dokter spesialis obstetri & ginekologi.'
-  }
-* **Catatan Farmasi:** ${matchedDrug.notes || 'Pemberian obat pada trimester pertama harus selalu dipantau dengan ketat.'}
+* **Catatan Farmasi Khusus:** ${matchedDrug.notes || 'Pemberian obat pada trimester pertama harus selalu dipantau dengan ketat.'}
 
-*(Rujukan: FDA Pregnancy Risk Categories & Formularium RSUD Palembang BARI)*`;
+*(Rujukan: FDA Pregnancy Risk Categories, LactMed NLM & Formularium RSUD Palembang BARI)*`;
     }
   }
 
@@ -183,11 +220,12 @@ export function generateClinicalChatFallback(message: string): string {
     const top = matched.slice(0, 3);
     let res = `Berikut informasi klinis obat dari **Formularium RSUD Palembang BARI**:\n\n`;
     top.forEach((drug, idx) => {
+      const safety = getDrugSafetyReview(drug, drug.name, drug.name);
       res += `### ${idx + 1}. ${drug.name}\n`;
       if (drug.indication) res += `* **Indikasi Klinis:** ${drug.indication}\n`;
       res += `* **Dosis Lazim:** ${drug.defaultDoseValue} ${drug.doseUnit} (${drug.frequency})\n`;
       if (drug.dailyDoseLimitMax) res += `* **Dosis Maksimal Harian:** ${drug.dailyDoseLimitMax} ${drug.doseUnit}/hari\n`;
-      if (drug.pregnancyCategory) res += `* **Keamanan Kehamilan FDA:** Kategori ${drug.pregnancyCategory}\n`;
+      res += `* **Keamanan Kehamilan FDA:** Kategori ${safety.pregnancySafety.category} (${safety.pregnancySafety.status})\n`;
       if (drug.notes) res += `* **Catatan Farmasi & Pemberian:** ${drug.notes}\n`;
       res += `\n`;
     });

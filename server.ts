@@ -66,11 +66,24 @@ async function startServer() {
     name: "general"
   });
 
+  // Helper to reliably find Gemini API key across Vercel / Cloud Run / Local env names
+  function getApiKey(): string | undefined {
+    return (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.VITE_GEMINI_API_KEY ||
+      process.env.VITE_GOOGLE_API_KEY ||
+      process.env.API_KEY ||
+      process.env.GEMINI_KEY ||
+      process.env.GOOGLE_GENAI_API_KEY
+    )?.trim();
+  }
+
   // Initialize Gemini client safely (lazy)
   let aiClient: GoogleGenAI | null = null;
-  function getAIClient() {
+  function getAIClient(): GoogleGenAI | null {
     if (aiClient) return aiClient;
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = getApiKey();
     if (apiKey) {
       aiClient = new GoogleGenAI({
         apiKey: apiKey,
@@ -84,12 +97,10 @@ async function startServer() {
     return aiClient;
   }
 
-  // Resilient multi-model cascade with fast models first
+  // Resilient multi-model cascade with fast, stable models first
   const CANDIDATE_MODELS = [
-    "gemini-3.1-flash-lite", // ultra fast, low latency, currently active
-    "gemini-flash-latest",   // standard fast alias
-    "gemini-2.5-flash",      // preview stable
-    "gemini-3.5-flash",      // general flash
+    "gemini-2.5-flash",      // ultra stable & fast (<1.5s response)
+    "gemini-3.1-flash-lite", // lightweight low latency
     "gemini-3.8-flash"       // latest preview
   ];
 
@@ -98,7 +109,7 @@ async function startServer() {
     prompt: string,
     options?: { systemInstruction?: string; timeoutMs?: number; temperature?: number }
   ): Promise<string> {
-    const timeoutMs = options?.timeoutMs || 8000;
+    const timeoutMs = options?.timeoutMs || 4500;
     let lastError: any = null;
 
     for (const model of CANDIDATE_MODELS) {
