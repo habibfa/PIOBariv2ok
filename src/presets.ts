@@ -2684,7 +2684,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     defaultDoseValue: 1,
     doseUnit: "units",
     frequency: "once",
-    notes: "Sediaan: SOLUTION, FOR INHALATION 120 MCG; 21 MCG"
+    notes: "Sediaan: Nebulizer (Cairan Inhalasi / Nebules UDV 2.5 mL)"
 },
 {
     id: "concor",
@@ -3439,7 +3439,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     defaultDoseValue: 1,
     doseUnit: "units",
     frequency: "once",
-    notes: "Sediaan: SOLUTION, FOR INHALATION 0.5 MG; 2.5 MG"
+    notes: "Sediaan: Nebulizer (Cairan Inhalasi / Nebules 2.5 mL)"
 },
 {
     id: "auto_fargoxin",
@@ -6789,7 +6789,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     defaultDoseValue: 1,
     doseUnit: "units",
     frequency: "once",
-    notes: "Sediaan: SUSPENSION, FOR INHALATION 0.25 MG/ML"
+    notes: "Sediaan: Nebulizer (Cairan Inhalasi Suspensi / Respules 0.25 mg/mL dalam ampul 2 mL)"
 },
 {
     id: "auto_pumpisel",
@@ -8444,7 +8444,7 @@ const UNSORTED_PRESETS: DrugPreset[] = [
     defaultDoseValue: 1,
     doseUnit: "units",
     frequency: "once",
-    notes: "Sediaan: SOLUTION, FOR INHALATION 2.5 MG/2.5 ML"
+    notes: "Sediaan: Nebulizer (Cairan Inhalasi / Nebules 2.5 mg/2.5 mL)"
 },
 {
     id: "auto_verorab_0_5_ml",

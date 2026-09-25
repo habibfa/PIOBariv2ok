@@ -166,6 +166,18 @@ const getGenericAndBrand = (name: string, presetId?: string) => {
   } else if (idLower === "triamcinolone" || brandLower.startsWith("triamcinolone") || brandLower.startsWith("triamsinolon")) {
     brand = "Triamcinolone";
     generic = "Triamsinolon Asetonid";
+  } else if (idLower.includes("ventolin") || brandLower.includes("ventolin")) {
+    brand = "Ventolin Nebule";
+    generic = "Salbutamol Sulfat";
+  } else if (idLower.includes("combivent") || brandLower.includes("combivent")) {
+    brand = "Combivent Nebules";
+    generic = "Ipratropium Bromida & Salbutamol Sulfat";
+  } else if (idLower.includes("farbivent") || brandLower.includes("farbivent")) {
+    brand = "Farbivent Nebule";
+    generic = "Ipratropium Bromida & Salbutamol Sulfat";
+  } else if (idLower.includes("pulmicort") || brandLower.includes("pulmicort")) {
+    brand = "Pulmicort Respules";
+    generic = "Budesonide";
   }
 
   return { brand, generic };
@@ -738,25 +750,69 @@ const getDrugFormulation = (preset: DrugPreset) => {
     combined.includes("topikal") ||
     combined.includes("lotion");
 
-  // 2. Check for Inhalation
-  const isInhalation =
-    idLower.includes("budesonide") ||
-    idLower.includes("budesonid") ||
-    combined.includes("inhaler") ||
-    combined.includes("inhalasi") ||
-    combined.includes("nebulizer") ||
+  // 2. Check for Nebulizer (Cairan Inhalasi / Nebules / Respules untuk alat Nebulizer)
+  const isNebulizer =
+    idLower.includes("nebulizer") ||
+    idLower.includes("nebuliser") ||
+    idLower.includes("nebule") ||
+    idLower.includes("nebules") ||
+    nameLower.includes("nebulizer") ||
+    nameLower.includes("nebuliser") ||
+    nameLower.includes("nebule") ||
+    nameLower.includes("nebules") ||
+    notesLower.includes("nebulizer") ||
+    notesLower.includes("nebuliser") ||
+    notesLower.includes("nebule") ||
+    notesLower.includes("nebules") ||
+    idLower.includes("ventolin") ||
+    nameLower.includes("ventolin") ||
+    idLower.includes("combivent") ||
+    nameLower.includes("combivent") ||
+    idLower.includes("farbivent") ||
+    nameLower.includes("farbivent") ||
+    idLower.includes("hevatin") ||
+    nameLower.includes("hevatin") ||
+    idLower.includes("j_vent") ||
+    nameLower.includes("j-vent") ||
+    idLower.includes("pulmicort") ||
+    nameLower.includes("pulmicort") ||
+    combined.includes("respule") ||
     combined.includes("respules") ||
-    combined.includes("spray") ||
-    combined.includes("semprot hidung");
+    combined.includes("cairan inhalasi") ||
+    combined.includes("solution, for inhalation") ||
+    combined.includes("solution for inhalation") ||
+    combined.includes("suspension, for inhalation") ||
+    combined.includes("suspension for inhalation");
 
-  // 3. Check for Suppository / Rectal
+  // 3. Check for Inhaler / Semprot Inhalasi (MDI / Turbuhaler / Diskus / Semprot Hidung)
+  const isInhalation =
+    !isNebulizer && (
+      idLower.includes("budesonide") ||
+      idLower.includes("budesonid") ||
+      idLower.includes("symbicort") ||
+      nameLower.includes("symbicort") ||
+      idLower.includes("seretide") ||
+      nameLower.includes("seretide") ||
+      idLower.includes("spiriva") ||
+      nameLower.includes("spiriva") ||
+      combined.includes("inhaler") ||
+      combined.includes("inhalasi") ||
+      combined.includes("inhalation") ||
+      combined.includes("turbuhaler") ||
+      combined.includes("diskus") ||
+      combined.includes("spray") ||
+      combined.includes("semprot hidung") ||
+      combined.includes("aerosol")
+    );
+
+  // 4. Check for Suppository / Rectal
   const isSuppository =
     combined.includes("suppositoria") ||
     combined.includes("supositoria") ||
     combined.includes("enema") ||
     combined.includes("rektal");
 
-  // 4. Check for Parenteral / Injection using word boundaries
+  // 5. Check for Parenteral / Injection using word boundaries
   const hasInjection =
     combined.includes("injeksi") ||
     combined.includes("injection") ||
@@ -766,7 +822,7 @@ const getDrugFormulation = (preset: DrugPreset) => {
     combined.includes("vial") ||
     /\b(iv|im|sc|intravena|intramuskular|subkutan)\b/i.test(combined);
 
-  // 5. Check for Solid Oral (Tablet, Kapsul, Kaplet)
+  // 6. Check for Solid Oral (Tablet, Kapsul, Kaplet)
   const hasSolidOral =
     combined.includes("tablet") ||
     combined.includes("kapsul") ||
@@ -780,7 +836,7 @@ const getDrugFormulation = (preset: DrugPreset) => {
     idLower.includes("uperio") ||
     idLower.includes("thiamazole");
 
-  // 6. Check for Liquid Oral (Sirup, Suspensi, Drops)
+  // 7. Check for Liquid Oral (Sirup, Suspensi, Drops)
   const hasLiquidOral =
     combined.includes("sirup") ||
     combined.includes("suspensi") ||
@@ -790,14 +846,19 @@ const getDrugFormulation = (preset: DrugPreset) => {
     (preset.liquidConcentrationValue != null && preset.liquidConcentrationVolume != null);
 
   // Resolution order:
+  // Nebulizer takes highest priority for inhalation solution / nebule medications
+  if (isNebulizer && !hasSolidOral && !hasLiquidOral) {
+    return { label: "Nebulizer", icon: "🌬️", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-200" };
+  }
+
   // If explicitly topical and not oral/injeksi:
   if (isTopical && !hasSolidOral && !hasInjection) {
     return { label: "Krim / Salep", icon: "🧴", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" };
   }
 
-  // Inhalation
+  // Inhalation (MDI / Turbuhaler)
   if (isInhalation && !hasSolidOral) {
-    return { label: "Inhalasi", icon: "🌬️", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-200" };
+    return { label: "Inhaler", icon: "🌬️", color: "text-teal-700", bg: "bg-teal-50", border: "border-teal-200" };
   }
 
   // Suppository
@@ -828,6 +889,11 @@ const getDrugFormulation = (preset: DrugPreset) => {
   // If topical with other attributes
   if (isTopical) {
     return { label: "Krim / Salep", icon: "🧴", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" };
+  }
+
+  // If nebule with other attributes
+  if (isNebulizer) {
+    return { label: "Nebulizer", icon: "🌬️", color: "text-sky-700", bg: "bg-sky-50", border: "border-sky-200" };
   }
 
   // Default: Tablet
@@ -866,8 +932,16 @@ const getDrugMetadata = (preset: DrugPreset) => {
     composition = `Tiap tablet mengandung Metformin HCl 500 mg atau 850 mg; tablet lepas lambat (XR) 500 mg & 750 mg`;
   } else if (idLowerPreset.includes("furosemid") || genericLower.includes("furosemid")) {
     composition = `Tiap tablet mengandung Furosemid 40 mg; tiap ampul injeksi IV/IM 20 mg/2 mL (10 mg/mL)`;
-  } else if (idLowerPreset.includes("salbutamol") || genericLower.includes("salbutamol")) {
-    composition = `Tiap ampul cairan inhalasi (Respules) mengandung Salbutamol 2.5 mg dalam 2.5 mL untuk nebulizer; sirup 2 mg/5 mL; tablet 2 mg & 4 mg; MDI inhaler 100 mcg/semprot`;
+  } else if (idLowerPreset.includes("salbutamol") || genericLower.includes("salbutamol") || idLowerPreset.includes("ventolin") || cleanBrand.toLowerCase().includes("ventolin")) {
+    if (idLowerPreset.includes("neb") || idLowerPreset.includes("ventolin") || preset.name.toLowerCase().includes("neb") || (preset.notes && preset.notes.toLowerCase().includes("inhalation"))) {
+      composition = `Tiap ampul cairan inhalasi (Nebules / Respules 2.5 mL) mengandung Salbutamol Sulfat 2.5 mg untuk penggunaan via alat nebulizer`;
+    } else if (idLowerPreset.includes("syr") || preset.name.toLowerCase().includes("sirup")) {
+      composition = `Tiap 5 mL sirup mengandung Salbutamol Sulfat setara Salbutamol 2 mg (botol 100 mL)`;
+    } else {
+      composition = `Tiap ampul cairan inhalasi (Nebules 2.5 mL) mengandung Salbutamol 2.5 mg untuk nebulizer; sirup 2 mg/5 mL; tablet 2 mg & 4 mg; MDI inhaler 100 mcg/semprot`;
+    }
+  } else if (idLowerPreset.includes("combivent") || idLowerPreset.includes("farbivent") || cleanBrand.toLowerCase().includes("combivent") || cleanBrand.toLowerCase().includes("farbivent")) {
+    composition = `Tiap ampul cairan inhalasi (Nebules 2.5 mL) mengandung Ipratropium Bromida 0.5 mg + Salbutamol Sulfat 2.5 mg untuk alat nebulizer`;
   } else if (idLowerPreset.includes("ondansetron") || genericLower.includes("ondansetron")) {
     composition = `Tiap tablet salut selaput mengandung Ondansetron HCl 4 mg atau 8 mg; sirup 4 mg/5 mL; ampul injeksi 4 mg/2 mL dan 8 mg/4 mL`;
   } else if (idLowerPreset.includes("ceftriaxon") || genericLower.includes("ceftriaxon") || genericLower.includes("seftriakson")) {
@@ -1074,8 +1148,11 @@ const getDrugMetadata = (preset: DrugPreset) => {
     }
   } else if (preset.id.includes("inj") || preset.id.includes("iv")) {
     bud = "Injeksi/Vial Multidosis: 28 hari setelah ditusuk pertama kali (kecuali dinyatakan lain). Ampul Single-dose: Segera buang setelah dibuka, tidak boleh disimpan.";
-  } else if (preset.id.includes("neb") || preset.id.includes("inhaler")) {
+  } else if (preset.id.includes("neb") || preset.id.includes("inhaler") || preset.id.includes("ventolin") || preset.name.toLowerCase().includes("ventolin")) {
     bud = "Nebules / Inhaler: Segera gunakan setelah dibuka dari kemasan foil. Obat tetes inhaler multidose maksimal 30 hari.";
+    if (preset.id.includes("neb") || preset.id.includes("ventolin") || preset.name.toLowerCase().includes("neb") || (preset.notes && preset.notes.toLowerCase().includes("nebulizer"))) {
+      usageGuide = "Gunakan via mesin nebulizer (kompresor/ultrasonik). Buka 1 unit nebule (2.5 mL), tuangkan seluruh cairan ke dalam cangkir nebulizer, lalu hirup uap aerosol melalui sungkup/mouthpiece secara perlahan selama 10–15 menit hingga obat habis. Kumur mulut dengan air putih setelah selesai.";
+    }
   }
 
   return {
