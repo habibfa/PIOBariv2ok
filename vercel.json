@@ -1,7 +1,12 @@
 {
   "functions": {
     "api/*.ts": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "data/**"
+    },
+    "api/**/*.ts": {
+      "maxDuration": 30,
+      "includeFiles": "data/**"
     }
   },
   "headers": [
@@ -40,10 +45,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/analytics/:path*",
-      "destination": "/api/analytics"
-    },
     {
       "source": "/((?!api/.*).*)",
       "destination": "/index.html"

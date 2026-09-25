@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { Request } from "express";
 import { anonymizeIP } from "./security.ts";
+import { BASELINE_ANALYTICS_STORE } from "./analyticsStoreBaseline.ts";
 
 export interface CustomEventRecord {
   id: string;
@@ -57,15 +58,9 @@ export interface AnalyticsStoreData {
 const DATA_DIR = process.env.VERCEL ? path.join("/tmp", "data") : path.join(process.cwd(), "data");
 const STORE_FILE = path.join(DATA_DIR, "analytics_store.json");
 
-// In-memory state for maximum throughput
-let store: AnalyticsStoreData = {
-  version: 1,
-  createdAt: Date.now(),
-  lastUpdated: Date.now(),
-  sessions: {},
-  events: [],
-  pageViews: []
-};
+// In-memory state initialized directly with the full 750+ events baseline
+// Ensures identical metrics across local, Cloud Run, and Vercel serverless cold starts
+let store: AnalyticsStoreData = JSON.parse(JSON.stringify(BASELINE_ANALYTICS_STORE));
 
 let saveTimer: NodeJS.Timeout | null = null;
 
@@ -119,6 +114,8 @@ function extractClientIP(req: Request): string {
 
 // Baseline Initializer if database is completely blank
 function seedInitialDatabase() {
+  store = JSON.parse(JSON.stringify(BASELINE_ANALYTICS_STORE));
+  return;
   const now = Date.now();
   const sampleEvents = [
     { name: "dose_calculate", cat: "clinical" as const, label: "Perhitungan Dosis Gentamicin Neonatus", meta: { drug: "Gentamicin", weightKg: 3.1, unit: "mg" }, city: "Palembang - Jakabaring (RSUD BARI)" },
@@ -375,59 +372,43 @@ export function initAnalyticsEngine() {
   try {
     if (fs.existsSync(STORE_FILE)) {
       const raw = fs.readFileSync(STORE_FILE, "utf8");
-      store = JSON.parse(raw);
-      if (!store.events) store.events = [];
-      if (!store.pageViews) store.pageViews = [];
-      if (!store.sessions) store.sessions = {};
-
-      // Harmonize legacy referrers if only 1-2 types exist
-      const distinctRef = new Set(store.pageViews.map(p => p.referrer));
-      if (distinctRef.size <= 2 && store.pageViews.length > 0) {
-        const realisticReferrers = [
-          "Direct / Bookmark Apotek",
-          "Direct / Bookmark Apotek",
-          "Direct / Bookmark Apotek",
-          "https://www.google.co.id/search?q=dosis+obat+fornas+rsud+bari",
-          "https://www.google.com/search?q=skrining+interaksi+obat+ddi",
-          "https://web.whatsapp.com/ (Grup Farmasi Klinis & Dokter BARI)",
-          "https://api.whatsapp.com/send?text=cek+dosis+piobari",
-          "https://rsudbari.palembang.go.id/portal-simrs",
-          "https://dinkes.sumselprov.go.id/faskes-rujukan",
-          "https://iaikotapalembang.id/info-pio"
-        ];
-        const weightedCities = [
-          "Palembang - Jakabaring (RSUD BARI)",
-          "Palembang - Jakabaring (RSUD BARI)",
-          "Palembang - Jakabaring (RSUD BARI)",
-          "Palembang - Seberang Ulu I",
-          "Palembang - Seberang Ulu II",
-          "Palembang - Plaju",
-          "Palembang - Ilir Barat I",
-          "Palembang - Ilir Timur I (RSMH)",
-          "Palembang - Kertapati",
-          "Palembang - Sukarami (KM 9)",
-          "Palembang - Sako & Kalidoni",
-          "Kab. Ogan Ilir (Indralaya)",
-          "Kab. Banyuasin",
-          "Kab. OKI (Kayuagung)",
-          "Kota Prabumulih",
-          "Jakarta (Rujukan Nasional RSCM/Kemenkes)"
-        ];
-        store.pageViews.forEach((pv, idx) => {
-          pv.referrer = realisticReferrers[idx % realisticReferrers.length];
-          pv.city = weightedCities[idx % weightedCities.length];
-        });
-        scheduleSave();
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.events) && parsed.events.length > 0) {
+        store = parsed;
+        if (!store.events) store.events = [];
+        if (!store.pageViews) store.pageViews = [];
+        if (!store.sessions) store.sessions = {};
+        console.log(`[AnalyticsEngine] Berhasil memuat ${store.events.length} events dan ${store.pageViews.length} pageviews dari disk (${STORE_FILE}).`);
+        return;
       }
-      console.log(`[AnalyticsEngine] Berhasil memuat ${store.events.length} events dan ${store.pageViews.length} pageviews dari disk.`);
-    } else {
-      console.log("[AnalyticsEngine] File database belum ada, menginisialisasi seed telemetri RSUD BARI & Sumsel...");
-      seedInitialDatabase();
-      scheduleSave();
     }
+
+    const rootStoreFile = path.join(process.cwd(), "data", "analytics_store.json");
+    if (fs.existsSync(rootStoreFile)) {
+      try {
+        const raw = fs.readFileSync(rootStoreFile, "utf8");
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.events) && parsed.events.length > 0) {
+          store = parsed;
+          if (!store.events) store.events = [];
+          if (!store.pageViews) store.pageViews = [];
+          if (!store.sessions) store.sessions = {};
+          console.log(`[AnalyticsEngine] Berhasil memuat ${store.events.length} events dari ${rootStoreFile}.`);
+          scheduleSave();
+          return;
+        }
+      } catch (err) {
+        console.warn("[AnalyticsEngine] Gagal memuat rootStoreFile, fallback ke baseline snapshot:", err);
+      }
+    }
+
+    console.log("[AnalyticsEngine] Menginisialisasi data telemetri dari snapshot baseline RSUD BARI (750+ events)...");
+    store = JSON.parse(JSON.stringify(BASELINE_ANALYTICS_STORE));
+    scheduleSave();
   } catch (err) {
-    console.error("[AnalyticsEngine] Error inisialisasi store, menggunakan fallback in-memory:", err);
-    seedInitialDatabase();
+    console.error("[AnalyticsEngine] Error inisialisasi store, menggunakan fallback snapshot baseline:", err);
+    store = JSON.parse(JSON.stringify(BASELINE_ANALYTICS_STORE));
+    scheduleSave();
   }
 }
 
@@ -1224,10 +1205,7 @@ export function getStoredEvents(options: {
 
 // Clear or reset store
 export function resetAnalyticsStore() {
-  store.events = [];
-  store.pageViews = [];
-  store.sessions = {};
-  seedInitialDatabase();
+  store = JSON.parse(JSON.stringify(BASELINE_ANALYTICS_STORE));
   scheduleSave();
-  return { success: true, message: "Database telemetri berhasil direset ke baseline aktif." };
+  return { success: true, message: "Database telemetri berhasil direset ke baseline aktif sistem (750+ events)." };
 }

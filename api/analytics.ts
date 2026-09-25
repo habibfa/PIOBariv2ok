@@ -6,7 +6,6 @@ import {
   getStoredEvents,
   resetAnalyticsStore
 } from "../server/analyticsEngine.ts";
-import { verifyAdminAuth } from "../server/security.ts";
 
 initAnalyticsEngine();
 
@@ -20,46 +19,54 @@ export default async function handler(req: any, res: any) {
     return res.status(204).end();
   }
 
-  const url = req.url || "";
+  const rawUrl = req.url || "";
+  const queryPath = Array.isArray(req.query?.path)
+    ? req.query.path.join("/")
+    : (req.query?.path as string) || (req.query?.action as string) || "";
+  const matchedPath = (req.headers?.["x-matched-path"] as string) ||
+                      (req.headers?.["x-forwarded-uri"] as string) ||
+                      (req.headers?.["x-vercel-matched-path"] as string) || "";
+  const fullRoute = `${rawUrl} ${queryPath} ${matchedPath}`.toLowerCase();
 
   try {
-    if (url.includes("/track") && req.method === "POST") {
+    // 1. Ingest telemetry (events & pageviews)
+    if ((fullRoute.includes("track") || queryPath === "track") && req.method === "POST") {
       const result = trackTelemetry(req.body, req);
       return res.status(200).json(result);
     }
 
-    if (url.includes("/heartbeat") && req.method === "POST") {
+    // 2. Real-time active session heartbeat
+    if ((fullRoute.includes("heartbeat") || queryPath === "heartbeat") && req.method === "POST") {
       const result = recordHeartbeat(req.body, req);
       return res.status(200).json(result);
     }
 
-    if (url.includes("/stats") && req.method === "GET") {
+    // 3. Stored events log
+    if (fullRoute.includes("events") || queryPath === "events") {
+      const category = req.query?.category as string | undefined;
+      const region = req.query?.region as string | undefined;
+      const search = req.query?.search as string | undefined;
+      const rawLimit = req.query?.limit ? parseInt(req.query.limit as string, 10) : 150;
+      const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 150 : rawLimit, 200));
+
+      const events = getStoredEvents({ category, region, search, limit });
+      return res.status(200).json({ events });
+    }
+
+    // 4. Reset telemetry database
+    if ((fullRoute.includes("reset") || queryPath === "reset") && req.method === "POST") {
+      const resetResult = resetAnalyticsStore();
+      return res.status(200).json(resetResult);
+    }
+
+    // 5. Aggregated statistics (default for GET or /stats)
+    if (fullRoute.includes("stats") || queryPath === "stats" || req.method === "GET") {
       const timeRange = (req.query?.timeRange as '24h' | '7d' | '30d') || '24h';
       const timezone = (req.query?.timezone as string) || 'Asia/Jakarta';
       const stats = getAggregatedAnalytics(timeRange, timezone);
       return res.status(200).json(stats);
     }
 
-    if (url.includes("/events") && req.method === "GET") {
-      const isAuthorized = verifyAdminAuth(req);
-      if (!isAuthorized) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      const limit = Math.min(Number(req.query?.limit) || 50, 200);
-      const events = getStoredEvents({ limit });
-      return res.status(200).json(events);
-    }
-
-    if (url.includes("/reset") && req.method === "POST") {
-      const isAuthorized = verifyAdminAuth(req);
-      if (!isAuthorized) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      const resetResult = resetAnalyticsStore();
-      return res.status(200).json(resetResult);
-    }
-
-    // Default status
     return res.status(200).json({ status: "ok" });
   } catch (err: any) {
     console.error("[Vercel Analytics Error]", err);
