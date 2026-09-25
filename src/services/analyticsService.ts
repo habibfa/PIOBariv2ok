@@ -753,7 +753,7 @@ export function getLiveModuleViews(): Array<{ module: string; key: string; activ
     { module: "Kalkulator Dosis Klinis", key: "single", activeNow: 9, totalToday: 3120, color: "bg-sky-500" },
     { module: "Kompatibilitas Injeksi IV", key: "iv", activeNow: 5, totalToday: 1740, color: "bg-cyan-500" },
     { module: "Peta Faskes & Apotek", key: "map", activeNow: 4, totalToday: 1480, color: "bg-amber-500" },
-    { module: "Konsultasi Apoteker & AI", key: "ai", activeNow: 3, totalToday: 1120, color: "bg-purple-500" },
+    { module: "Konsultasi Apoteker Siaga", key: "pharmacist", activeNow: 3, totalToday: 1120, color: "bg-purple-500" },
     { module: "Fornas & Rekam SOAP", key: "soap", activeNow: 2, totalToday: 950, color: "bg-indigo-500" }
   ];
 }

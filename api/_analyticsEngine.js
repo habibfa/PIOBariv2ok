@@ -369,7 +369,7 @@ function getAggregatedAnalytics(timeRange = "24h", clientTimezone) {
     { key: "single", aliases: ["single", "dose"], name: "Kalkulator Dosis Klinis", color: "bg-sky-500" },
     { key: "iv", aliases: ["iv"], name: "Kompatibilitas Injeksi IV", color: "bg-cyan-500" },
     { key: "map", aliases: ["map"], name: "Peta Faskes & Apotek", color: "bg-amber-500" },
-    { key: "ai", aliases: ["ai", "pharmacist"], name: "Konsultasi Apoteker & AI", color: "bg-purple-500" },
+    { key: "pharmacist", aliases: ["pharmacist", "ai"], name: "Konsultasi Apoteker Siaga", color: "bg-purple-500" },
     { key: "fornas", aliases: ["fornas"], name: "Katalog Restriksi Fornas", color: "bg-teal-500" },
     { key: "soap", aliases: ["soap"], name: "Fornas & Rekam SOAP", color: "bg-indigo-500" },
     { key: "medcalc", aliases: ["medcalc"], name: "Kalkulator Medis Lanjutan", color: "bg-blue-500" }

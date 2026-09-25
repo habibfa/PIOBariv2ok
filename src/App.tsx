@@ -1429,7 +1429,7 @@ export default function App() {
   const [isFemale, setIsFemale] = useState<boolean>(false);
 
   // Tab Selection
-  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "ai" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics">("desc");
+  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics">("desc");
 
   // Video Tab States
   const [activeVideoId, setActiveVideoId] = useState<string>("suppositoria");
@@ -1585,12 +1585,6 @@ export default function App() {
     alerts: [],
   });
 
-  // AI clinical consultant states
-  const [aiQuestion, setAiQuestion] = useState<string>("");
-  const [aiReport, setAiReport] = useState<string>("");
-  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
-  const [aiError, setAiError] = useState<string>("");
-
   // Populate inputs when preset changes
   useEffect(() => {
     if (selectedPreset) {
@@ -1628,57 +1622,10 @@ export default function App() {
     }));
   };
 
-  // Select preset and set up default question for AI
+  // Select preset
   const handleSelectPreset = (preset: DrugPreset | undefined) => {
     setSelectedPreset(preset);
     setSelectedPresetId(preset ? preset.id : "custom");
-    setAiReport("");
-    setAiError("");
-    if (preset) {
-      setAiQuestion(`Apakah dosis ini sesuai dengan protokol standar untuk ${preset.name} dengan mempertimbangkan kriteria fisik pasien ini?`);
-    } else {
-      setAiQuestion("Tolong analisis regimen dosis kustom ini untuk batas keamanan maksimum dan potensi toksisitas.");
-    }
-  };
-
-  // Run AI deep-reasoning consultation
-  const runAiConsultation = async () => {
-    setIsAiLoading(true);
-    setAiError("");
-    setAiReport("");
-
-    try {
-      const response = await fetch("/api/calculate-ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs,
-          calculated,
-          preset: selectedPreset,
-          question: aiQuestion || "Analisis pengaturan perhitungan dosis ini untuk akurasi dan keamanan klinis.",
-        }),
-      });
-
-      if (!response.ok) {
-        let errData;
-        try {
-          errData = await response.json();
-        } catch (parseError) {
-          throw new Error("Gagal terhubung ke server AI (Penyebab: Server mengembalikan format yang tidak dikenali).");
-        }
-        throw new Error(errData.error || "Gagal menghasilkan penilaian.");
-      }
-
-      const data = await response.json();
-      setAiReport(data.text);
-    } catch (err: any) {
-      console.error(err);
-      setAiError(err.message || "Terjadi kesalahan tidak terduga saat berkomunikasi dengan model penalaran medis.");
-    } finally {
-      setIsAiLoading(false);
-    }
   };
 
   // Download report as PDF
@@ -1698,15 +1645,13 @@ export default function App() {
       calculatedBsa,
       calculatedCrCl,
       selectedPreset,
-      aiReport,
+      aiReport: "",
       isFemale,
     });
   };
 
   // Pre-load a typical pediatric patient scenario
   const loadScenario = (type: "pediatric" | "oncology" | "renal" | "geriatric") => {
-    setAiReport("");
-    setAiError("");
     if (type === "pediatric") {
       setIsFemale(true);
       setInputs({
@@ -2206,25 +2151,6 @@ export default function App() {
             Clinical SOAP
           </button>
 
-          <button
-            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ai"); }}
-            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between ${
-              activeTab === "ai"
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/25"
-                : "text-slate-600 hover:bg-white/90 hover:text-purple-700 hover:shadow-2xs"
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Sparkles className={`w-4 h-4 shrink-0 ${activeTab === "ai" ? "text-white" : "text-purple-600"}`} />
-              <span>Konsultasi AI</span>
-            </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-              activeTab === "ai" ? "bg-white/20 text-white" : "bg-purple-50 text-purple-600"
-            }`}>
-              Smart
-            </span>
-          </button>
-
           <div className="px-3 pt-4 pb-2">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Layanan & Edukasi</span>
           </div>
@@ -2385,7 +2311,6 @@ export default function App() {
                  activeTab === "fornas" ? "Fornas 2025" : 
                  activeTab === "medcalc" ? "Kalkulator Medis" : 
                  activeTab === "soap" ? "Clinical SOAP" : 
-                 activeTab === "ai" ? "Konsultasi AI" : 
                  activeTab === "pharmacist" ? "Apoteker Siaga" : 
                  activeTab === "video" ? "Panduan Alat" : 
                  activeTab === "diseases" ? "Penyakit" : 
@@ -2402,7 +2327,6 @@ export default function App() {
                  activeTab === "diseases" ? "Penyakit & Kondisi" : 
                  activeTab === "medcalc" ? "Kalkulator Medis" : 
                  activeTab === "video" ? "Panduan Alat & Cara Pakai" : 
-                 activeTab === "ai" ? "Konsultasi AI Berpikir Mendalam" :
                  activeTab === "soap" ? "Clinical SOAP" : 
                  activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan" : 
                  activeTab === "iv" ? "Kompatibilitas Obat Intravena" : 
@@ -2469,8 +2393,6 @@ export default function App() {
                   liquidConcentrationValue: "",
                   liquidConcentrationVolume: "",
                 });
-                setAiReport("");
-                setAiError("");
               }}
               className="px-3.5 py-2 glass-card hover:bg-white text-slate-700 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border border-slate-200/80 shadow-2xs active:scale-95"
             >
@@ -2866,90 +2788,6 @@ export default function App() {
             <ClinicalAlerts alerts={calculated.alerts} />
           </div>
 
-        </section>
-      </>
-    ) : activeTab === "ai" ? (
-      <>
-        {/* AI CONSULTATION MODE */}
-        <section className="lg:col-span-12 space-y-6 max-w-4xl mx-auto w-full">
-          
-          {/* AI Clinical Pharmacology Assessment Panel */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col border-l-4 border-l-emerald-600">
-            <div className="bg-slate-900 p-4 flex justify-between items-center text-white">
-              <div className="flex items-center gap-2">
-                <div className="p-1 bg-emerald-600 rounded">
-                  <Sparkles className="w-3.5 h-3.5 text-white" />
-                </div>
-                <span className="font-bold text-xs tracking-wide uppercase font-mono flex items-center gap-1.5">
-                  Konsultasi AI Berpikir Mendalam
-                </span>
-              </div>
-              <span className="text-[9px] bg-emerald-900/80 text-emerald-200 font-bold px-1.5 py-0.5 rounded font-mono">
-                GEMINI-3.1-PRO AKTIF
-              </span>
-            </div>
-
-            <div className="p-5 space-y-4">
-              {/* Consultation Context Inputs */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase font-sans">Fokus Konsultasi / Masalah Pasien Spesifik</label>
-                <textarea
-                  value={aiQuestion}
-                  onChange={(e) => setAiQuestion(e.target.value)}
-                  placeholder="misal: Nilai batas hati untuk anak berusia 5 tahun yang mengalami demam ringan..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs leading-relaxed outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all resize-none h-24 font-sans"
-                />
-              </div>
-
-              {/* Action Button */}
-              <button
-                type="button"
-                onClick={runAiConsultation}
-                disabled={isAiLoading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg shadow-emerald-100 hover:shadow-emerald-200 transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {isAiLoading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Analisis klinis mendalam sedang berlangsung (menggunakan penalaran tingkat tinggi)...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 text-orange-300 fill-amber-300" />
-                    <span>Jalankan Penilaian Farmakologi Klinis</span>
-                  </>
-                )}
-              </button>
-
-              {/* Error Block */}
-              {aiError && (
-                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-950 text-xs rounded-xl flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <p className="font-sans">{aiError}</p>
-                </div>
-              )}
-
-              {/* Report Output Box */}
-              {aiReport ? (
-                <div className="border border-slate-200 rounded-xl overflow-hidden mt-2">
-                  <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Laporan Kritik Farmakologi</span>
-                    <button
-                      onClick={() => { setAiReport(""); }}
-                      className="text-slate-400 hover:text-slate-600 text-xs font-semibold font-sans"
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                  <div className="p-4 bg-slate-50/50 text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-3 prose prose-slate">
-                    <div className="whitespace-pre-wrap font-sans text-slate-800 text-xs">
-                      {aiReport}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
         </section>
       </>
     ) : activeTab === "ddi" ? (
