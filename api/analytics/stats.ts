@@ -1,6 +1,4 @@
-import { initAnalyticsEngine, getAggregatedAnalytics } from "../../server/analyticsEngine.ts";
-
-initAnalyticsEngine();
+import { initAnalyticsEngine, getAggregatedAnalytics } from "../_analyticsEngine.js";
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,6 +11,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    initAnalyticsEngine();
     const timeRange = (req.query?.timeRange as '24h' | '7d' | '30d') || '24h';
     const timezone = (req.query?.timezone as string) || 'Asia/Jakarta';
     const stats = getAggregatedAnalytics(timeRange, timezone);

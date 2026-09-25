@@ -11,25 +11,25 @@ import {
   getAggregatedAnalytics,
   getStoredEvents,
   resetAnalyticsStore
-} from "./server/analyticsEngine.ts";
+} from "./api/_analyticsEngine.js";
 import {
   corsMiddleware,
   securityHeadersMiddleware,
   createRateLimiter,
   sanitizeInputText,
   verifyAdminAuth
-} from "./server/security.ts";
+} from "./server/security";
 import {
   generateClinicalChatFallback,
   generateClinicalDiseaseFallback,
   generateClinicalSoapFallback
-} from "./src/utils/clinicalAssistantFallback.ts";
+} from "./src/utils/clinicalAssistantFallback";
 import {
   SOAP_SYSTEM_INSTRUCTION,
   buildSoapPrompt,
   CHAT_SYSTEM_INSTRUCTION,
   buildChatPrompt
-} from "./src/utils/aiPrompts.ts";
+} from "./src/utils/aiPrompts";
 
 dotenv.config();
 

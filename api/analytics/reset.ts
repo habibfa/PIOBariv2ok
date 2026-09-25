@@ -1,6 +1,4 @@
-import { initAnalyticsEngine, resetAnalyticsStore } from "../../server/analyticsEngine.ts";
-
-initAnalyticsEngine();
+import { initAnalyticsEngine, resetAnalyticsStore } from "../_analyticsEngine.js";
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,10 +11,11 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    initAnalyticsEngine();
     const result = resetAnalyticsStore();
     return res.status(200).json(result);
   } catch (err: any) {
     console.error("[Vercel Analytics Reset Error]", err);
-    return res.status(500).json({ error: "Gagal mereset database telemetri." });
+    return res.status(500).json({ success: false, error: "Gagal mereset telemetri." });
   }
 }

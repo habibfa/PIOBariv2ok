@@ -5,9 +5,7 @@ import {
   getAggregatedAnalytics,
   getStoredEvents,
   resetAnalyticsStore
-} from "../server/analyticsEngine.ts";
-
-initAnalyticsEngine();
+} from "./_analyticsEngine.js";
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -19,16 +17,18 @@ export default async function handler(req: any, res: any) {
     return res.status(204).end();
   }
 
-  const rawUrl = req.url || "";
-  const queryPath = Array.isArray(req.query?.path)
-    ? req.query.path.join("/")
-    : (req.query?.path as string) || (req.query?.action as string) || "";
-  const matchedPath = (req.headers?.["x-matched-path"] as string) ||
-                      (req.headers?.["x-forwarded-uri"] as string) ||
-                      (req.headers?.["x-vercel-matched-path"] as string) || "";
-  const fullRoute = `${rawUrl} ${queryPath} ${matchedPath}`.toLowerCase();
-
   try {
+    initAnalyticsEngine();
+
+    const rawUrl = req.url || "";
+    const queryPath = Array.isArray(req.query?.path)
+      ? req.query.path.join("/")
+      : (req.query?.path as string) || (req.query?.action as string) || "";
+    const matchedPath = (req.headers?.["x-matched-path"] as string) ||
+                        (req.headers?.["x-forwarded-uri"] as string) ||
+                        (req.headers?.["x-vercel-matched-path"] as string) || "";
+    const fullRoute = `${rawUrl} ${queryPath} ${matchedPath}`.toLowerCase();
+
     // 1. Ingest telemetry (events & pageviews)
     if ((fullRoute.includes("track") || queryPath === "track") && req.method === "POST") {
       const result = trackTelemetry(req.body, req);
@@ -47,7 +47,7 @@ export default async function handler(req: any, res: any) {
       const region = req.query?.region as string | undefined;
       const search = req.query?.search as string | undefined;
       const rawLimit = req.query?.limit ? parseInt(req.query.limit as string, 10) : 150;
-      const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 150 : rawLimit, 200));
+      const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 150 : rawLimit, 250));
 
       const events = getStoredEvents({ category, region, search, limit });
       return res.status(200).json({ events });

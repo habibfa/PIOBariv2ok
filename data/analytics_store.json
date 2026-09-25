@@ -1,7 +1,7 @@
 {
   "version": 1,
   "createdAt": 1790126691286,
-  "lastUpdated": 1790197255014,
+  "lastUpdated": 1790303159642,
   "sessions": {
     "sess_live_bari_apoteker": {
       "sessionId": "sess_live_bari_apoteker",
@@ -2719,9 +2719,190 @@
       "startTime": 1790163761921,
       "lastHeartbeat": 1790197254014,
       "pageViewsCount": 19
+    },
+    "sess_1790297835356_j0kelr": {
+      "sessionId": "sess_1790297835356_j0kelr",
+      "ip": "103.183.12.0",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "analytics",
+      "startTime": 1790297836601,
+      "lastHeartbeat": 1790303158641,
+      "pageViewsCount": 9
     }
   },
   "events": [
+    {
+      "id": "evt_1790301005089_mvjm",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790301005089,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul ANALYTICS",
+      "metadata": {
+        "tab": "analytics"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 146,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790301005087_ffhb",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790301005087,
+      "eventName": "admin_login",
+      "category": "conversion",
+      "label": "Admin RSUD Palembang BARI berhasil masuk ke sistem",
+      "metadata": {
+        "role": "Administrator PIOBARI"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 251,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790298811085_fdul",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811085,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 460,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790298811083_kqg3",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811083,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 484,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790297888755_f7mn",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297888755,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul ANALYTICS",
+      "metadata": {
+        "tab": "analytics"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 196,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790297888749_xe8j",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297888749,
+      "eventName": "admin_login",
+      "category": "conversion",
+      "label": "Admin RSUD Palembang BARI berhasil masuk ke sistem",
+      "metadata": {
+        "role": "Administrator PIOBARI"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 305,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790297858928_jnff",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297858928,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 503,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790297858921_amtf",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297858921,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 438,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790297836607_j3wv",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297836607,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 175,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790297836601_8h9j",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297836601,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 283,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
     {
       "id": "evt_1790196879007_n7hv",
       "sessionId": "sess_1790163761627_5kbllq",
@@ -16284,6 +16465,110 @@
     }
   ],
   "pageViews": [
+    {
+      "id": "pv_1790301005090_r4h1",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790301005090,
+      "module": "analytics",
+      "path": "/analytics",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790298811081_pmzk",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811081,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790298811074_zn87",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811074,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790297888754_sygn",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297888754,
+      "module": "analytics",
+      "path": "/analytics",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790297858926_dav9",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297858926,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790297858922_buri",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297858922,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790297836606_epuh",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297836606,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790297836604_49z5",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790297836604,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
     {
       "id": "pv_1790196879005_fuw3",
       "sessionId": "sess_1790163761627_5kbllq",

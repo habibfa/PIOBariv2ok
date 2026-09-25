@@ -1,6 +1,4 @@
-import { initAnalyticsEngine, trackTelemetry } from "../../server/analyticsEngine.ts";
-
-initAnalyticsEngine();
+import { initAnalyticsEngine, trackTelemetry } from "../_analyticsEngine.js";
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,10 +11,11 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    initAnalyticsEngine();
     const result = trackTelemetry(req.body, req);
     return res.status(200).json(result);
   } catch (err: any) {
     console.error("[Vercel Analytics Track Error]", err);
-    return res.status(500).json({ error: "Gagal mencatat telemetri." });
+    return res.status(500).json({ success: false, error: "Gagal mencatat telemetri." });
   }
 }

@@ -1,11 +1,7 @@
-// Auto-generated baseline snapshot of real analytics store
-// Guarantees identical analytics metrics on Vercel serverless and local environments
-import type { AnalyticsStoreData } from "./analyticsEngine.ts";
-
-export const BASELINE_ANALYTICS_STORE: AnalyticsStoreData = {
+{
   "version": 1,
   "createdAt": 1790126691286,
-  "lastUpdated": 1790298419148,
+  "lastUpdated": 1790303159642,
   "sessions": {
     "sess_live_bari_apoteker": {
       "sessionId": "sess_live_bari_apoteker",
@@ -2732,11 +2728,79 @@ export const BASELINE_ANALYTICS_STORE: AnalyticsStoreData = {
       "browser": "Chrome",
       "currentModule": "analytics",
       "startTime": 1790297836601,
-      "lastHeartbeat": 1790298418148,
-      "pageViewsCount": 6
+      "lastHeartbeat": 1790303158641,
+      "pageViewsCount": 9
     }
   },
   "events": [
+    {
+      "id": "evt_1790301005089_mvjm",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790301005089,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul ANALYTICS",
+      "metadata": {
+        "tab": "analytics"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 146,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790301005087_ffhb",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790301005087,
+      "eventName": "admin_login",
+      "category": "conversion",
+      "label": "Admin RSUD Palembang BARI berhasil masuk ke sistem",
+      "metadata": {
+        "role": "Administrator PIOBARI"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 251,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790298811085_fdul",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811085,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 460,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1790298811083_kqg3",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811083,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc"
+      },
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 484,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
     {
       "id": "evt_1790297888755_f7mn",
       "sessionId": "sess_1790297835356_j0kelr",
@@ -16401,6 +16465,45 @@ export const BASELINE_ANALYTICS_STORE: AnalyticsStoreData = {
     }
   ],
   "pageViews": [
+    {
+      "id": "pv_1790301005090_r4h1",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790301005090,
+      "module": "analytics",
+      "path": "/analytics",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790298811081_pmzk",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811081,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
+    {
+      "id": "pv_1790298811074_zn87",
+      "sessionId": "sess_1790297835356_j0kelr",
+      "timestamp": 1790298811074,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Palembang - Jakabaring (RSUD BARI)",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
     {
       "id": "pv_1790297888754_sygn",
       "sessionId": "sess_1790297835356_j0kelr",
@@ -36110,4 +36213,4 @@ export const BASELINE_ANALYTICS_STORE: AnalyticsStoreData = {
       "ip": "180.252.95.3"
     }
   ]
-};
+}

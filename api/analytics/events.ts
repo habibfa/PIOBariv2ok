@@ -1,6 +1,4 @@
-import { initAnalyticsEngine, getStoredEvents } from "../../server/analyticsEngine.ts";
-
-initAnalyticsEngine();
+import { initAnalyticsEngine, getStoredEvents } from "../_analyticsEngine.js";
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,16 +11,17 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    initAnalyticsEngine();
     const category = req.query?.category as string | undefined;
     const region = req.query?.region as string | undefined;
     const search = req.query?.search as string | undefined;
     const rawLimit = req.query?.limit ? parseInt(req.query.limit as string, 10) : 150;
-    const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 150 : rawLimit, 200));
+    const limit = Math.max(1, Math.min(isNaN(rawLimit) ? 150 : rawLimit, 250));
 
     const events = getStoredEvents({ category, region, search, limit });
     return res.status(200).json({ events });
   } catch (err: any) {
     console.error("[Vercel Analytics Events Error]", err);
-    return res.status(500).json({ error: "Gagal mengambil log events." });
+    return res.status(500).json({ error: "Gagal mengambil log events.", events: [] });
   }
 }
