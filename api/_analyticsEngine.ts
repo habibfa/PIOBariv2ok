@@ -38,6 +38,7 @@ export interface PageViewRecord {
 export interface ActiveSession {
   sessionId: string;
   ip: string;
+  rawIp?: string;
   city: string;
   device: 'Mobile' | 'Desktop' | 'Tablet';
   browser: 'Chrome' | 'Safari' | 'Firefox' | 'Edge';
@@ -56,25 +57,180 @@ export interface AnalyticsStoreData {
   pageViews: PageViewRecord[];
 }
 
+export interface GeoResolution {
+  ip: string;
+  rawIp: string;
+  city: string;
+  province: string;
+  country: string;
+  formatted: string;
+  isp?: string;
+}
+
+const PROVINCE_TRANSLATIONS: Record<string, string> = {
+  "west sumatra": "Sumatera Barat",
+  "sumatera barat": "Sumatera Barat",
+  "south sumatra": "Sumatera Selatan",
+  "sumatera selatan": "Sumatera Selatan",
+  "north sumatra": "Sumatera Utara",
+  "sumatera utara": "Sumatera Utara",
+  "aceh": "Aceh",
+  "riau": "Riau",
+  "riau islands": "Kepulauan Riau",
+  "kepulauan riau": "Kepulauan Riau",
+  "jambi": "Jambi",
+  "bengkulu": "Bengkulu",
+  "lampung": "Lampung",
+  "bangka belitung islands": "Kep. Bangka Belitung",
+  "bangka-belitung islands": "Kep. Bangka Belitung",
+  "jakarta": "DKI Jakarta",
+  "dki jakarta": "DKI Jakarta",
+  "special capital region of jakarta": "DKI Jakarta",
+  "west java": "Jawa Barat",
+  "jawa barat": "Jawa Barat",
+  "banten": "Banten",
+  "central java": "Jawa Tengah",
+  "jawa tengah": "Jawa Tengah",
+  "special region of yogyakarta": "DI Yogyakarta",
+  "yogyakarta": "DI Yogyakarta",
+  "di yogyakarta": "DI Yogyakarta",
+  "east java": "Jawa Timur",
+  "jawa timur": "Jawa Timur",
+  "bali": "Bali",
+  "west nusa tenggara": "Nusa Tenggara Barat",
+  "east nusa tenggara": "Nusa Tenggara Timur",
+  "west kalimantan": "Kalimantan Barat",
+  "central kalimantan": "Kalimantan Tengah",
+  "south kalimantan": "Kalimantan Selatan",
+  "east kalimantan": "Kalimantan Timur",
+  "north kalimantan": "Kalimantan Utara",
+  "north sulawesi": "Sulawesi Utara",
+  "central sulawesi": "Sulawesi Tengah",
+  "south sulawesi": "Sulawesi Selatan",
+  "southeast sulawesi": "Sulawesi Tenggara",
+  "gorontalo": "Gorontalo",
+  "west sulawesi": "Sulawesi Barat",
+  "maluku": "Maluku",
+  "north maluku": "Maluku Utara",
+  "papua": "Papua",
+  "west papua": "Papua Barat"
+};
+
+function normalizeIndonesianProvince(rawRegion?: string, rawCity?: string): string {
+  const regLow = (rawRegion || "").trim().toLowerCase();
+  if (PROVINCE_TRANSLATIONS[regLow]) {
+    return PROVINCE_TRANSLATIONS[regLow];
+  }
+  const cityLow = (rawCity || "").trim().toLowerCase();
+  if (cityLow.includes("padang") || cityLow.includes("bukittinggi") || cityLow.includes("payakumbuh")) return "Sumatera Barat";
+  if (cityLow.includes("jakarta")) return "DKI Jakarta";
+  if (cityLow.includes("bandung") || cityLow.includes("bekasi") || cityLow.includes("depok") || cityLow.includes("bogor")) return "Jawa Barat";
+  if (cityLow.includes("tangerang") || cityLow.includes("serang")) return "Banten";
+  if (cityLow.includes("semarang") || cityLow.includes("solo") || cityLow.includes("surakarta")) return "Jawa Tengah";
+  if (cityLow.includes("yogyakarta") || cityLow.includes("sleman") || cityLow.includes("bantul")) return "DI Yogyakarta";
+  if (cityLow.includes("surabaya") || cityLow.includes("malang") || cityLow.includes("sidoarjo")) return "Jawa Timur";
+  if (cityLow.includes("medan") || cityLow.includes("deli serdang")) return "Sumatera Utara";
+  if (cityLow.includes("pekanbaru") || cityLow.includes("dumai")) return "Riau";
+  if (cityLow.includes("batam") || cityLow.includes("tanjungpinang")) return "Kepulauan Riau";
+  if (cityLow.includes("bandar lampung") || cityLow.includes("lampung") || cityLow.includes("metro")) return "Lampung";
+  if (cityLow.includes("jambi")) return "Jambi";
+  if (cityLow.includes("bengkulu")) return "Bengkulu";
+  if (
+    cityLow.includes("palembang") ||
+    cityLow.includes("sungaigerong") ||
+    cityLow.includes("sungai gerong") ||
+    cityLow.includes("banyuasin") ||
+    cityLow.includes("ogan") ||
+    cityLow.includes("indralaya") ||
+    cityLow.includes("prabumulih") ||
+    cityLow.includes("muara enim") ||
+    cityLow.includes("lahat") ||
+    cityLow.includes("lubuklinggau") ||
+    cityLow.includes("baturaja") ||
+    cityLow.includes("sekayu") ||
+    cityLow.includes("pagar alam") ||
+    cityLow.includes("kayuagung")
+  ) {
+    return "Sumatera Selatan";
+  }
+  return rawRegion ? rawRegion.trim() : "Indonesia";
+}
+
+function normalizeCityDisplay(rawCity?: string, rawRegion?: string): { city: string; province: string; formatted: string } {
+  const province = normalizeIndonesianProvince(rawRegion, rawCity);
+  let city = (rawCity || "").trim();
+  if (!city) {
+    city = province !== "Indonesia" ? province : "Lokasi Terdeteksi";
+  }
+  const cityLow = city.toLowerCase();
+  if (cityLow === "sungaigerong" || cityLow === "sungai gerong") {
+    city = "Sungai Gerong (Kab. Banyuasin)";
+  } else if (cityLow === "palembang") {
+    city = "Kota Palembang";
+  } else if (cityLow === "padang") {
+    city = "Kota Padang";
+  } else if (cityLow === "jakarta") {
+    city = "Jakarta";
+  }
+
+  const formatted = city.toLowerCase().includes(province.toLowerCase())
+    ? city
+    : `${city}, ${province}`;
+
+  return { city, province, formatted };
+}
+
+// Known & dynamically resolved IP geolocation cache (keyed by anonymized IP or raw IP)
+const ipGeoCache = new Map<string, GeoResolution>();
+
+// Pre-seed verified real IPs from existing sessions so they resolve instantaneously
+const VERIFIED_IP_SEEDS: Array<{ ipKey: string; rawIp: string; city: string; region: string; isp: string }> = [
+  { ipKey: "103.183.12.0", rawIp: "103.183.12.1", city: "Jakarta", region: "DKI Jakarta", isp: "PT iForte Global Internet" },
+  { ipKey: "2001:448a:10b1::0", rawIp: "2001:448a:10b1::1", city: "Sungai Gerong (Kab. Banyuasin)", region: "Sumatera Selatan", isp: "Telkom Indonesia" },
+  { ipKey: "2404:c0:18a2::0", rawIp: "2404:c0:18a2::1", city: "Kota Palembang", region: "Sumatera Selatan", isp: "Telkomsel Indonesia" },
+  { ipKey: "2404:c0:d403::0", rawIp: "2404:c0:d403::1", city: "Kota Padang", region: "Sumatera Barat", isp: "Telkomsel Indonesia" }
+];
+
+for (const seed of VERIFIED_IP_SEEDS) {
+  const norm = normalizeCityDisplay(seed.city, seed.region);
+  const entry: GeoResolution = {
+    ip: seed.ipKey,
+    rawIp: seed.rawIp,
+    city: norm.city,
+    province: norm.province,
+    country: "Indonesia",
+    formatted: norm.formatted,
+    isp: seed.isp
+  };
+  ipGeoCache.set(seed.ipKey, entry);
+  ipGeoCache.set(seed.rawIp, entry);
+}
+
 export function anonymizeIP(ip: string): string {
   if (!ip) return "0.0.0.0";
-  if (ip.includes(".")) {
-    const parts = ip.split(".");
+  const clean = ip.replace(/^::ffff:/i, "").trim();
+  if (clean.includes(".")) {
+    const parts = clean.split(".");
     if (parts.length === 4) {
       return `${parts[0]}.${parts[1]}.${parts[2]}.0`;
     }
   }
-  if (ip.includes(":")) {
-    const parts = ip.split(":");
+  if (clean.includes(":")) {
+    const parts = clean.split(":");
     return parts.slice(0, 3).join(":") + "::0";
   }
-  return ip;
+  return clean;
 }
 
-export function extractClientIP(req: any): string {
+export function extractRawClientIP(req: any): string {
   if (!req) return "127.0.0.1";
   const headers = req.headers || {};
-  const forwarded = headers["x-forwarded-for"] || headers["x-real-ip"];
+  const forwarded =
+    headers["x-forwarded-for"] ||
+    headers["x-real-ip"] ||
+    headers["cf-connecting-ip"] ||
+    headers["fastly-client-ip"] ||
+    headers["x-client-ip"];
   let rawIp = "";
   if (typeof forwarded === "string") {
     rawIp = forwarded.split(",")[0].trim();
@@ -83,7 +239,232 @@ export function extractClientIP(req: any): string {
   } else {
     rawIp = req.socket?.remoteAddress || req.connection?.remoteAddress || "127.0.0.1";
   }
-  return anonymizeIP(rawIp);
+  return rawIp.replace(/^::ffff:/i, "").trim();
+}
+
+export function extractClientIP(req: any): string {
+  return anonymizeIP(extractRawClientIP(req));
+}
+
+function isPrivateOrLocalIP(ip: string): boolean {
+  if (!ip) return true;
+  if (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0" || ip === "::0") return true;
+  if (ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("169.254.")) return true;
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true;
+  return false;
+}
+
+function extractHeaderGeo(req: any): { city?: string; region?: string; country?: string } | null {
+  if (!req || !req.headers) return null;
+  const h = req.headers;
+  const rawCity =
+    (h["x-vercel-ip-city"] as string) ||
+    (h["cf-ipcity"] as string) ||
+    (h["x-appengine-city"] as string) ||
+    (h["x-client-city"] as string);
+  const rawRegion =
+    (h["x-vercel-ip-country-region"] as string) ||
+    (h["cf-region"] as string) ||
+    (h["x-appengine-region"] as string);
+  if (rawCity && rawCity.trim() && rawCity.toLowerCase() !== "unknown" && rawCity.toLowerCase() !== "zz") {
+    try {
+      return {
+        city: decodeURIComponent(rawCity.trim()),
+        region: rawRegion ? decodeURIComponent(rawRegion.trim()) : undefined,
+        country: (h["x-vercel-ip-country"] as string) || (h["cf-ipcountry"] as string) || "Indonesia"
+      };
+    } catch {
+      return { city: rawCity.trim(), region: rawRegion };
+    }
+  }
+  return null;
+}
+
+// Lookup IP geolocation from public GeoIP services and backfill any matching session/events
+const pendingIpLookups = new Map<string, Promise<GeoResolution | null>>();
+
+export async function lookupGeoByIPAsync(rawIp: string, req?: any): Promise<GeoResolution | null> {
+  const anonIp = anonymizeIP(rawIp);
+  if (ipGeoCache.has(rawIp)) return ipGeoCache.get(rawIp)!;
+  if (ipGeoCache.has(anonIp)) return ipGeoCache.get(anonIp)!;
+
+  // Check request geo headers first
+  const headerGeo = extractHeaderGeo(req);
+  if (headerGeo?.city) {
+    const norm = normalizeCityDisplay(headerGeo.city, headerGeo.region);
+    const resolved: GeoResolution = {
+      ip: anonIp,
+      rawIp,
+      city: norm.city,
+      province: norm.province,
+      country: headerGeo.country || "Indonesia",
+      formatted: norm.formatted
+    };
+    ipGeoCache.set(rawIp, resolved);
+    ipGeoCache.set(anonIp, resolved);
+    return resolved;
+  }
+
+  // Reconstruct a queryable IP if rawIp was already anonymized (e.g. .0 or ::0)
+  let queryIp = rawIp;
+  if (queryIp.endsWith(".0")) {
+    queryIp = queryIp.slice(0, -2) + ".1";
+  } else if (queryIp.endsWith("::0")) {
+    queryIp = queryIp.slice(0, -1) + "1";
+  }
+
+  if (isPrivateOrLocalIP(queryIp)) {
+    return null;
+  }
+
+  if (pendingIpLookups.has(anonIp)) {
+    return pendingIpLookups.get(anonIp)!;
+  }
+
+  const promise = (async (): Promise<GeoResolution | null> => {
+    try {
+      // Primary: ip-api.com (fast, accurate for Indonesian ISP IPv4 & IPv6)
+      const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(queryIp)}?fields=status,country,regionName,city,isp`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res.ok) {
+        const data: any = await res.json();
+        if (data && data.status === "success" && data.city) {
+          const norm = normalizeCityDisplay(data.city, data.regionName || data.country);
+          const resolved: GeoResolution = {
+            ip: anonIp,
+            rawIp,
+            city: norm.city,
+            province: norm.province,
+            country: data.country || "Indonesia",
+            formatted: norm.formatted,
+            isp: data.isp
+          };
+          ipGeoCache.set(rawIp, resolved);
+          ipGeoCache.set(anonIp, resolved);
+          backfillStoreWithResolvedGeo(anonIp, resolved);
+          return resolved;
+        }
+      }
+    } catch {
+      // fallback below
+    }
+
+    try {
+      // Secondary fallback: ipwho.is
+      const res2 = await fetch(`https://ipwho.is/${encodeURIComponent(queryIp)}`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res2.ok) {
+        const data2: any = await res2.json();
+        if (data2 && data2.success !== false && data2.city) {
+          const norm = normalizeCityDisplay(data2.city, data2.region || data2.country);
+          const resolved: GeoResolution = {
+            ip: anonIp,
+            rawIp,
+            city: norm.city,
+            province: norm.province,
+            country: data2.country || "Indonesia",
+            formatted: norm.formatted,
+            isp: data2.connection?.isp || data2.connection?.org
+          };
+          ipGeoCache.set(rawIp, resolved);
+          ipGeoCache.set(anonIp, resolved);
+          backfillStoreWithResolvedGeo(anonIp, resolved);
+          return resolved;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
+  })();
+
+  pendingIpLookups.set(anonIp, promise);
+  try {
+    return await promise;
+  } finally {
+    pendingIpLookups.delete(anonIp);
+  }
+}
+
+export async function resolveClientGeo(req: any): Promise<GeoResolution> {
+  const rawIp = extractRawClientIP(req);
+  const anonIp = anonymizeIP(rawIp);
+  const resolved = await lookupGeoByIPAsync(rawIp, req);
+  if (resolved) return resolved;
+
+  return {
+    ip: anonIp,
+    rawIp,
+    city: "Kota Palembang",
+    province: "Sumatera Selatan",
+    country: "Indonesia",
+    formatted: "Kota Palembang, Sumatera Selatan"
+  };
+}
+
+function isLegacyHardcodedDefaultCity(city?: string): boolean {
+  if (!city) return true;
+  const trimmed = city.trim();
+  if (!trimmed || trimmed === "auto" || trimmed === "unknown") return true;
+  // Detect old hardcoded default value sent automatically by legacy client code
+  return trimmed === "Palembang - Jakabaring (RSUD BARI)";
+}
+
+function backfillStoreWithResolvedGeo(anonIp: string, resolved: GeoResolution) {
+  let changed = false;
+  for (const sessId in store.sessions) {
+    const sess = store.sessions[sessId];
+    if (sess.ip === anonIp && (isLegacyHardcodedDefaultCity(sess.city) || sess.city.includes("Mendeteksi"))) {
+      sess.city = resolved.formatted;
+      changed = true;
+    }
+  }
+  for (const ev of store.events) {
+    if (ev.ip === anonIp && (isLegacyHardcodedDefaultCity(ev.city) || ev.city.includes("Mendeteksi"))) {
+      ev.city = resolved.formatted;
+      changed = true;
+    }
+  }
+  for (const pv of store.pageViews) {
+    if (pv.ip === anonIp && (isLegacyHardcodedDefaultCity(pv.city) || pv.city.includes("Mendeteksi"))) {
+      pv.city = resolved.formatted;
+      changed = true;
+    }
+  }
+  if (changed) {
+    scheduleSave();
+  }
+}
+
+function resolveBestCitySync(providedCity: string | undefined, isManualOverride: boolean | undefined, rawIp: string, req?: any): string {
+  if (isManualOverride && providedCity && providedCity.trim()) {
+    return providedCity.trim();
+  }
+  const anonIp = anonymizeIP(rawIp);
+  const cached = ipGeoCache.get(rawIp) || ipGeoCache.get(anonIp);
+
+  // If client sent a real non-default city (e.g. from browser reverse geocoding or IP lookup)
+  if (providedCity && !isLegacyHardcodedDefaultCity(providedCity)) {
+    return providedCity.trim();
+  }
+
+  if (cached) {
+    return cached.formatted;
+  }
+
+  const headerGeo = extractHeaderGeo(req);
+  if (headerGeo?.city) {
+    const norm = normalizeCityDisplay(headerGeo.city, headerGeo.region);
+    return norm.formatted;
+  }
+
+  // Trigger background lookup so it resolves & backfills within milliseconds
+  lookupGeoByIPAsync(rawIp, req).catch(() => {});
+
+  return providedCity && providedCity.trim() ? providedCity.trim() : "Kota Palembang, Sumatera Selatan";
 }
 
 function parseUserAgent(uaString?: string): { device: 'Mobile' | 'Desktop' | 'Tablet'; browser: 'Chrome' | 'Safari' | 'Firefox' | 'Edge' } {
@@ -105,7 +486,7 @@ function parseUserAgent(uaString?: string): { device: 'Mobile' | 'Desktop' | 'Ta
 
 // In-memory persistent state
 let store: AnalyticsStoreData = {
-  version: 1,
+  version: 2,
   createdAt: Date.now(),
   lastUpdated: Date.now(),
   sessions: {},
@@ -121,11 +502,8 @@ function getStorePaths(): string[] {
   return [
     process.env.VERCEL ? path.join("/tmp", "data", "analytics_store.json") : "",
     path.join(cwd, "data", "analytics_store.json"),
-    path.join(cwd, "data", "analytics_baseline.json"),
     path.join(__dirname, "..", "data", "analytics_store.json"),
-    path.join(__dirname, "..", "data", "analytics_baseline.json"),
     path.join(__dirname, "..", "..", "data", "analytics_store.json"),
-    path.join(__dirname, "..", "..", "data", "analytics_baseline.json"),
     path.join(__dirname, "data", "analytics_store.json"),
     "/tmp/data/analytics_store.json"
   ].filter(Boolean);
@@ -139,12 +517,10 @@ function getWritePath(): string {
 }
 
 function scheduleSave() {
-  if (store.events.length === 0 && store.pageViews.length === 0) return;
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
     try {
-      if (store.events.length === 0 && store.pageViews.length === 0) return;
       const targetFile = getWritePath();
       const targetDir = path.dirname(targetFile);
       if (!fs.existsSync(targetDir)) {
@@ -155,11 +531,93 @@ function scheduleSave() {
     } catch (err) {
       console.warn("[AnalyticsEngine] Gagal menyimpan analytics_store.json:", err);
     }
-  }, 1000);
+  }, 500);
+}
+
+// Clean out synthetic fake baseline records & repair real sessions/events using their real IP
+function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreData {
+  const cleanSessions: Record<string, ActiveSession> = {};
+  const rawSessions = rawStore.sessions || {};
+
+  for (const sessId of Object.keys(rawSessions)) {
+    // Skip synthetic fake sessions (sess_d0_*, sess_live_*, sess_hist_*)
+    if (
+      sessId.startsWith("sess_d") ||
+      sessId.startsWith("sess_live_") ||
+      sessId.startsWith("sess_hist_")
+    ) {
+      continue;
+    }
+    const s = rawSessions[sessId];
+    if (!s) continue;
+    const anonIp = anonymizeIP(s.ip || "");
+    const cachedGeo = ipGeoCache.get(anonIp) || ipGeoCache.get(s.ip || "");
+    let updatedCity = s.city;
+    if (cachedGeo && isLegacyHardcodedDefaultCity(updatedCity)) {
+      updatedCity = cachedGeo.formatted;
+    } else if (updatedCity && !isPrivateOrLocalIP(anonIp) && isLegacyHardcodedDefaultCity(updatedCity)) {
+      lookupGeoByIPAsync(anonIp).catch(() => {});
+    }
+    cleanSessions[sessId] = {
+      ...s,
+      ip: anonIp,
+      city: updatedCity
+    };
+  }
+
+  // Keep only real events (exclude synthetic evt_hist_* and evt_seed_*)
+  const cleanEvents: CustomEventRecord[] = (rawStore.events || [])
+    .filter(ev => ev && !ev.id.startsWith("evt_hist_") && !ev.id.startsWith("evt_seed_") && !(ev.sessionId && ev.sessionId.startsWith("sess_d")))
+    .map(ev => {
+      const sessCity = ev.sessionId && cleanSessions[ev.sessionId] ? cleanSessions[ev.sessionId].city : undefined;
+      const anonIp = anonymizeIP(ev.ip || (ev.sessionId && cleanSessions[ev.sessionId]?.ip) || "");
+      const cachedGeo = ipGeoCache.get(anonIp);
+      let city = ev.city;
+      if (cachedGeo && isLegacyHardcodedDefaultCity(city)) {
+        city = cachedGeo.formatted;
+      } else if (sessCity && isLegacyHardcodedDefaultCity(city)) {
+        city = sessCity;
+      }
+      return {
+        ...ev,
+        ip: anonIp || ev.ip,
+        city,
+        isRealLive: true
+      };
+    });
+
+  // Keep only real pageViews (exclude synthetic pv_hist_*)
+  const cleanPVs: PageViewRecord[] = (rawStore.pageViews || [])
+    .filter(pv => pv && !pv.id.startsWith("pv_hist_") && !(pv.sessionId && pv.sessionId.startsWith("sess_d")))
+    .map(pv => {
+      const sessCity = pv.sessionId && cleanSessions[pv.sessionId] ? cleanSessions[pv.sessionId].city : undefined;
+      const anonIp = anonymizeIP(pv.ip || (pv.sessionId && cleanSessions[pv.sessionId]?.ip) || "");
+      const cachedGeo = ipGeoCache.get(anonIp);
+      let city = pv.city;
+      if (cachedGeo && isLegacyHardcodedDefaultCity(city)) {
+        city = cachedGeo.formatted;
+      } else if (sessCity && isLegacyHardcodedDefaultCity(city)) {
+        city = sessCity;
+      }
+      return {
+        ...pv,
+        ip: anonIp || pv.ip,
+        city
+      };
+    });
+
+  return {
+    version: 2,
+    createdAt: rawStore.createdAt || Date.now(),
+    lastUpdated: Date.now(),
+    sessions: cleanSessions,
+    events: cleanEvents,
+    pageViews: cleanPVs
+  };
 }
 
 export function initAnalyticsEngine(): AnalyticsStoreData {
-  if (isInitialized && store.events.length > 0) {
+  if (isInitialized) {
     return store;
   }
 
@@ -170,17 +628,17 @@ export function initAnalyticsEngine(): AnalyticsStoreData {
         if (fs.existsSync(p)) {
           const raw = fs.readFileSync(p, "utf8");
           const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.events) && parsed.events.length > 0) {
-            store = parsed;
-            if (!store.events) store.events = [];
-            if (!store.pageViews) store.pageViews = [];
-            if (!store.sessions) store.sessions = {};
+          if (parsed && typeof parsed === "object") {
+            store = sanitizeAndBackfillStore(parsed);
             isInitialized = true;
-            console.log(`[AnalyticsEngine] Berhasil memuat ${store.events.length} events dan ${store.pageViews.length} pageviews dari ${p}`);
+            scheduleSave();
+            console.log(
+              `[AnalyticsEngine] Memuat data real: ${Object.keys(store.sessions).length} sesi, ${store.events.length} events, ${store.pageViews.length} pageviews`
+            );
             return store;
           }
         }
-      } catch (fileErr) {
+      } catch {
         // continue checking next path
       }
     }
@@ -201,7 +659,7 @@ try {
 
 export function getActiveUsersCount(): number {
   initAnalyticsEngine();
-  const cutoff = Date.now() - 60000;
+  const cutoff = Date.now() - 90000;
   let active = 0;
   for (const sessId in store.sessions) {
     if (store.sessions[sessId].lastHeartbeat >= cutoff) {
@@ -219,22 +677,25 @@ export function trackTelemetry(data: {
   label?: string;
   metadata?: Record<string, any>;
   city?: string;
+  isManualOverride?: boolean;
   module?: string;
   path?: string;
   durationMs?: number;
   referrer?: string;
-}, req?: any): { success: boolean; eventId: string; activeUsers: number } {
+}, req?: any): { success: boolean; eventId: string; activeUsers: number; detectedCity: string } {
   initAnalyticsEngine();
-  const ip = extractClientIP(req);
+  const rawIp = extractRawClientIP(req);
+  const ip = anonymizeIP(rawIp);
   const uaParsed = parseUserAgent(req?.headers?.["user-agent"]);
   const now = Date.now();
-  const sessionId = data.sessionId || `sess_anon_${Math.random().toString(36).substring(2, 9)}`;
-  const city = data.city || "Palembang - Jakabaring (RSUD BARI)";
+  const sessionId = data.sessionId || `sess_${now}_${Math.random().toString(36).substring(2, 8)}`;
+  const city = resolveBestCitySync(data.city, data.isManualOverride, rawIp, req);
 
   if (!store.sessions[sessionId]) {
     store.sessions[sessionId] = {
       sessionId,
       ip,
+      rawIp,
       city,
       device: uaParsed.device,
       browser: uaParsed.browser,
@@ -245,13 +706,17 @@ export function trackTelemetry(data: {
     };
   } else {
     store.sessions[sessionId].lastHeartbeat = now;
-    if (data.city) store.sessions[sessionId].city = data.city;
+    store.sessions[sessionId].ip = ip;
+    if (city && (!isLegacyHardcodedDefaultCity(city) || isLegacyHardcodedDefaultCity(store.sessions[sessionId].city))) {
+      store.sessions[sessionId].city = city;
+    }
     if (data.module) store.sessions[sessionId].currentModule = data.module;
     if (data.eventType === "pageview") {
       store.sessions[sessionId].pageViewsCount++;
     }
   }
 
+  const finalCity = store.sessions[sessionId].city || city;
   let recordId = "";
 
   if (data.eventType === "pageview" || (!data.eventName && data.module)) {
@@ -262,10 +727,10 @@ export function trackTelemetry(data: {
       timestamp: now,
       module: data.module || "desc",
       path: data.path || `/${data.module || "desc"}`,
-      city,
+      city: finalCity,
       device: uaParsed.device,
       browser: uaParsed.browser,
-      referrer: data.referrer || (req?.headers?.["referer"] as string) || "Direct / RSUD BARI App",
+      referrer: data.referrer || (req?.headers?.["referer"] as string) || "Direct / Aplikasi PIOBARI",
       durationSec: data.durationMs ? Math.round(data.durationMs / 1000) : 15,
       ip
     };
@@ -282,8 +747,12 @@ export function trackTelemetry(data: {
       eventName: data.eventName || "custom_action",
       category: data.category || "clinical",
       label: data.label || "Aktivitas Klinis Farmasi",
-      metadata: data.metadata || {},
-      city,
+      metadata: {
+        ...(data.metadata || {}),
+        detectedCity: finalCity,
+        clientIp: ip
+      },
+      city: finalCity,
       device: uaParsed.device,
       browser: uaParsed.browser,
       durationMs: data.durationMs || 180,
@@ -300,7 +769,8 @@ export function trackTelemetry(data: {
   return {
     success: true,
     eventId: recordId,
-    activeUsers: getActiveUsersCount()
+    activeUsers: getActiveUsersCount(),
+    detectedCity: finalCity
   };
 }
 
@@ -308,18 +778,22 @@ export function recordHeartbeat(data: {
   sessionId: string;
   currentModule?: string;
   city?: string;
-}, req?: any): { activeUsers: number; serverTime: number } {
+  isManualOverride?: boolean;
+}, req?: any): { activeUsers: number; serverTime: number; detectedCity: string; ip: string } {
   initAnalyticsEngine();
-  const ip = extractClientIP(req);
+  const rawIp = extractRawClientIP(req);
+  const ip = anonymizeIP(rawIp);
   const uaParsed = parseUserAgent(req?.headers?.["user-agent"]);
   const now = Date.now();
-  const sessionId = data.sessionId || `sess_anon_${now}`;
+  const sessionId = data.sessionId || `sess_${now}`;
+  const resolvedCity = resolveBestCitySync(data.city, data.isManualOverride, rawIp, req);
 
   if (!store.sessions[sessionId]) {
     store.sessions[sessionId] = {
       sessionId,
       ip,
-      city: data.city || "Palembang - Jakabaring (RSUD BARI)",
+      rawIp,
+      city: resolvedCity,
       device: uaParsed.device,
       browser: uaParsed.browser,
       currentModule: data.currentModule || "desc",
@@ -329,18 +803,67 @@ export function recordHeartbeat(data: {
     };
   } else {
     store.sessions[sessionId].lastHeartbeat = now;
+    store.sessions[sessionId].ip = ip;
     if (data.currentModule) store.sessions[sessionId].currentModule = data.currentModule;
-    if (data.city) store.sessions[sessionId].city = data.city;
+    if (resolvedCity && !isLegacyHardcodedDefaultCity(resolvedCity)) {
+      store.sessions[sessionId].city = resolvedCity;
+      // Also update any events from this session that still had the legacy default city
+      for (const ev of store.events) {
+        if (ev.sessionId === sessionId && isLegacyHardcodedDefaultCity(ev.city)) {
+          ev.city = resolvedCity;
+        }
+      }
+      for (const pv of store.pageViews) {
+        if (pv.sessionId === sessionId && isLegacyHardcodedDefaultCity(pv.city)) {
+          pv.city = resolvedCity;
+        }
+      }
+    }
   }
 
   scheduleSave();
   return {
     activeUsers: getActiveUsersCount(),
-    serverTime: now
+    serverTime: now,
+    detectedCity: store.sessions[sessionId].city,
+    ip
   };
 }
 
-export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', clientTimezone?: string) {
+function parseCityAndProvinceFromText(cityText: string): { city: string; province: string; isSumsel: boolean; isPalembang: boolean } {
+  const raw = (cityText || "Kota Palembang, Sumatera Selatan").trim();
+  const low = raw.toLowerCase();
+
+  const isPalembang = low.includes("palembang") || low.includes("jakabaring") || low.includes("seberang ulu") || low.includes("plaju") || low.includes("ilir") || low.includes("kertapati") || low.includes("sukarami") || low.includes("sako") || low.includes("kalidoni") || low.includes("kemuning");
+  const sumselKeywords = [
+    "palembang", "sumatera selatan", "sumsel", "banyuasin", "sungai gerong", "sungaigerong",
+    "ogan ilir", "indralaya", "oki", "kayuagung", "prabumulih", "muara enim", "lahat",
+    "lubuklinggau", "baturaja", "oku", "muba", "sekayu", "pagar alam", "pali", "pendopo",
+    "empat lawang", "musi rawas", "muratara", "martapura", "muaradua"
+  ];
+  const isSumsel = isPalembang || sumselKeywords.some(k => low.includes(k));
+
+  if (raw.includes(",")) {
+    const parts = raw.split(",").map(s => s.trim()).filter(Boolean);
+    const cityPart = parts[0];
+    const provPart = normalizeIndonesianProvince(parts.slice(1).join(", "), cityPart);
+    return { city: cityPart, province: provPart, isSumsel, isPalembang };
+  }
+
+  if (isPalembang) {
+    return { city: raw, province: "Sumatera Selatan", isSumsel: true, isPalembang: true };
+  }
+
+  const inferredProvince = normalizeIndonesianProvince(undefined, raw);
+  return {
+    city: raw,
+    province: inferredProvince,
+    isSumsel: isSumsel || inferredProvince === "Sumatera Selatan",
+    isPalembang
+  };
+}
+
+export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', clientTimezone?: string, req?: any) {
   initAnalyticsEngine();
   const now = Date.now();
   const tz = clientTimezone || "Asia/Jakarta";
@@ -352,20 +875,9 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
   const filteredEvents = store.events.filter(e => e.timestamp >= cutoff);
   const filteredPVs = store.pageViews.filter(p => p.timestamp >= cutoff);
 
-  let todayMs = now - 24 * 3600 * 1000;
-  try {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }).format(new Date(now));
-    todayMs = new Date(`${parts}T00:00:00+07:00`).getTime();
-  } catch {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    todayMs = todayStart.getTime();
-  }
+  // Use all real records if time window is sparse so historical real logins remain visible
+  const activeEventsForGeo = filteredEvents.length > 0 ? filteredEvents : store.events;
+  const activePVsForGeo = filteredPVs.length > 0 ? filteredPVs : store.pageViews;
 
   // Hourly curve (last 24 hours in 2-hour buckets)
   const hourlyCurve: Array<{ time: string; timestamp: number; visitors: number; pageViews: number; customEvents: number }> = [];
@@ -452,7 +964,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     });
   }
 
-  // Device Breakdown
+  // Device Breakdown from real sessions & events
   const uniqueSessions = Object.values(store.sessions);
   let mobileCount = 0;
   let desktopCount = 0;
@@ -478,7 +990,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
   const totalDevices = Math.max(mobileCount + desktopCount + tabletCount, 1);
   const mobilePct = Math.round((mobileCount / totalDevices) * 1000) / 10;
   const desktopPct = Math.round((desktopCount / totalDevices) * 1000) / 10;
-  const tabletPct = Math.round((100 - mobilePct - desktopPct) * 10) / 10;
+  const tabletPct = Math.max(0, Math.round((100 - mobilePct - desktopPct) * 10) / 10);
 
   // Module Breakdown
   const moduleDefinitions = [
@@ -525,7 +1037,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
       module: m.name,
       key: m.key,
       activeNow,
-      totalToday: Math.max(count, activeNow > 0 ? activeNow * 3 : 0),
+      totalToday: count,
       color: m.color
     };
   });
@@ -546,7 +1058,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
       validSessions++;
     }
   });
-  const avgDurationSec = validSessions > 0 ? Math.round(totalDurationSec / validSessions) : 278;
+  const avgDurationSec = validSessions > 0 ? Math.round(totalDurationSec / validSessions) : 120;
   const avgMins = Math.floor(avgDurationSec / 60);
   const avgSecs = avgDurationSec % 60;
   const avgDurationFormatted = `${avgMins} Menit ${avgSecs} Detik`;
@@ -562,7 +1074,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     if (r.includes("whatsapp") || r.includes("wa.me") || r.includes("api.whatsapp") || r.includes("telegram")) {
       return "WhatsApp Group Farmasi & Klinisi";
     }
-    if (r.includes("rsud") || r.includes("simrs") || r.includes("puskesmas") || r.includes("bpjs") || r.includes("portal") || r.includes("dinkes") || r.includes("faskes") || r.includes("network")) {
+    if (r.includes("rsud") || r.includes("simrs") || r.includes("puskesmas") || r.includes("bpjs") || r.includes("portal") || r.includes("dinkes") || r.includes("faskes")) {
       return "Portal Rumah Sakit & Faskes BPJS";
     }
     if (r.includes("iai") || r.includes("pom.go.id") || r.includes("hisfarsi") || r.includes("kemkes") || r.includes("kemenkes")) {
@@ -572,11 +1084,11 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
   }
 
   const trafficChannels = [
-    { key: "Direct / Bookmark Apotek", trend: "+12.4%" },
-    { key: "Google Organic (Pencarian Dosis Obat)", trend: "+18.1%" },
-    { key: "WhatsApp Group Farmasi & Klinisi", trend: "+24.8%" },
-    { key: "Portal Rumah Sakit & Faskes BPJS", trend: "+6.3%" },
-    { key: "Referensi IAI & Kemkes/BPOM", trend: "+9.2%" }
+    { key: "Direct / Bookmark Apotek", trend: "Real-Time" },
+    { key: "Google Organic (Pencarian Dosis Obat)", trend: "Organik" },
+    { key: "WhatsApp Group Farmasi & Klinisi", trend: "Rujukan" },
+    { key: "Portal Rumah Sakit & Faskes BPJS", trend: "Jejaring" },
+    { key: "Referensi IAI & Kemkes/BPOM", trend: "Klinis" }
   ];
 
   const sourceCounts: Record<string, number> = {
@@ -605,64 +1117,122 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     };
   });
 
+  // ============================================================================
+  // DYNAMIC REAL GEOGRAPHIC DISTRIBUTION (Includes ALL Real Cities & Provinces)
+  // ============================================================================
+  const cityGroupMap = new Map<string, { city: string; province: string; users: number; isSumsel: boolean; isPalembang: boolean }>();
+
+  const recordLocationHit = (cityString: string, weight: number = 1) => {
+    const parsed = parseCityAndProvinceFromText(cityString);
+    const key = `${parsed.city.toLowerCase()}|${parsed.province.toLowerCase()}`;
+    const existing = cityGroupMap.get(key);
+    if (existing) {
+      existing.users += weight;
+    } else {
+      cityGroupMap.set(key, {
+        city: parsed.city,
+        province: parsed.province,
+        users: weight,
+        isSumsel: parsed.isSumsel,
+        isPalembang: parsed.isPalembang
+      });
+    }
+  };
+
+  // Count from real sessions and real events/pageviews
+  for (const sessId in store.sessions) {
+    const s = store.sessions[sessId];
+    recordLocationHit(s.city, Math.max(1, s.pageViewsCount || 1));
+  }
+  activeEventsForGeo.forEach(ev => {
+    recordLocationHit(ev.city, 1);
+  });
+
+  const totalGeoHits = Math.max(
+    Array.from(cityGroupMap.values()).reduce((acc, item) => acc + item.users, 0),
+    1
+  );
+
+  const geoDistribution = Array.from(cityGroupMap.values())
+    .sort((a, b) => b.users - a.users)
+    .map(item => ({
+      city: item.city,
+      province: item.province,
+      users: item.users,
+      percentage: Math.round((item.users / totalGeoHits) * 1000) / 10,
+      isSumsel: item.isSumsel,
+      isPalembang: item.isPalembang
+    }));
+
+  // Calculate real Sumsel vs Palembang vs Outside Sumsel shares
+  let sumselHits = 0;
+  let palembangHits = 0;
+  let outsideSumselHits = 0;
+  for (const item of cityGroupMap.values()) {
+    if (item.isSumsel) {
+      sumselHits += item.users;
+      if (item.isPalembang) {
+        palembangHits += item.users;
+      }
+    } else {
+      outsideSumselHits += item.users;
+    }
+  }
+
+  const realSumselShare = Math.round((sumselHits / totalGeoHits) * 1000) / 10;
+  const realPalembangShare = Math.round((palembangHits / totalGeoHits) * 1000) / 10;
+  const realOutsideShare = Math.round((outsideSumselHits / totalGeoHits) * 1000) / 10;
+
   // Palembang Districts
   const palembangDistrictsDef = [
     {
       district: "Jakabaring & Seberang Ulu I",
       zone: "Kawasan RSUD Palembang BARI",
       faskesUtama: "RSUD Palembang BARI, Puskesmas 7 Ulu, Pustu 8 Ulu",
-      keywords: ["jakabaring", "seberang ulu i", "bari", "7 ulu", "8 ulu"],
-      weight: 0.324,
+      keywords: ["jakabaring", "seberang ulu i", "bari", "7 ulu", "8 ulu", "kota palembang"],
       isHostHospital: true
     },
     {
       district: "Seberang Ulu II",
       zone: "Tangga Takat & 14 Ulu",
       faskesUtama: "Puskesmas Tangga Takat, Puskesmas Nagaswidak",
-      keywords: ["seberang ulu ii", "tangga takat", "14 ulu", "nagaswidak"],
-      weight: 0.148
+      keywords: ["seberang ulu ii", "tangga takat", "14 ulu", "nagaswidak"]
     },
     {
       district: "Plaju",
       zone: "Kawasan Komering & Pertamina",
       faskesUtama: "Puskesmas Pembina Plaju, RS Pertamina Plaju",
-      keywords: ["plaju", "pembina", "komering", "pertamina"],
-      weight: 0.118
+      keywords: ["plaju", "pembina", "komering", "pertamina"]
     },
     {
       district: "Ilir Barat I & II",
       zone: "Bukit Besar & Demang Lebar Daun",
       faskesUtama: "RS Siti Khadijah, Puskesmas Padang Selasa, Puskesmas Makrayu",
-      keywords: ["ilir barat", "bukit besar", "demang", "khadijah", "padang selasa"],
-      weight: 0.108
+      keywords: ["ilir barat", "bukit besar", "demang", "khadijah", "padang selasa"]
     },
     {
       district: "Ilir Timur I, II & III",
       zone: "Pusat Kota & Lemabang",
       faskesUtama: "RSUP Dr. Moh. Hoesin (RSMH), RS RK Charitas, RS Hermina",
-      keywords: ["ilir timur", "lemabang", "hoesin", "rsmh", "charitas", "hermina"],
-      weight: 0.099
+      keywords: ["ilir timur", "lemabang", "hoesin", "rsmh", "charitas", "hermina"]
     },
     {
       district: "Kertapati",
       zone: "Ogan Baru & Stasiun Kertapati",
       faskesUtama: "Puskesmas Kertapati, Puskesmas Ogan Baru",
-      keywords: ["kertapati", "ogan baru"],
-      weight: 0.078
+      keywords: ["kertapati", "ogan baru"]
     },
     {
       district: "Sukarami & Alang-Alang Lebar",
       zone: "KM 9 - Bandara SMB II",
       faskesUtama: "RSUD Siti Fatimah Prov. Sumsel, Puskesmas Sukarami",
-      keywords: ["sukarami", "alang-alang", "km 9", "siti fatimah", "bandara"],
-      weight: 0.071
+      keywords: ["sukarami", "alang-alang", "km 9", "siti fatimah", "bandara"]
     },
     {
       district: "Sako, Kalidoni & Kemuning",
       zone: "Palembang Timur",
       faskesUtama: "Puskesmas Sako, Puskesmas Kalidoni",
-      keywords: ["sako", "kalidoni", "kemuning", "sematang"],
-      weight: 0.054
+      keywords: ["sako", "kalidoni", "kemuning", "sematang"]
     }
   ];
 
@@ -680,7 +1250,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
       }
     }
 
-    store.pageViews.forEach(e => {
+    store.events.forEach(e => {
       const cityLow = (e.city || "").toLowerCase();
       if (d.keywords.some(k => cityLow.includes(k))) matchedLogs++;
     });
@@ -692,7 +1262,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
   const palembangDistricts = districtMatchedData.map(({ d, matchedLogs, activeNow }) => {
     const percentage = totalDistrictLogs > 0
       ? Math.round((matchedLogs / totalDistrictLogs) * 1000) / 10
-      : Math.round(d.weight * 1000) / 10;
+      : 0;
 
     return {
       district: d.district,
@@ -700,30 +1270,30 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
       faskesUtama: d.faskesUtama,
       users: matchedLogs,
       percentage,
-      activeNow: Math.max(activeNow, d.isHostHospital ? 1 : 0),
+      activeNow,
       isHostHospital: !!d.isHostHospital
     };
   });
 
   // Sumsel Regencies
   const sumselRegenciesDef = [
-    { regency: "Kota Palembang", capital: "Pusat Rujukan Provinsi", keywords: ["palembang", "bari"], faskesCount: 42, trend: "+14.2%" },
-    { regency: "Kab. Ogan Ilir", capital: "Indralaya", keywords: ["ogan ilir", "indralaya"], faskesCount: 26, trend: "+18.5%" },
-    { regency: "Kab. Banyuasin", capital: "Pangkalan Balai", keywords: ["banyuasin", "pangkalan balai"], faskesCount: 33, trend: "+12.1%" },
-    { regency: "Kab. Ogan Komering Ilir (OKI)", capital: "Kayuagung", keywords: ["oki", "kayuagung", "komering ilir"], faskesCount: 29, trend: "+9.7%" },
-    { regency: "Kota Prabumulih", capital: "Prabumulih", keywords: ["prabumulih"], faskesCount: 16, trend: "+11.4%" },
-    { regency: "Kab. Muara Enim", capital: "Muara Enim", keywords: ["muara enim"], faskesCount: 22, trend: "+8.3%" },
-    { regency: "Kab. Lahat", capital: "Lahat", keywords: ["lahat"], faskesCount: 19, trend: "+6.5%" },
-    { regency: "Kota Lubuklinggau", capital: "Lubuklinggau", keywords: ["lubuklinggau"], faskesCount: 14, trend: "+7.2%" },
-    { regency: "Kab. OKU (Baturaja)", capital: "Baturaja", keywords: ["baturaja", "oku "], faskesCount: 18, trend: "+5.9%" },
-    { regency: "Kab. Musi Banyuasin (Muba)", capital: "Sekayu", keywords: ["sekayu", "muba", "musi banyuasin"], faskesCount: 24, trend: "+10.1%" },
-    { regency: "Kab. OKU Timur", capital: "Martapura", keywords: ["oku timur", "martapura"], faskesCount: 17, trend: "+4.8%" },
-    { regency: "Kota Pagar Alam", capital: "Besemah", keywords: ["pagar alam"], faskesCount: 9, trend: "+5.1%" },
-    { regency: "Kab. OKU Selatan", capital: "Muaradua", keywords: ["oku selatan", "muaradua"], faskesCount: 15, trend: "+3.2%" },
-    { regency: "Kab. PALI", capital: "Talang Ubi (Pendopo)", keywords: ["pali", "talang ubi"], faskesCount: 11, trend: "+4.4%" },
-    { regency: "Kab. Empat Lawang", capital: "Tebing Tinggi", keywords: ["empat lawang", "tebing tinggi"], faskesCount: 10, trend: "+2.9%" },
-    { regency: "Kab. Musi Rawas", capital: "Muara Beliti", keywords: ["musi rawas", "muara beliti"], faskesCount: 12, trend: "+3.6%" },
-    { regency: "Kab. Musi Rawas Utara", capital: "Rupit", keywords: ["musi rawas utara", "muratara", "rupit"], faskesCount: 8, trend: "+2.1%" }
+    { regency: "Kota Palembang", capital: "Pusat Rujukan Provinsi", keywords: ["palembang", "bari"], faskesCount: 42, trend: "Real-Time" },
+    { regency: "Kab. Banyuasin", capital: "Pangkalan Balai / Sungai Gerong", keywords: ["banyuasin", "pangkalan balai", "sungai gerong", "sungaigerong"], faskesCount: 33, trend: "Real-Time" },
+    { regency: "Kab. Ogan Ilir", capital: "Indralaya", keywords: ["ogan ilir", "indralaya"], faskesCount: 26, trend: "Real-Time" },
+    { regency: "Kab. Ogan Komering Ilir (OKI)", capital: "Kayuagung", keywords: ["oki", "kayuagung", "komering ilir"], faskesCount: 29, trend: "Real-Time" },
+    { regency: "Kota Prabumulih", capital: "Prabumulih", keywords: ["prabumulih"], faskesCount: 16, trend: "Real-Time" },
+    { regency: "Kab. Muara Enim", capital: "Muara Enim", keywords: ["muara enim"], faskesCount: 22, trend: "Real-Time" },
+    { regency: "Kab. Lahat", capital: "Lahat", keywords: ["lahat"], faskesCount: 19, trend: "Real-Time" },
+    { regency: "Kota Lubuklinggau", capital: "Lubuklinggau", keywords: ["lubuklinggau"], faskesCount: 14, trend: "Real-Time" },
+    { regency: "Kab. OKU (Baturaja)", capital: "Baturaja", keywords: ["baturaja", "oku "], faskesCount: 18, trend: "Real-Time" },
+    { regency: "Kab. Musi Banyuasin (Muba)", capital: "Sekayu", keywords: ["sekayu", "muba", "musi banyuasin"], faskesCount: 24, trend: "Real-Time" },
+    { regency: "Kab. OKU Timur", capital: "Martapura", keywords: ["oku timur", "martapura"], faskesCount: 17, trend: "Real-Time" },
+    { regency: "Kota Pagar Alam", capital: "Besemah", keywords: ["pagar alam"], faskesCount: 9, trend: "Real-Time" },
+    { regency: "Kab. OKU Selatan", capital: "Muaradua", keywords: ["oku selatan", "muaradua"], faskesCount: 15, trend: "Real-Time" },
+    { regency: "Kab. PALI", capital: "Talang Ubi (Pendopo)", keywords: ["pali", "talang ubi"], faskesCount: 11, trend: "Real-Time" },
+    { regency: "Kab. Empat Lawang", capital: "Tebing Tinggi", keywords: ["empat lawang", "tebing tinggi"], faskesCount: 10, trend: "Real-Time" },
+    { regency: "Kab. Musi Rawas", capital: "Muara Beliti", keywords: ["musi rawas", "muara beliti"], faskesCount: 12, trend: "Real-Time" },
+    { regency: "Kab. Musi Rawas Utara", capital: "Rupit", keywords: ["musi rawas utara", "muratara", "rupit"], faskesCount: 8, trend: "Real-Time" }
   ];
 
   let totalSumselLogs = 0;
@@ -740,8 +1310,8 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
       }
     }
 
-    store.pageViews.forEach(pv => {
-      const cityLow = (pv.city || "").toLowerCase();
+    store.events.forEach(ev => {
+      const cityLow = (ev.city || "").toLowerCase();
       if (reg.keywords.some(k => cityLow.includes(k))) matched++;
     });
 
@@ -765,130 +1335,69 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     };
   });
 
-  // National Distribution
-  const nationalRegionsDef = [
-    { city: "Palembang", province: "Sumatera Selatan (Host BARI)", keywords: ["palembang", "bari"] },
-    { city: "Ogan Ilir & Banyuasin", province: "Sumatera Selatan (Penyangga)", keywords: ["ogan ilir", "indralaya", "banyuasin"] },
-    { city: "OKI & Prabumulih", province: "Sumatera Selatan", keywords: ["oki", "kayuagung", "prabumulih", "muara enim", "lahat"] },
-    { city: "Jakarta (Rujukan Nasional)", province: "DKI Jakarta", keywords: ["jakarta", "rscm", "kemenkes"] },
-    { city: "Bandung / Surabaya", province: "Jawa Barat & Jawa Timur", keywords: ["bandung", "surabaya", "jawa"] }
-  ];
-
-  let totalNationalLogs = 0;
-  const nationalMatchedData = nationalRegionsDef.map(geo => {
-    let matched = 0;
-    for (const sessId in store.sessions) {
-      const s = store.sessions[sessId];
-      const cityLow = (s.city || "").toLowerCase();
-      if (geo.keywords.some(k => cityLow.includes(k))) {
-        matched += (s.pageViewsCount || 1);
-      }
-    }
-    store.pageViews.forEach(pv => {
-      const cityLow = (pv.city || "").toLowerCase();
-      if (geo.keywords.some(k => cityLow.includes(k))) matched++;
-    });
-    totalNationalLogs += matched;
-    return { geo, matched };
-  });
-
-  const geoDistribution = nationalMatchedData.map(({ geo, matched }) => {
-    const percentage = totalNationalLogs > 0
-      ? Math.round((matched / totalNationalLogs) * 1000) / 10
-      : 0;
-    return {
-      city: geo.city,
-      province: geo.province,
-      users: matched,
-      percentage
-    };
-  });
-
   // Faskes Referral Network
   const sumselFaskes = [
     {
       name: "RSUD Palembang BARI",
       location: "Jakabaring, Kota Palembang",
       type: "RS Daerah (Host)",
-      sessionsToday: palembangDistricts[0]?.users || 48,
-      activeNow: Math.max(getActiveUsersCount(), 1),
+      sessionsToday: palembangDistricts[0]?.users || 0,
+      activeNow: palembangDistricts[0]?.activeNow || 0,
       topModule: "Kalkulator Dosis & Skrining DDI"
     },
     {
       name: "RSUP Dr. Mohammad Hoesin (RSMH)",
       location: "Ilir Timur I, Kota Palembang",
       type: "RS Rujukan Nasional",
-      sessionsToday: palembangDistricts[4]?.users || 15,
-      activeNow: 1,
+      sessionsToday: palembangDistricts[4]?.users || 0,
+      activeNow: palembangDistricts[4]?.activeNow || 0,
       topModule: "Kompatibilitas IV & Restriksi Fornas"
     },
     {
       name: "RSUD Siti Fatimah Prov. Sumsel",
       location: "KM 6, Kota Palembang",
       type: "RSUD Provinsi",
-      sessionsToday: palembangDistricts[6]?.users || 11,
-      activeNow: 0,
+      sessionsToday: palembangDistricts[6]?.users || 0,
+      activeNow: palembangDistricts[6]?.activeNow || 0,
       topModule: "Katalog Informasi Obat & Dosis"
     },
     {
       name: "Puskesmas Pembina (Plaju)",
       location: "Plaju, Kota Palembang",
       type: "Puskesmas Jejaring",
-      sessionsToday: palembangDistricts[2]?.users || 18,
-      activeNow: 0,
+      sessionsToday: palembangDistricts[2]?.users || 0,
+      activeNow: palembangDistricts[2]?.activeNow || 0,
       topModule: "Informasi Obat & Rekam SOAP"
     },
     {
-      name: "Puskesmas 7 Ulu (Seberang Ulu)",
-      location: "Seberang Ulu I, Kota Palembang",
+      name: "Faskes Jejaring Kab. Banyuasin / Sungai Gerong",
+      location: "Kabupaten Banyuasin",
       type: "Puskesmas Jejaring",
-      sessionsToday: Math.round((palembangDistricts[0]?.users || 48) * 0.45),
-      activeNow: 0,
-      topModule: "DDI Alert & Kalkulator Dosis Anak"
+      sessionsToday: sumselRegencies.find(r => r.regency.includes("Banyuasin"))?.users || 0,
+      activeNow: sumselRegencies.find(r => r.regency.includes("Banyuasin"))?.activeNow || 0,
+      topModule: "Clinical SOAP & Informasi Obat"
     },
     {
-      name: "Puskesmas Ogan Baru",
-      location: "Kertapati, Kota Palembang",
-      type: "Puskesmas Jejaring",
-      sessionsToday: palembangDistricts[5]?.users || 12,
-      activeNow: 0,
-      topModule: "Katalog Obat & Penyakit"
-    },
-    {
-      name: "RSUD Kayuagung (OKI)",
-      location: "Kabupaten Ogan Komering Ilir",
-      type: "Puskesmas Jejaring",
-      sessionsToday: sumselRegencies.find(r => r.regency.includes("OKI"))?.users || 8,
-      activeNow: 0,
-      topModule: "Konsultasi Apoteker & DDI"
-    },
-    {
-      name: "RSUD Ibnu Sutowo Baturaja",
-      location: "Kabupaten Ogan Komering Ulu",
-      type: "Puskesmas Jejaring",
-      sessionsToday: sumselRegencies.find(r => r.regency.includes("OKU (Baturaja)"))?.users || 3,
-      activeNow: 0,
-      topModule: "Kalkulator Medis & Ginjal"
-    },
-    {
-      name: "Jejaring Apotek Kimia Farma / K-24",
-      location: "Kota Palembang (Multiple)",
-      type: "Apotek Jejaring",
-      sessionsToday: Math.round(totalDistrictLogs * 0.12),
-      activeNow: 0,
-      topModule: "Cek Interaksi Multi-Obat"
+      name: "Akses Nasional Luar Sumsel (Padang / Jakarta / Lainnya)",
+      location: "Lintas Provinsi Indonesia",
+      type: "RS Rujukan Nasional",
+      sessionsToday: outsideSumselHits,
+      activeNow: Object.values(store.sessions).filter(s => s.lastHeartbeat >= Date.now() - 90000 && !parseCityAndProvinceFromText(s.city).isSumsel).length,
+      topModule: "Web Analytics, Informasi Obat & DDI"
     }
   ];
 
+  const topGeo = geoDistribution[0];
   const sumselStats = {
-    province: "Sumatera Selatan",
-    primaryCity: "Kota Palembang",
+    province: "Sumatera Selatan & Nasional",
+    primaryCity: topGeo ? `${topGeo.city} (${topGeo.province})` : "Kota Palembang",
     hostHospital: "RSUD Palembang BARI (Jakabaring)",
-    sumselTrafficShare: 89.2,
-    palembangTrafficShare: palembangDistricts[0]?.percentage || 32.4,
-    topDistrict: "Jakabaring & Seberang Ulu I",
-    activeFaskesCount: 38,
-    onlineSumselNow: Math.max(getActiveUsersCount(), 1)
+    sumselTrafficShare: realSumselShare,
+    palembangTrafficShare: realPalembangShare,
+    outsideSumselTrafficShare: realOutsideShare,
+    topDistrict: topGeo ? `${topGeo.city}, ${topGeo.province}` : "Kota Palembang",
+    activeFaskesCount: Object.keys(store.sessions).length,
+    onlineSumselNow: getActiveUsersCount()
   };
 
   const uniqueWindowSessions = new Set(
@@ -904,11 +1413,30 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
 
   const clinicalCount = filteredEvents.filter(e => e.category === "clinical").length;
 
+  // Also include active sessions list so Admin can see every connected/recent session & its real IP/city
+  const recentSessions = Object.values(store.sessions)
+    .sort((a, b) => b.lastHeartbeat - a.lastHeartbeat)
+    .slice(0, 25)
+    .map(s => ({
+      sessionId: s.sessionId,
+      ip: s.ip,
+      city: s.city,
+      device: s.device,
+      browser: s.browser,
+      currentModule: s.currentModule,
+      lastHeartbeat: s.lastHeartbeat,
+      isOnline: s.lastHeartbeat >= Date.now() - 90000,
+      pageViewsCount: s.pageViewsCount
+    }));
+
+  const viewerIp = req ? extractClientIP(req) : undefined;
+  const viewerGeo = viewerIp ? ipGeoCache.get(viewerIp)?.formatted : undefined;
+
   return {
     activeUsersNow: getActiveUsersCount(),
     pageViewsToday: filteredPVs.length,
-    uniqueSessionsToday: Math.max(uniqueWindowSessions, 1),
-    customEventsCount: filteredEvents.length,
+    uniqueSessionsToday: Math.max(uniqueWindowSessions, Object.keys(store.sessions).length, 1),
+    customEventsCount: store.events.length,
     criticalAlertsCount,
     clinicalCount,
     avgDurationSec,
@@ -928,6 +1456,9 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     sumselRegencies,
     sumselFaskes,
     sumselStats,
+    recentSessions,
+    viewerIp,
+    viewerGeo,
     serverUptime: Math.round(process.uptime()),
     totalStoredEvents: store.events.length,
     totalStoredPageviews: store.pageViews.length,
@@ -951,13 +1482,14 @@ export function getStoredEvents(options: {
 
   if (options.region && options.region !== "all") {
     if (options.region === "palembang") {
-      list = list.filter(e => e.city.toLowerCase().includes("palembang"));
+      list = list.filter(e => parseCityAndProvinceFromText(e.city).isPalembang);
     } else if (options.region === "sumsel_other") {
-      const keywords = ["ogan", "banyuasin", "oki", "prabumulih", "muara", "lahat", "lubuklinggau", "baturaja", "sekayu", "pagar alam", "pali", "empat lawang", "muratara", "sumatera selatan"];
-      list = list.filter(e => !e.city.toLowerCase().includes("palembang") && keywords.some(k => e.city.toLowerCase().includes(k)));
+      list = list.filter(e => {
+        const parsed = parseCityAndProvinceFromText(e.city);
+        return parsed.isSumsel && !parsed.isPalembang;
+      });
     } else if (options.region === "outside") {
-      const sumselKeys = ["palembang", "ogan", "banyuasin", "oki", "prabumulih", "muara", "lahat", "lubuklinggau", "baturaja", "sekayu", "pagar alam", "pali", "empat lawang", "muratara", "sumatera selatan"];
-      list = list.filter(e => !sumselKeys.some(k => e.city.toLowerCase().includes(k)));
+      list = list.filter(e => !parseCityAndProvinceFromText(e.city).isSumsel);
     }
   }
 
@@ -967,6 +1499,7 @@ export function getStoredEvents(options: {
       e.eventName.toLowerCase().includes(q) ||
       e.label.toLowerCase().includes(q) ||
       e.city.toLowerCase().includes(q) ||
+      (e.ip || "").toLowerCase().includes(q) ||
       JSON.stringify(e.metadata || {}).toLowerCase().includes(q)
     );
   }
@@ -977,27 +1510,17 @@ export function getStoredEvents(options: {
 
 export function resetAnalyticsStore() {
   initAnalyticsEngine();
-  try {
-    const cwd = process.cwd();
-    const candidatePaths = [
-      path.join(cwd, "data", "analytics_baseline.json"),
-      path.join(cwd, "data", "analytics_store.json"),
-      path.join(__dirname, "..", "data", "analytics_baseline.json"),
-      path.join(__dirname, "..", "data", "analytics_store.json")
-    ];
-    for (const p of candidatePaths) {
-      if (fs.existsSync(p)) {
-        const raw = fs.readFileSync(p, "utf8");
-        const parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.events) && parsed.events.length > 0) {
-          store = parsed;
-          break;
-        }
-      }
-    }
-  } catch (e) {
-    // keep current
-  }
+  store = {
+    version: 2,
+    createdAt: Date.now(),
+    lastUpdated: Date.now(),
+    sessions: {},
+    events: [],
+    pageViews: []
+  };
   scheduleSave();
-  return { success: true, message: "Database telemetri berhasil disinkronkan ke baseline aktif sistem (755 events)." };
+  return {
+    success: true,
+    message: "Database telemetri berhasil direset bersih dan siap mencatat sesi pengunjung real-time."
+  };
 }

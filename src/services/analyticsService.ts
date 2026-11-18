@@ -74,7 +74,23 @@ export interface SumselFaskesReferral {
 type EventListener = (event: CustomEventRecord) => void;
 
 const LISTENERS: Set<EventListener> = new Set();
-const STORAGE_KEY = "med_analytics_custom_events_v3";
+const STORAGE_KEY = "med_analytics_custom_events_v4";
+const DETECTED_CITY_KEY = "piobari_detected_real_city";
+const DETECTED_GEO_META_KEY = "piobari_detected_geo_meta";
+const MANUAL_TEST_CITY_KEY = "piobari_manual_test_city_v2";
+
+let geoDetectionPromise: Promise<string> | null = null;
+
+// Clean up any legacy hardcoded Palembang overrides from older versions
+if (typeof window !== "undefined") {
+  try {
+    const legacyCity = localStorage.getItem("piobari_preferred_faskes_city");
+    if (legacyCity === "Palembang - Jakabaring (RSUD BARI)") {
+      localStorage.removeItem("piobari_preferred_faskes_city");
+    }
+    localStorage.removeItem("med_analytics_custom_events_v3");
+  } catch {}
+}
 
 // Get persistent client session ID
 export function getClientSessionId(): string {
@@ -87,17 +103,131 @@ export function getClientSessionId(): string {
   return id;
 }
 
-// User-chosen or detected city
+const PROVINCE_MAP_ID: Record<string, string> = {
+  "South Sumatra": "Sumatera Selatan",
+  "West Sumatra": "Sumatera Barat",
+  "North Sumatra": "Sumatera Utara",
+  "Jakarta": "DKI Jakarta",
+  "Special Capital Region of Jakarta": "DKI Jakarta",
+  "West Java": "Jawa Barat",
+  "Central Java": "Jawa Tengah",
+  "East Java": "Jawa Timur",
+  "Special Region of Yogyakarta": "DI Yogyakarta",
+  "Riau Islands": "Kepulauan Riau",
+  "Bangka Belitung Islands": "Kep. Bangka Belitung",
+  "East Kalimantan": "Kalimantan Timur",
+  "South Kalimantan": "Kalimantan Selatan",
+  "West Kalimantan": "Kalimantan Barat",
+  "South Sulawesi": "Sulawesi Selatan",
+  "North Sulawesi": "Sulawesi Utara"
+};
+
+// Asynchronously detect real client city & province via server GeoIP and public GeoIP fallback
+export async function detectRealClientLocation(): Promise<string> {
+  if (typeof window === "undefined") return "";
+  const cached = sessionStorage.getItem(DETECTED_CITY_KEY);
+  if (cached && cached !== "Mendeteksi Lokasi...") {
+    return cached;
+  }
+  if (geoDetectionPromise) return geoDetectionPromise;
+
+  geoDetectionPromise = (async () => {
+    // 1. Try server-side IP resolution first (/api/analytics/geo)
+    try {
+      const res = await fetch("/api/analytics/geo");
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.formatted && !data.formatted.includes("Jaringan Lokal")) {
+          sessionStorage.setItem(DETECTED_CITY_KEY, data.formatted);
+          sessionStorage.setItem(DETECTED_GEO_META_KEY, JSON.stringify(data));
+          return data.formatted as string;
+        }
+      }
+    } catch {}
+
+    // 2. Fallback to direct browser lookup via ipwho.is (recognizes the client's public IP even behind local proxy)
+    try {
+      const res2 = await fetch("https://ipwho.is/");
+      if (res2.ok) {
+        const d2 = await res2.json();
+        if (d2 && d2.success !== false && d2.city) {
+          const rawProv = String(d2.region || d2.country || "Indonesia").trim();
+          const prov = PROVINCE_MAP_ID[rawProv] || rawProv;
+          const cityClean = String(d2.city).trim();
+          const formatted = cityClean.toLowerCase().includes("kota ") || cityClean.toLowerCase().includes("kab")
+            ? `${cityClean}, ${prov}`
+            : `Kota ${cityClean}, ${prov}`;
+          sessionStorage.setItem(DETECTED_CITY_KEY, formatted);
+          sessionStorage.setItem(
+            DETECTED_GEO_META_KEY,
+            JSON.stringify({
+              ip: d2.ip || "",
+              city: `Kota ${cityClean}`,
+              province: prov,
+              country: d2.country || "Indonesia",
+              isp: d2.connection?.isp || d2.connection?.org || "",
+              formatted
+            })
+          );
+          // Inform server heartbeat immediately with the newly detected public city
+          fetch("/api/analytics/heartbeat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: getClientSessionId(),
+              currentModule: "app",
+              city: formatted
+            })
+          }).catch(() => {});
+          return formatted;
+        }
+      }
+    } catch {}
+
+    return "";
+  })();
+
+  return geoDetectionPromise;
+}
+
+export function getDetectedClientGeoMeta(): {
+  ip?: string;
+  city?: string;
+  province?: string;
+  isp?: string;
+  formatted?: string;
+} | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DETECTED_GEO_META_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Kick off real location detection immediately on client load
+if (typeof window !== "undefined") {
+  detectRealClientLocation().catch(() => {});
+}
+
+// Return real detected city (or empty string so backend resolves from client IP; NEVER hardcode Palembang!)
 export function getSelectedOrDetectedCity(): string {
-  if (typeof window === "undefined") return "Palembang - Jakabaring (RSUD BARI)";
-  const custom = localStorage.getItem("piobari_preferred_faskes_city");
-  if (custom) return custom;
-  return "Palembang - Jakabaring (RSUD BARI)";
+  if (typeof window === "undefined") return "";
+  const detected = sessionStorage.getItem(DETECTED_CITY_KEY);
+  if (detected) return detected;
+  const manual = sessionStorage.getItem(MANUAL_TEST_CITY_KEY);
+  if (manual) return manual;
+  return "";
 }
 
 export function setSelectedFaskesCity(city: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem("piobari_preferred_faskes_city", city);
+  if (!city) {
+    sessionStorage.removeItem(MANUAL_TEST_CITY_KEY);
+  } else {
+    sessionStorage.setItem(MANUAL_TEST_CITY_KEY, city);
+  }
 }
 
 // Specific locations in Palembang & Sumatera Selatan with high medical relevance
@@ -140,32 +270,6 @@ export const SUMSEL_REGENCIES = [
   "Kab. Musi Rawas Utara (Muratara)"
 ];
 
-const INDONESIAN_CITIES = [
-  { city: "Palembang - Jakabaring (RSUD BARI)", province: "Sumatera Selatan" },
-  { city: "Palembang - Seberang Ulu I", province: "Sumatera Selatan" },
-  { city: "Palembang - Seberang Ulu II", province: "Sumatera Selatan" },
-  { city: "Palembang - Plaju", province: "Sumatera Selatan" },
-  { city: "Palembang - Ilir Barat I", province: "Sumatera Selatan" },
-  { city: "Palembang - Ilir Timur I", province: "Sumatera Selatan" },
-  { city: "Palembang - Kertapati", province: "Sumatera Selatan" },
-  { city: "Palembang - Sukarami", province: "Sumatera Selatan" },
-  { city: "Ogan Ilir (Indralaya)", province: "Sumatera Selatan" },
-  { city: "Banyuasin (Pangkalan Balai)", province: "Sumatera Selatan" },
-  { city: "OKI (Kayuagung)", province: "Sumatera Selatan" },
-  { city: "Prabumulih", province: "Sumatera Selatan" },
-  { city: "Muara Enim", province: "Sumatera Selatan" },
-  { city: "Lahat", province: "Sumatera Selatan" },
-  { city: "Baturaja (OKU)", province: "Sumatera Selatan" },
-  { city: "Lubuklinggau", province: "Sumatera Selatan" },
-  { city: "Sekayu (Muba)", province: "Sumatera Selatan" },
-  { city: "Jakarta (Rujukan Kemenkes)", province: "DKI Jakarta" },
-  { city: "Bandung", province: "Jawa Barat" },
-  { city: "Surabaya", province: "Jawa Timur" }
-];
-
-const BROWSERS: Array<'Chrome' | 'Safari' | 'Firefox' | 'Edge'> = ['Chrome', 'Safari', 'Firefox', 'Edge'];
-const DEVICES: Array<'Mobile' | 'Desktop' | 'Tablet'> = ['Mobile', 'Mobile', 'Desktop', 'Mobile', 'Tablet'];
-
 // Detect current client device
 export function detectClientDevice(): { device: 'Mobile' | 'Desktop' | 'Tablet'; browser: 'Chrome' | 'Safari' | 'Firefox' | 'Edge' } {
   if (typeof window === "undefined") {
@@ -187,61 +291,15 @@ export function detectClientDevice(): { device: 'Mobile' | 'Desktop' | 'Tablet';
   return { device, browser };
 }
 
-// Generate realistic seed events if storage empty
-function generateSeedEvents(): CustomEventRecord[] {
-  const seed: CustomEventRecord[] = [];
-  const now = Date.now();
-  const sampleEvents = [
-    { name: "dose_calculate", cat: "clinical" as const, label: "Perhitungan Dosis Gentamicin Neonatus", meta: { drug: "Gentamicin", weightKg: 3.2, unit: "mg" } },
-    { name: "interaction_screen", cat: "safety" as const, label: "Skrining Ciprofloxacin + Antasida", meta: { severity: "CRITICAL", drugCount: 2 } },
-    { name: "fornas_lookup", cat: "clinical" as const, label: "Pencarian Restriksi Fornas: Meropenem Injeksi", meta: { drug: "Meropenem", category: "Antibiotik" } },
-    { name: "pdf_export", cat: "conversion" as const, label: "Cetak Rekomendasi Farmakoterapi PDF", meta: { format: "A4", recipient: "Sp.PD" } },
-    { name: "ai_consultation", cat: "clinical" as const, label: "Tanya AI: Penyesuaian Dosis Gagal Ginjal", meta: { topic: "Renal Adjustment" } },
-    { name: "iv_compatibility_check", cat: "safety" as const, label: "Uji Kompatibilitas Ceftriaxone + RL (Precipitate)", meta: { outcome: "INCOMPATIBLE" } },
-    { name: "faskes_search", cat: "navigation" as const, label: "Rujukan Berjenjang Puskesmas Pembina ke RSUD BARI", meta: { faskes: "RSUD BARI" } },
-    { name: "soap_record", cat: "clinical" as const, label: "Dokumentasi Catatan Farmasi SOAP Bangsal Anak", meta: { status: "Saved" } }
-  ];
-
-  for (let i = 0; i < 40; i++) {
-    const timeOffset = Math.floor(Math.random() * (20 * 3600 * 1000));
-    const tmpl = sampleEvents[i % sampleEvents.length];
-    const cityObj = INDONESIAN_CITIES[i % 12];
-    seed.push({
-      id: `evt_seed_${now - timeOffset}_${i}`,
-      sessionId: `sess_hist_${i % 10}`,
-      timestamp: now - timeOffset,
-      eventName: tmpl.name,
-      category: tmpl.cat,
-      label: tmpl.label,
-      metadata: tmpl.meta,
-      city: cityObj.city,
-      device: DEVICES[i % DEVICES.length],
-      browser: BROWSERS[i % BROWSERS.length],
-      durationMs: Math.floor(Math.random() * 800) + 120,
-      isRealLive: false
-    });
-  }
-
-  return seed.sort((a, b) => b.timestamp - a.timestamp);
-}
-
-// Get saved events from localStorage
+// Get saved events from localStorage (only real events, no fake seeds)
 export function getSavedCustomEvents(): CustomEventRecord[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const initial = generateSeedEvents();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-      return initial;
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      const initial = generateSeedEvents();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-      return initial;
-    }
-    return parsed;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((ev: any) => ev && !String(ev.id || "").startsWith("evt_seed_"));
   } catch (err) {
     console.error("Failed to load custom events:", err);
     return [];
@@ -263,26 +321,34 @@ function saveCustomEvents(events: CustomEventRecord[]) {
 export function trackPageView(module: string, path?: string, label?: string): void {
   const sessionId = getClientSessionId();
   const { device, browser } = detectClientDevice();
-  const currentCity = getSelectedOrDetectedCity();
 
-  try {
-    fetch("/api/analytics/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        eventType: "pageview",
-        sessionId,
-        module,
-        path: path || `/${module}`,
-        label: label || `Akses Modul: ${module}`,
-        city: currentCity,
-        device,
-        browser,
-        referrer: typeof document !== "undefined" ? document.referrer : ""
-      })
-    }).catch(() => {});
-  } catch (err) {
-    // silently catch offline
+  const sendTrack = (resolvedCity: string) => {
+    try {
+      fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType: "pageview",
+          sessionId,
+          module,
+          path: path || `/${module}`,
+          label: label || `Akses Modul: ${module}`,
+          city: resolvedCity,
+          device,
+          browser,
+          referrer: typeof document !== "undefined" ? document.referrer : ""
+        })
+      }).catch(() => {});
+    } catch {}
+  };
+
+  const immediateCity = getSelectedOrDetectedCity();
+  if (immediateCity) {
+    sendTrack(immediateCity);
+  } else {
+    detectRealClientLocation()
+      .then((detected) => sendTrack(detected || ""))
+      .catch(() => sendTrack(""));
   }
 }
 
@@ -297,7 +363,7 @@ export function trackCustomEvent(
   }
 ): CustomEventRecord {
   const { device, browser } = detectClientDevice();
-  const currentCity = params.city || getSelectedOrDetectedCity();
+  const detectedOrManual = params.city || getSelectedOrDetectedCity();
   const sessionId = getClientSessionId();
 
   const record: CustomEventRecord = {
@@ -308,7 +374,7 @@ export function trackCustomEvent(
     category: params.category || 'custom',
     label: params.label,
     metadata: params.metadata || {},
-    city: currentCity,
+    city: detectedOrManual || "Deteksi Otomatis IP",
     device,
     browser,
     durationMs: Math.floor(Math.random() * 400) + 110,
@@ -328,24 +394,43 @@ export function trackCustomEvent(
     }
   });
 
-  // Send to real backend server database
-  try {
-    fetch("/api/analytics/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        eventType: "event",
-        sessionId,
-        eventName: record.eventName,
-        category: record.category,
-        label: record.label,
-        metadata: record.metadata,
-        city: record.city,
-        durationMs: record.durationMs
+  const dispatchToServer = (finalCity: string) => {
+    try {
+      fetch("/api/analytics/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType: "event",
+          sessionId,
+          eventName: record.eventName,
+          category: record.category,
+          label: record.label,
+          metadata: record.metadata,
+          city: finalCity,
+          device,
+          browser,
+          durationMs: record.durationMs
+        })
       })
-    }).catch(() => {});
-  } catch (err) {
-    // silently catch
+        .then((res) => (res.ok ? res.json() : null))
+        .then((json) => {
+          if (json?.city && json.city !== record.city) {
+            record.city = json.city;
+          }
+        })
+        .catch(() => {});
+    } catch {}
+  };
+
+  if (detectedOrManual) {
+    dispatchToServer(detectedOrManual);
+  } else {
+    detectRealClientLocation()
+      .then((detected) => {
+        if (detected) record.city = detected;
+        dispatchToServer(detected || "");
+      })
+      .catch(() => dispatchToServer(""));
   }
 
   return record;
@@ -358,6 +443,11 @@ export async function fetchRealAnalyticsStats(timeRange: '24h' | '7d' | '30d' = 
     const res = await fetch(`/api/analytics/stats?timeRange=${timeRange}&timezone=${encodeURIComponent(tz)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    if (data?.currentVisitorGeo?.city && typeof window !== "undefined") {
+      if (!data.currentVisitorGeo.city.includes("Jaringan Lokal")) {
+        sessionStorage.setItem(DETECTED_CITY_KEY, data.currentVisitorGeo.city);
+      }
+    }
     return data;
   } catch (err) {
     return null;
@@ -389,17 +479,21 @@ export async function fetchRealEvents(options?: {
 // Send real-time heartbeat to server
 export async function sendHeartbeat(currentModule: string, city?: string): Promise<number | null> {
   try {
+    const resolvedCity = city || getSelectedOrDetectedCity() || (await detectRealClientLocation());
     const res = await fetch("/api/analytics/heartbeat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: getClientSessionId(),
         currentModule,
-        city: city || getSelectedOrDetectedCity()
+        city: resolvedCity || ""
       })
     });
     if (res.ok) {
       const json = await res.json();
+      if (json.city && typeof window !== "undefined" && !json.city.includes("Jaringan Lokal")) {
+        sessionStorage.setItem(DETECTED_CITY_KEY, json.city);
+      }
       return json.activeUsers;
     }
   } catch (err) {}
@@ -432,8 +526,6 @@ export function clearAllCustomEvents(): void {
   if (typeof window !== "undefined") {
     localStorage.removeItem(STORAGE_KEY);
   }
-  const reset = generateSeedEvents();
-  saveCustomEvents(reset);
 }
 
 // Export events as CSV

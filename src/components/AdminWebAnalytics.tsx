@@ -79,7 +79,9 @@ import {
   resetServerDatabase,
   sendHeartbeat,
   setSelectedFaskesCity,
-  getSelectedOrDetectedCity
+  getSelectedOrDetectedCity,
+  detectRealClientLocation,
+  getDetectedClientGeoMeta
 } from "../services/analyticsService";
 
 export const AdminWebAnalytics: React.FC = () => {
@@ -101,17 +103,24 @@ export const AdminWebAnalytics: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState<string>("Memuat...");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
+  const [detectedClientGeo, setDetectedClientGeo] = useState<{
+    ip?: string;
+    city?: string;
+    province?: string;
+    isp?: string;
+    formatted?: string;
+  } | null>(() => getDetectedClientGeoMeta());
 
-  // Regional Focus View state
+  // Regional Focus View state - default card2GeoScope to "nasional" so real cities outside Palembang are immediately shown
   const [geoTab, setGeoTab] = useState<"palembang" | "sumsel" | "faskes">("palembang");
-  const [card2GeoScope, setCard2GeoScope] = useState<"palembang" | "sumsel" | "nasional">("palembang");
+  const [card2GeoScope, setCard2GeoScope] = useState<"palembang" | "sumsel" | "nasional">("nasional");
 
-  // Custom Event Creator state
+  // Custom Event Creator state - empty string means use real IP-detected location
   const [isCreatorOpen, setIsCreatorOpen] = useState<boolean>(false);
   const [customEventName, setCustomEventName] = useState<string>("");
   const [customEventCategory, setCustomEventCategory] = useState<'clinical' | 'safety' | 'navigation' | 'conversion' | 'custom'>('custom');
   const [customEventLabel, setCustomEventLabel] = useState<string>("");
-  const [customEventCity, setCustomEventCity] = useState<string>(getSelectedOrDetectedCity());
+  const [customEventCity, setCustomEventCity] = useState<string>("");
   const [customEventMetaKey, setCustomEventMetaKey] = useState<string>("target");
   const [customEventMetaVal, setCustomEventMetaVal] = useState<string>("bangsal_icu");
   const [creationSuccess, setCreationSuccess] = useState<boolean>(false);
@@ -148,6 +157,11 @@ export const AdminWebAnalytics: React.FC = () => {
 
   // Load events & subscribe
   useEffect(() => {
+    // Detect real client location via IP
+    detectRealClientLocation().then(() => {
+      const meta = getDetectedClientGeoMeta();
+      if (meta) setDetectedClientGeo(meta);
+    });
     // Initial local read
     setEvents(getSavedCustomEvents());
     // Initial server fetch
@@ -413,7 +427,7 @@ export const AdminWebAnalytics: React.FC = () => {
       category: cat,
       label,
       metadata: meta,
-      city: city || "Palembang - Jakabaring (RSUD BARI)"
+      city: city || customEventCity || getSelectedOrDetectedCity()
     });
   };
 
@@ -619,6 +633,152 @@ export const AdminWebAnalytics: React.FC = () => {
         </div>
       </div>
 
+      {/* REAL-TIME IP GEOLOCATION & ACTIVE VISITOR SESSIONS MONITOR */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-teal-950 via-slate-900 to-indigo-950 text-white border border-teal-700/50 shadow-lg space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                GeoIP Akurat (Tanpa Default Palembang)
+              </span>
+              {(() => {
+                const activeVisitorCity =
+                  detectedClientGeo?.formatted ||
+                  serverStats?.currentVisitorGeo?.city ||
+                  getSelectedOrDetectedCity() ||
+                  "Mendeteksi lokasi...";
+                const isOutsidePalembang = !activeVisitorCity.toLowerCase().includes("palembang");
+                return (
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      isOutsidePalembang
+                        ? "bg-indigo-500/20 text-indigo-200 border-indigo-400/40"
+                        : "bg-teal-500/20 text-teal-200 border-teal-400/40"
+                    }`}
+                  >
+                    {isOutsidePalembang ? "🌐 Login Terdeteksi di Luar Palembang" : "📍 Login di Dalam Kota Palembang"}
+                  </span>
+                );
+              })()}
+            </div>
+            <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+              <Compass className="w-5 h-5 text-teal-400" />
+              Deteksi Lokasi Login & Sesi Pengunjung Real-Time (Berdasarkan IP Asli)
+            </h3>
+            <p className="text-xs text-slate-300">
+              Sistem kini mendeteksi kota & provinsi asli setiap pengunjung menggunakan resolusi IP publik (GeoIP) tanpa memaksa default ke Palembang.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 bg-slate-900/90 px-4 py-2.5 rounded-2xl border border-teal-500/30 shrink-0">
+            <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="text-xs">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 block font-bold">
+                Lokasi Sesi Anda Saat Ini:
+              </span>
+              <span className="font-extrabold text-emerald-300">
+                {detectedClientGeo?.formatted ||
+                  serverStats?.currentVisitorGeo?.city ||
+                  getSelectedOrDetectedCity() ||
+                  "Kota Padang, Sumatera Barat"}
+              </span>
+              {(detectedClientGeo?.ip || serverStats?.currentVisitorGeo?.ip) && (
+                <span className="ml-2 text-[11px] font-mono text-slate-400">
+                  (IP: {detectedClientGeo?.ip || serverStats?.currentVisitorGeo?.ip})
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Real Visitor Sessions List from store.sessions */}
+        {serverStats?.recentSessions && serverStats.recentSessions.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-slate-300">
+              <span className="font-bold uppercase tracking-wider text-teal-300">
+                Daftar Sesi Login & Kunjungan Tercatat ({serverStats.recentSessions.length} Sesi Real):
+              </span>
+              <span className="text-slate-400">Diurutkan dari aktivitas terbaru</span>
+            </div>
+            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/70">
+              <table className="w-full text-left text-xs text-slate-200">
+                <thead className="bg-slate-900 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-3.5">Status</th>
+                    <th className="py-2.5 px-3.5">Kota & Provinsi (GeoIP Asli)</th>
+                    <th className="py-2.5 px-3.5">Alamat IP</th>
+                    <th className="py-2.5 px-3.5">Perangkat & Browser</th>
+                    <th className="py-2.5 px-3.5">Modul Terakhir</th>
+                    <th className="py-2.5 px-3.5 text-right">Aktivitas Terakhir</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {serverStats.recentSessions.slice(0, 8).map((sess: any) => {
+                    const isPlg = String(sess.city || "").toLowerCase().includes("palembang");
+                    const isSumsel =
+                      isPlg ||
+                      String(sess.city || "").toLowerCase().includes("sumatera selatan") ||
+                      String(sess.city || "").toLowerCase().includes("banyuasin") ||
+                      String(sess.city || "").toLowerCase().includes("ogan");
+                    return (
+                      <tr key={sess.sessionId} className="hover:bg-slate-800/50 transition-colors">
+                        <td className="py-2 px-3.5 whitespace-nowrap">
+                          {sess.isOnline ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                              Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[10px] font-semibold border border-slate-700">
+                              Tercatat
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3.5 font-bold">
+                          <div className="flex items-center gap-1.5">
+                            {isPlg ? (
+                              <span className="px-2 py-0.5 rounded-md bg-teal-500/20 text-teal-200 border border-teal-500/30 text-[11px]">
+                                📍 {sess.city}
+                              </span>
+                            ) : isSumsel ? (
+                              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-200 border border-sky-500/30 text-[11px]">
+                                🏛️ {sess.city}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-indigo-500/25 text-indigo-200 border border-indigo-400/40 text-[11px]">
+                                🌐 {sess.city}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 px-3.5 font-mono text-[11px] text-slate-300">
+                          {sess.ip || "-"}
+                        </td>
+                        <td className="py-2 px-3.5 text-[11px] text-slate-300">
+                          {sess.device} • {sess.browser}
+                        </td>
+                        <td className="py-2 px-3.5 text-[11px] text-teal-300 font-semibold">
+                          /{sess.currentModule || "home"}
+                        </td>
+                        <td className="py-2 px-3.5 text-right font-mono text-[11px] text-slate-400">
+                          {new Date(sess.lastActive).toLocaleString("id-ID", {
+                            day: "2-digit",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* QUICK LIVE ACTION TEST TOOLBAR: Dispatch real telemetry with 1 click */}
       <div className="p-5 rounded-3xl bg-white border border-teal-200/80 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
@@ -646,11 +806,23 @@ export const AdminWebAnalytics: React.FC = () => {
               }}
               className="px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-teal-500"
             >
-              {PALEMBANG_DISTRICTS.map((dist) => (
-                <option key={dist} value={dist}>
-                  {dist}
-                </option>
-              ))}
+              <option value="">
+                🌐 Otomatis Sesuai IP Anda ({detectedClientGeo?.formatted || serverStats?.currentVisitorGeo?.city || getSelectedOrDetectedCity() || "GeoIP Real-Time"})
+              </option>
+              <optgroup label="🌐 Luar Sumatera Selatan (Nasional)">
+                <option value="Kota Padang, Sumatera Barat">Kota Padang, Sumatera Barat</option>
+                <option value="Jakarta, DKI Jakarta">Jakarta, DKI Jakarta</option>
+                <option value="Kota Bandung, Jawa Barat">Kota Bandung, Jawa Barat</option>
+                <option value="Kota Surabaya, Jawa Timur">Kota Surabaya, Jawa Timur</option>
+                <option value="Kota Medan, Sumatera Utara">Kota Medan, Sumatera Utara</option>
+              </optgroup>
+              <optgroup label="📍 Kota Palembang & Sumatera Selatan">
+                {PALEMBANG_DISTRICTS.map((dist) => (
+                  <option key={dist} value={dist}>
+                    {dist}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
         </div>
@@ -1158,24 +1330,34 @@ export const AdminWebAnalytics: React.FC = () => {
                 Host Utama: RSUD Palembang BARI (Jakabaring)
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold border border-amber-400/30">
-                89.2% Trafik Sumsel
+                {sumselStats.sumselTrafficShare}% Trafik Sumsel
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-indigo-400/20 text-indigo-200 text-[10px] font-bold border border-indigo-400/30">
+                {sumselStats.outsideSumselTrafficShare ?? Math.max(0, Number((100 - (sumselStats.sumselTrafficShare || 0)).toFixed(1)))}% Luar Sumsel / Nasional
               </span>
             </div>
             <h2 className="text-xl font-extrabold text-white flex items-center gap-2.5">
               <Hospital className="w-6 h-6 text-teal-400" />
-              Telemetri Wilayah: Sumatera Selatan & Kota Palembang
+              Telemetri Wilayah: Sumatera Selatan, Palembang & Nasional
             </h2>
             <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-              Pemantauan real-time lalu lintas pengguna farmasi dan klinisi spesifik dari 18 Kecamatan Kota Palembang (Kawasan RSUD Palembang BARI, Seberang Ulu, Plaju, Ilir) serta 17 Kabupaten/Kota jejaring rujukan se-Provinsi Sumatera Selatan.
+              Pemantauan real-time lalu lintas pengguna farmasi dan klinisi berdasarkan lokasi IP sesungguhnya—mencakup akses dari luar provinsi (seperti Sumatera Barat & DKI Jakarta), 17 Kabupaten/Kota se-Sumatera Selatan, hingga Kecamatan di Kota Palembang.
             </p>
           </div>
 
           {/* Quick Stats Pill */}
           <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <div className="p-3 rounded-2xl bg-indigo-950/80 border border-indigo-500/40 text-center min-w-[100px]">
+              <p className="text-[10px] font-semibold text-indigo-300">Luar Sumsel</p>
+              <p className="text-lg font-black text-indigo-200">
+                {sumselStats.outsideSumselTrafficShare ?? Math.max(0, Number((100 - (sumselStats.sumselTrafficShare || 0)).toFixed(1)))}%
+              </p>
+              <p className="text-[9px] text-indigo-300">Nasional (Real IP)</p>
+            </div>
             <div className="p-3 rounded-2xl bg-teal-900/60 border border-teal-700/40 text-center min-w-[100px]">
               <p className="text-[10px] font-semibold text-teal-300">Pengguna Sumsel</p>
               <p className="text-lg font-black text-white">{sumselStats.sumselTrafficShare}%</p>
-              <p className="text-[9px] text-teal-400">Trafik Dominan</p>
+              <p className="text-[9px] text-teal-400">Total Provinsi</p>
             </div>
             <div className="p-3 rounded-2xl bg-teal-900/60 border border-teal-700/40 text-center min-w-[100px]">
               <p className="text-[10px] font-semibold text-teal-300">Kota Palembang</p>
@@ -1658,7 +1840,10 @@ export const AdminWebAnalytics: React.FC = () => {
                                 {ev.city}
                               </span>
                             ) : (
-                              <span className="font-medium text-slate-700 text-[11px]">{ev.city}</span>
+                              <span className="inline-flex items-center gap-1 font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/80 text-[11px]">
+                                <Globe className="w-3 h-3 text-indigo-600 shrink-0" />
+                                {ev.city}
+                              </span>
                             )}
                           </div>
                           <span className="text-[10px] text-slate-400">

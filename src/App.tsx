@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
+import React, { useState, useEffect, useMemo, useDeferredValue, Suspense, lazy } from "react";
 import { Upload, Save, Menu } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 import { getDrugSafetyReview } from "./data/drugSafetyMetadata";
@@ -1198,6 +1198,21 @@ export default function App() {
     document.documentElement.style.setProperty("--glass-blur", `${glassBlur}px`);
   }, [glassOpacity, glassBlur]);
 
+  // Background preload of lazy-loaded clinical modules after initial paint for zero-lag tab switching
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      import("./FornasDrugs").catch(() => {});
+      import("./MapFacilities").catch(() => {});
+      import("./MedicalCalculators").catch(() => {});
+      import("./IvCompatibilityChecker").catch(() => {});
+      import("./ClinicalSOAP").catch(() => {});
+      import("./PharmacistConsultation").catch(() => {});
+      import("./DiseasesConditions").catch(() => {});
+      import("./components/AdminWebAnalytics").catch(() => {});
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [drugCsvFile, setDrugCsvFile] = useState<File | null>(null);
   const [drugCsvError, setDrugCsvError] = useState("");
 
@@ -1572,7 +1587,12 @@ export default function App() {
   const [allDdiSearch, setAllDdiSearch] = useState<string>("");
   const [allDdiSeverityFilter, setAllDdiSeverityFilter] = useState<"ALL" | "CRITICAL" | "WARNING" | "INFO">("ALL");
   const [allDdiTherapeuticFilter, setAllDdiTherapeuticFilter] = useState<string>("ALL");
+  const [allDdiDisplayLimit, setAllDdiDisplayLimit] = useState<number>(40);
   const [ddiCopiedInteractionId, setDdiCopiedInteractionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAllDdiDisplayLimit(40);
+  }, [allDdiSearch, allDdiSeverityFilter, allDdiTherapeuticFilter]);
 
   // Comparison States
   const [comparePresetAId, setComparePresetAId] = useState<string>("paracetamol_ped");
@@ -1824,29 +1844,103 @@ export default function App() {
     isFemale
   );
 
-  const filteredPresets = useMemo(() => {
-    return drugPresets.filter((p) => {
-      const cat = getDrugCategory(p.id, p.name);
-      return matchDrugSimultaneous(p, cat.label, searchTerm, "all").isMatch;
-    }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [drugPresets, searchTerm]);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredDescSearchQuery = useDeferredValue(descSearchQuery);
+  const deferredAllDdiSearch = useDeferredValue(allDdiSearch);
 
   const sanitizedDrugPresets = useMemo(() => sanitizeDrugPresets(drugPresets), [drugPresets]);
 
+  // Pre-compute static metadata, categories, formulations, and interactions once per drug
+  // Eliminates ~480,000 synchronous string comparisons on every render/keystroke
+  const drugStaticCache = useMemo(() => {
+    const map = new Map<string, {
+      categoryInfo: ReturnType<typeof getDrugCategory>;
+      formInfo: ReturnType<typeof getDrugFormulation>;
+      metadata: ReturnType<typeof getDrugMetadata>;
+      directInteractions: DrugInteraction[];
+      foodInteractions: FoodInteraction[];
+      hasInteractions: boolean;
+      criticalCount: number;
+    }>();
+
+    for (const p of sanitizedDrugPresets) {
+      const categoryInfo = getDrugCategory(p.id, p.name);
+      const formInfo = getDrugFormulation(p);
+      const metadata = getDrugMetadata(p);
+      const directInteractions = getInteractionsForDrug(p.id, p.name, interactionDatabase);
+      const foodInteractions = getFoodInteractionsForDrug(p.id, p.name);
+      const hasInteractions = directInteractions.length > 0 || foodInteractions.length > 0;
+      let criticalCount = 0;
+      for (const i of directInteractions) {
+        if (i.severity === "CRITICAL") criticalCount++;
+      }
+      for (const f of foodInteractions) {
+        if (f.severity === "CRITICAL") criticalCount++;
+      }
+      map.set(p.id, {
+        categoryInfo,
+        formInfo,
+        metadata,
+        directInteractions,
+        foodInteractions,
+        hasInteractions,
+        criticalCount,
+      });
+    }
+    return map;
+  }, [sanitizedDrugPresets, interactionDatabase]);
+
+  const { interactingDrugsCount, categoryDrugCounts, availableAlphabetSet } = useMemo(() => {
+    let interactingCount = 0;
+    const catCounts: Record<string, number> = { all: sanitizedDrugPresets.length };
+    for (const cat of THERAPEUTIC_CATEGORIES) {
+      if (cat.id !== "all") catCounts[cat.id] = 0;
+    }
+    const alphaSet = new Set<string>();
+
+    for (const p of sanitizedDrugPresets) {
+      const cached = drugStaticCache.get(p.id);
+      const catLabel = cached ? cached.categoryInfo.label : getDrugCategory(p.id, p.name).label;
+      if (cached?.hasInteractions) {
+        interactingCount++;
+      }
+      if (p.name) {
+        alphaSet.add(p.name.charAt(0).toUpperCase());
+      }
+      for (const cat of THERAPEUTIC_CATEGORIES) {
+        if (cat.id !== "all" && isCategoryMatched(cat.id, catLabel)) {
+          catCounts[cat.id] = (catCounts[cat.id] || 0) + 1;
+        }
+      }
+    }
+
+    return {
+      interactingDrugsCount: interactingCount,
+      categoryDrugCounts: catCounts,
+      availableAlphabetSet: alphaSet,
+    };
+  }, [sanitizedDrugPresets, drugStaticCache]);
+
+  const filteredPresets = useMemo(() => {
+    return sanitizedDrugPresets.filter((p) => {
+      const catLabel = drugStaticCache.get(p.id)?.categoryInfo.label || getDrugCategory(p.id, p.name).label;
+      return matchDrugSimultaneous(p, catLabel, deferredSearchTerm, "all").isMatch;
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }, [sanitizedDrugPresets, drugStaticCache, deferredSearchTerm]);
+
   const descFilteredList = useMemo(() => {
     return sanitizedDrugPresets.filter(p => {
+      const cached = drugStaticCache.get(p.id);
       if (descOnlyWithInteractions) {
-        const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
-        const food = getFoodInteractionsForDrug(p.id, p.name);
-        if (ddi.length === 0 && food.length === 0) return false;
+        if (!cached?.hasInteractions) return false;
       }
-      const info = getDrugCategory(p.id, p.name);
-      const matchResult = matchDrugSimultaneous(p, info.label, descSearchQuery, descSearchScope);
+      const catLabel = cached ? cached.categoryInfo.label : getDrugCategory(p.id, p.name).label;
+      const matchResult = matchDrugSimultaneous(p, catLabel, deferredDescSearchQuery, descSearchScope);
       if (!matchResult.isMatch) return false;
 
       // Category filter
       if (descSelectedCategory !== "all") {
-        if (!isCategoryMatched(descSelectedCategory, info.label)) return false;
+        if (!isCategoryMatched(descSelectedCategory, catLabel)) return false;
       }
 
       // Alphabet filter
@@ -1856,7 +1950,7 @@ export default function App() {
       
       return true;
     }).sort((a, b) => a.name.localeCompare(b.name));
-  }, [sanitizedDrugPresets, descOnlyWithInteractions, descSearchQuery, descSearchScope, descSelectedCategory, descSelectedAlphabet, interactionDatabase]);
+  }, [sanitizedDrugPresets, drugStaticCache, descOnlyWithInteractions, deferredDescSearchQuery, descSearchScope, descSelectedCategory, descSelectedAlphabet]);
 
   // Comparison Data Calculations
   const presetA = drugPresets.find((p) => p.id === comparePresetAId);
@@ -2368,20 +2462,20 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Header (Desktop and Mobile) */}
-        <header className="h-18 glass-header flex items-center justify-between px-4 sm:px-6 shadow-2xs shrink-0">
+        <header className="h-16 sm:h-18 glass-header flex items-center justify-between px-4 sm:px-6 shadow-2xs shrink-0 z-30">
           <div className="flex items-center gap-2.5 lg:hidden">
             <button 
               onClick={() => setIsMobileMenuOpen(true)} 
-              className="p-2 -ml-2 text-slate-600 hover:text-teal-600 hover:bg-white/80 rounded-xl transition-colors cursor-pointer"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center -ml-1.5 text-slate-700 hover:text-teal-600 hover:bg-white/90 rounded-xl transition-colors cursor-pointer"
               title="Buka Menu Modul Lengkap"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-black tracking-tight text-teal-700">
+              <span className="text-lg sm:text-xl font-black tracking-tight text-teal-700">
                 PIOBARI <span className="text-rose-600">v2</span>
               </span>
-              <span className="text-[10px] bg-teal-50 text-teal-700 font-bold px-2 py-0.5 rounded-full border border-teal-200/60 truncate max-w-[125px]">
+              <span className="text-[10px] bg-teal-50 text-teal-800 font-bold px-2.5 py-0.5 rounded-lg border border-teal-200/70 truncate max-w-[140px]">
                 {activeTab === "iv" ? "Kompatibilitas IV" : 
                  activeTab === "desc" ? "Informasi Obat" : 
                  activeTab === "ddi" ? "Skrining DDI" : 
@@ -2396,59 +2490,83 @@ export default function App() {
             </div>
           </div>
           
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-4">
             <div className="flex flex-col">
-              <span className="text-base font-bold text-slate-800 tracking-tight">
+              <span className="text-base font-extrabold text-slate-900 tracking-tight">
                 {activeTab === "ddi" ? "Skrining Multi-Obat Aktif" : 
                  activeTab === "desc" ? "Informasi & Keamanan Obat" : 
-                 activeTab === "diseases" ? "Penyakit & Kondisi" : 
-                 activeTab === "medcalc" ? "Kalkulator Medis" : 
+                 activeTab === "diseases" ? "Penyakit & Kondisi Klinis" : 
+                 activeTab === "medcalc" ? "Kalkulator Medis & Klirens Ginjal" : 
                  activeTab === "video" ? "Panduan Alat & Cara Pakai" : 
-                 activeTab === "soap" ? "Clinical SOAP" : 
-                 activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan" : 
-                 activeTab === "iv" ? "Kompatibilitas Obat Intravena" : 
+                 activeTab === "soap" ? "Catatan Farmasi Klinis (SOAP)" : 
+                 activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan Palembang" : 
+                 activeTab === "iv" ? "Kompatibilitas Obat Intravena (Y-Site)" : 
                  activeTab === "pharmacist" ? "Konsultasi Apoteker Siaga" : 
                  activeTab === "fornas" ? "Daftar Obat Fornas Kemenkes" : 
                  activeTab === "analytics" ? "Web Analytics & Real-Time Insights" :
                  "Menu Kalkulator"}
               </span>
-              <span className="text-[11px] text-teal-700 font-medium">
-                RSUD Palembang BARI • Layanan Informasi Obat Terpercaya
+              <span className="text-[11px] text-teal-700 font-semibold">
+                RSUD Palembang BARI • Instalasi Farmasi Rumah Sakit
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 ml-auto">
+          {/* Desktop Quick Switcher Pills */}
+          <div className="hidden xl:flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 mx-4">
+            {[
+              { id: "desc", label: "Katalog Obat", icon: BookOpen },
+              { id: "ddi", label: "Skrining DDI", icon: ShieldAlert },
+              { id: "medcalc", label: "Kalkulator", icon: Calculator },
+              { id: "iv", label: "Injeksi IV", icon: Droplets },
+              { id: "map", label: "Peta Faskes", icon: MapPin },
+            ].map((tabItem) => {
+              const TabIcon = tabItem.icon;
+              const isTabActive = activeTab === tabItem.id;
+              return (
+                <button
+                  key={tabItem.id}
+                  type="button"
+                  onClick={() => setActiveTab(tabItem.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isTabActive
+                      ? "bg-white text-teal-700 shadow-2xs border border-slate-200/70"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                >
+                  <TabIcon className={`w-3.5 h-3.5 ${isTabActive ? "text-teal-600" : "text-slate-400"}`} />
+                  <span>{tabItem.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => setActiveTab("analytics")}
-                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                   activeTab === "analytics"
                     ? "bg-teal-800 text-white border-teal-900 shadow-sm"
                     : "bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100"
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
-                <span>Web Analytics</span>
+                <span>Analytics</span>
               </button>
             )}
-
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-50 border border-teal-100">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[11px] font-semibold text-teal-800">Sistem Online</span>
-            </div>
 
             {/* Glassmorphism Transparency Control Trigger */}
             <button
               id="btn-open-glass-settings"
               type="button"
               onClick={() => setIsGlassSettingsOpen(true)}
-              className="px-3.5 py-2 glass-card hover:bg-white text-slate-700 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border border-slate-200/80 shadow-2xs active:scale-95 group"
+              className="min-h-[38px] px-3 py-2 glass-card hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200/80 shadow-2xs active:scale-95 group cursor-pointer"
               title="Atur Transparansi Kaca (Glassmorphism)"
             >
               <Sliders className="w-3.5 h-3.5 text-teal-600 group-hover:rotate-45 transition-transform shrink-0" />
-              <span className="hidden sm:inline">Transparansi ({Math.round(glassOpacity * 100)}%)</span>
+              <span className="hidden md:inline font-mono tabular-nums">{Math.round(glassOpacity * 100)}%</span>
             </button>
 
             <button 
@@ -2471,17 +2589,28 @@ export default function App() {
                   liquidConcentrationVolume: "",
                 });
               }}
-              className="px-3.5 py-2 glass-card hover:bg-white text-slate-700 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border border-slate-200/80 shadow-2xs active:scale-95"
+              className="min-h-[38px] px-3 py-2 glass-card hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200/80 shadow-2xs active:scale-95 cursor-pointer"
+              title="Reset Form Input"
             >
               <RefreshCw className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-              <span className="hidden sm:inline">Reset Form</span>
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
         </header>
 
         {/* Main Content scrollable area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-36 sm:pb-40 lg:pb-8 overflow-y-auto custom-scrollbar">
-          <div className="w-full max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <main
+          className={`flex-1 overflow-y-auto custom-scrollbar ${
+            activeTab === "map"
+              ? "p-2 sm:p-4 lg:p-5 pb-24 sm:pb-28 lg:pb-5"
+              : "p-4 sm:p-6 lg:p-8 pb-32 sm:pb-36 lg:pb-8"
+          }`}
+        >
+          <div
+            className={`w-full mx-auto grid grid-cols-1 lg:grid-cols-12 ${
+              activeTab === "map" ? "max-w-[1600px] gap-4" : "max-w-[1400px] gap-6 lg:gap-8"
+            }`}
+          >
         
         {activeTab === "single" ? (
           <>
@@ -3363,8 +3492,8 @@ export default function App() {
                   }
                 }
                 // Search query
-                if (allDdiSearch.trim() !== "") {
-                  const q = allDdiSearch.toLowerCase().trim();
+                if (deferredAllDdiSearch.trim() !== "") {
+                  const q = deferredAllDdiSearch.toLowerCase().trim();
                   const inA = item.drugAName.toLowerCase().includes(q);
                   const inB = item.drugBName.toLowerCase().includes(q);
                   const inMech = item.mechanism.toLowerCase().includes(q);
@@ -3374,6 +3503,8 @@ export default function App() {
                 }
                 return true;
               });
+
+              const visibleCatalog = filteredCatalog.slice(0, allDdiDisplayLimit);
 
               const handleQuickLoadCriticalPairs = () => {
                 const highRiskIds = [
@@ -3583,7 +3714,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {filteredCatalog.map((interaction, idx) => {
+                      {visibleCatalog.map((interaction, idx) => {
                         const inBasketA = ddiSelectedIds.includes(interaction.drugAId);
                         const inBasketB = ddiSelectedIds.includes(interaction.drugBId);
                         const bothInBasket = inBasketA && inBasketB;
@@ -3597,7 +3728,7 @@ export default function App() {
                         return (
                           <div
                             key={interaction.id + "_" + idx}
-                            className={`bg-white border rounded-2xl overflow-hidden shadow-3xs transition-all hover:shadow-md ${
+                            className={`content-auto bg-white border rounded-2xl overflow-hidden shadow-3xs transition-shadow hover:shadow-md ${
                               interaction.severity === "CRITICAL"
                                 ? "border-rose-200"
                                 : interaction.severity === "WARNING"
@@ -3722,6 +3853,24 @@ export default function App() {
                           </div>
                         );
                       })}
+                      {filteredCatalog.length > allDdiDisplayLimit && (
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setAllDdiDisplayLimit(prev => prev + 60)}
+                            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                          >
+                            Tampilkan 60 Interaksi Berikutnya ({filteredCatalog.length - allDdiDisplayLimit} tersisa)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAllDdiDisplayLimit(filteredCatalog.length)}
+                            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                          >
+                            Tampilkan Semua ({filteredCatalog.length})
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -4333,11 +4482,7 @@ export default function App() {
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
                   descOnlyWithInteractions ? "bg-amber-200 text-amber-900" : "bg-slate-200 text-slate-600"
                 }`}>
-                  {drugPresets.filter(p => {
-                    const ddi = getInteractionsForDrug(p.id, p.name, interactionDatabase);
-                    const food = getFoodInteractionsForDrug(p.id, p.name);
-                    return ddi.length > 0 || food.length > 0;
-                  }).length}
+                  {interactingDrugsCount}
                 </span>
               </button>
             </div>
@@ -4346,12 +4491,7 @@ export default function App() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kategori Terapi</label>
               <div className="space-y-1 max-h-[380px] overflow-y-auto pr-1">
                 {THERAPEUTIC_CATEGORIES.map((cat) => {
-                  const count = cat.id === "all" 
-                    ? drugPresets.length 
-                    : drugPresets.filter(p => {
-                        const info = getDrugCategory(p.id, p.name);
-                        return isCategoryMatched(cat.id, info.label);
-                      }).length;
+                  const count = categoryDrugCounts[cat.id] ?? 0;
 
                   return (
                     <button
@@ -4388,7 +4528,7 @@ export default function App() {
                   Semua
                 </button>
                 {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => {
-                  const hasDrugs = drugPresets.some(p => p.name.charAt(0).toUpperCase() === letter);
+                  const hasDrugs = availableAlphabetSet.has(letter);
                   return (
                     <button
                       key={letter}
@@ -4591,17 +4731,20 @@ export default function App() {
                   </div>
                   <div className="space-y-4">
                     {groupedByAlphabet[letter].map((preset) => {
-                      const categoryInfo = getDrugCategory(preset.id, preset.name);
-                      const formInfo = getDrugFormulation(preset);
-                      const metadata = getDrugMetadata(preset);
+                      const cached = drugStaticCache.get(preset.id);
+                      const categoryInfo = cached ? cached.categoryInfo : getDrugCategory(preset.id, preset.name);
+                      const formInfo = cached ? cached.formInfo : getDrugFormulation(preset);
+                      const metadata = cached ? cached.metadata : getDrugMetadata(preset);
                       const isExpanded = descExpandedId === preset.id;
-                      const matchResult = matchDrugSimultaneous(preset, categoryInfo.label, descSearchQuery, descSearchScope);
+                      const matchResult = deferredDescSearchQuery.trim()
+                        ? matchDrugSimultaneous(preset, categoryInfo.label, deferredDescSearchQuery, descSearchScope)
+                        : { isMatch: true, matchedFields: { name: false, indication: false, category: false } };
 
                       return (
                 <div
                   key={"desc_" + preset.id}
-                  className={`glass-card glass-card-hover rounded-3xl overflow-hidden transition-all duration-300 ${
-                    descSearchQuery.trim() && matchResult.isMatch
+                  className={`content-auto glass-card glass-card-hover rounded-3xl overflow-hidden transition-colors duration-200 ${
+                    deferredDescSearchQuery.trim() && matchResult.isMatch
                       ? "ring-1 ring-amber-300/90 border-amber-200/90 shadow-xs"
                       : "hover:border-teal-200/80"
                   }`}
@@ -4614,17 +4757,17 @@ export default function App() {
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${categoryInfo.bg} ${categoryInfo.color} ${categoryInfo.border}`}>
-                          <HighlightText text={categoryInfo.label} query={descSearchQuery} />
+                          <HighlightText text={categoryInfo.label} query={deferredDescSearchQuery} />
                         </span>
 
                         {/* Match Indicators when Query Active */}
-                        {descSearchQuery.trim() && matchResult.matchedFields.category && (
+                        {deferredDescSearchQuery.trim() && matchResult.matchedFields.category && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-2xs">
                             <Tag className="w-2.5 h-2.5 text-emerald-600" />
                             Cocok Kategori
                           </span>
                         )}
-                        {descSearchQuery.trim() && matchResult.matchedFields.indication && (
+                        {deferredDescSearchQuery.trim() && matchResult.matchedFields.indication && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1 shadow-2xs">
                             <Sparkles className="w-2.5 h-2.5 text-amber-600" />
                             Cocok Indikasi
@@ -4673,7 +4816,7 @@ export default function App() {
                           metadata.pregnancySafety.status === "Aman"
                             ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                             : metadata.pregnancySafety.status === "Kontraindikasi"
-                            ? "bg-rose-50 border-rose-200 text-rose-700 animate-pulse"
+                            ? "bg-rose-50 border-rose-200 text-rose-700"
                             : "bg-orange-50 border-orange-200 text-orange-700"
                         }`}>
                           <Baby className="w-3 h-3 shrink-0" />
@@ -4693,11 +4836,9 @@ export default function App() {
 
                         {/* Drug Interaction Status Badge */}
                         {(() => {
-                          const directInteractions = getInteractionsForDrug(preset.id, preset.name, interactionDatabase);
-                          const foodInteractions = getFoodInteractionsForDrug(preset.id, preset.name);
-                          const totalDdi = directInteractions.length;
-                          const totalFood = foodInteractions.length;
-                          const criticalCount = directInteractions.filter(i => i.severity === "CRITICAL").length + foodInteractions.filter(i => i.severity === "CRITICAL").length;
+                          const totalDdi = cached ? cached.directInteractions.length : 0;
+                          const totalFood = cached ? cached.foodInteractions.length : 0;
+                          const criticalCount = cached ? cached.criticalCount : 0;
 
                           if (totalDdi === 0 && totalFood === 0) {
                             return null;
@@ -5871,12 +6012,14 @@ export default function App() {
         </main>
 
         {/* 3. Footer */}
-        <footer className="h-12 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between px-6 sm:px-8 text-[9px] text-slate-400 uppercase tracking-widest shrink-0 font-bold gap-1 py-2 sm:py-0">
-          <div>Rahasia: Platform Verifikasi Pendukung Keputusan Klinis</div>
-          <div className="flex gap-4 sm:gap-6 items-center">
-            <span>ID Sesi: 4891-AAX-90</span>
-            <span className="text-slate-300 hidden sm:inline">|</span>
-            <span className="text-slate-500 font-sans normal-case">Pernyataan Penyangkalan: Selalu verifikasi dengan Apoteker Resmi</span>
+        <footer className="hidden lg:flex h-11 bg-white/90 border-t border-slate-200/80 items-center justify-between px-6 sm:px-8 text-[11px] text-slate-500 shrink-0 font-medium">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-700">PIOBARI • RSUD Palembang BARI</span>
+            <span className="text-slate-300">•</span>
+            <span>Jl. Panca Usaha No.1, Seberang Ulu I, Kota Palembang</span>
+          </div>
+          <div className="text-slate-500">
+            Verifikasi Keputusan Klinis: Selalu konfirmasi dosis & terapi bersama Apoteker Klinis
           </div>
         </footer>
       </div>
@@ -6083,63 +6226,61 @@ export default function App() {
         </div>
       )}
 
-      {/* 3D Glassmorphism Floating Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-3 left-4 right-4 glass-card rounded-3xl shadow-[0_12px_36px_rgba(15,23,42,0.12)] flex items-center justify-around py-1.5 px-3 z-40">
+      {/* Modern Responsive Mobile Bottom Navigation Bar */}
+      <div className="lg:hidden fixed bottom-2.5 left-3 right-3 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-[0_12px_36px_rgba(15,23,42,0.14)] flex items-center justify-around py-1.5 px-2 z-40">
         <button 
           onClick={() => { setIsMobileMenuOpen(false); setActiveTab("desc"); }} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
-            activeTab === "desc" ? "text-teal-700 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl gap-0.5 transition-all cursor-pointer ${
+            activeTab === "desc" ? "text-teal-700 bg-teal-50/80 font-extrabold" : "text-slate-500 hover:text-slate-800"
           }`}
           title="Informasi Obat"
         >
-          <BookOpen className={`w-5 h-5 ${activeTab === "desc" ? "text-teal-700" : ""}`} />
-          <span className="text-[9px] font-bold tracking-tight">Obat</span>
+          <BookOpen className={`w-5 h-5 ${activeTab === "desc" ? "text-teal-600" : ""}`} />
+          <span className="text-[10px] tracking-tight">Obat</span>
         </button>
 
         <button 
           onClick={() => { setIsMobileMenuOpen(false); setActiveTab("ddi"); }} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
-            activeTab === "ddi" ? "text-rose-600 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl gap-0.5 transition-all cursor-pointer ${
+            activeTab === "ddi" ? "text-rose-600 bg-rose-50/80 font-extrabold" : "text-slate-500 hover:text-slate-800"
           }`}
           title="Skrining Interaksi"
         >
-          <ShieldAlert className={`w-5 h-5 ${activeTab === "ddi" ? "text-rose-600 animate-pulse" : ""}`} />
-          <span className="text-[9px] font-bold tracking-tight">Skrining</span>
-        </button>
-
-        {/* Elevated Center 3D Action Pill: Kompatibilitas IV */}
-        <button
-          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("iv"); }}
-          className={`-translate-y-4 w-12 h-12 rounded-full text-white shadow-[0_8px_20px_rgba(13,148,136,0.45)] border-4 border-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all group cursor-pointer ${
-            activeTab === "iv"
-              ? "bg-gradient-to-tr from-cyan-600 via-teal-600 to-emerald-500 ring-2 ring-teal-400 ring-offset-2"
-              : "bg-gradient-to-tr from-emerald-600 via-teal-600 to-teal-400"
-          }`}
-          title="Kompatibilitas Obat IV"
-        >
-          <Droplets className={`w-5 h-5 group-hover:rotate-12 transition-transform ${activeTab === "iv" ? "animate-bounce" : ""}`} />
+          <ShieldAlert className={`w-5 h-5 ${activeTab === "ddi" ? "text-rose-600" : ""}`} />
+          <span className="text-[10px] tracking-tight">Skrining</span>
         </button>
 
         <button 
           onClick={() => { setIsMobileMenuOpen(false); setActiveTab("medcalc"); }} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
-            activeTab === "medcalc" ? "text-sky-600 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl gap-0.5 transition-all cursor-pointer ${
+            activeTab === "medcalc" ? "text-sky-700 bg-sky-50/80 font-extrabold" : "text-slate-500 hover:text-slate-800"
           }`}
           title="Kalkulator Medis"
         >
           <Calculator className={`w-5 h-5 ${activeTab === "medcalc" ? "text-sky-600" : ""}`} />
-          <span className="text-[9px] font-bold tracking-tight">Kalkulator</span>
+          <span className="text-[10px] tracking-tight">Kalkulator</span>
+        </button>
+
+        <button 
+          onClick={() => { setIsMobileMenuOpen(false); setActiveTab("map"); }} 
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl gap-0.5 transition-all cursor-pointer ${
+            activeTab === "map" ? "text-emerald-700 bg-emerald-50/80 font-extrabold" : "text-slate-500 hover:text-slate-800"
+          }`}
+          title="Peta Faskes"
+        >
+          <MapPin className={`w-5 h-5 ${activeTab === "map" ? "text-emerald-600" : ""}`} />
+          <span className="text-[10px] tracking-tight">Peta Faskes</span>
         </button>
 
         <button 
           onClick={() => setIsMobileMenuOpen(true)} 
-          className={`flex flex-col items-center justify-center w-14 h-11 gap-1 transition-all cursor-pointer ${
-            !["desc", "ddi", "iv", "medcalc"].includes(activeTab) ? "text-teal-700 font-bold scale-105" : "text-slate-400 hover:text-slate-600"
+          className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl gap-0.5 transition-all cursor-pointer ${
+            !["desc", "ddi", "medcalc", "map"].includes(activeTab) ? "text-teal-700 bg-teal-50/80 font-extrabold" : "text-slate-500 hover:text-slate-800"
           }`}
           title="Menu Semua Fitur"
         >
           <Menu className="w-5 h-5" />
-          <span className="text-[9px] font-bold tracking-tight">Menu</span>
+          <span className="text-[10px] tracking-tight">Menu</span>
         </button>
       </div>
       <FloatingAIAssistant />

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { 
   BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, 
   FileSpreadsheet, Plus, Minus, Trash2, Info, ChevronDown, ChevronUp,
@@ -154,29 +154,48 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     }));
   };
 
-  // Safety Statistics across all drugs in dataset
-  const safetyStats = useMemo(() => {
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const deferredNameFilter = useDeferredValue(nameFilter);
+
+  // Pre-compute safety alerts and alphabet availability once per dataset change
+  const { safetyAlertMap, safetyStats, availableAlphabetSet, uniqueGenericCount } = useMemo(() => {
+    const map = new Map<string, DrugSafetyAlert>();
+    const alphaSet = new Set<string>();
+    const genericSet = new Set<string>();
     let haCount = 0;
     let lasaCount = 0;
     let anyCount = 0;
 
-    fornasData.forEach(d => {
+    for (const d of fornasData) {
       const alert = getDrugSafetyAlert(d);
+      map.set(d.id, alert);
       if (alert.highAlert) haCount++;
       if (alert.lasa) lasaCount++;
       if (alert.highAlert || alert.lasa) anyCount++;
-    });
+      if (d.namaObat) {
+        alphaSet.add(d.namaObat.charAt(0).toUpperCase());
+        genericSet.add(d.namaObat);
+      }
+    }
 
-    return { haCount, lasaCount, anyCount };
+    return {
+      safetyAlertMap: map,
+      safetyStats: { haCount, lasaCount, anyCount },
+      availableAlphabetSet: alphaSet,
+      uniqueGenericCount: genericSet.size,
+    };
   }, [fornasData]);
 
   const groupedData = useMemo(() => {
+    const qSearch = deferredSearchTerm.toLowerCase();
+    const qName = deferredNameFilter.toLowerCase();
+
     const filtered = fornasData.filter((drug) => {
-      const matchesSearch = 
-        drug.kelasTerapi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        drug.subKelasTerapi.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = !qSearch ||
+        drug.kelasTerapi.toLowerCase().includes(qSearch) ||
+        drug.subKelasTerapi.toLowerCase().includes(qSearch);
       
-      const matchesName = drug.namaObat.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesName = !qName || drug.namaObat.toLowerCase().includes(qName);
 
       let matchesFaskes = true;
       if (selectedFaskes === "FPKTP") {
@@ -192,7 +211,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
 
       let matchesSafety = true;
       if (safetyFilter !== 'ALL') {
-        const safety = getDrugSafetyAlert(drug);
+        const safety = safetyAlertMap.get(drug.id) || getDrugSafetyAlert(drug);
         if (safetyFilter === 'HIGH_ALERT') {
           matchesSafety = Boolean(safety.highAlert);
         } else if (safetyFilter === 'LASA') {
@@ -215,7 +234,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     });
 
     return Object.values(groups).sort((a, b) => a[0].namaObat.localeCompare(b[0].namaObat));
-  }, [searchTerm, nameFilter, selectedAlphabet, selectedFaskes, safetyFilter, fornasData]);
+  }, [deferredSearchTerm, deferredNameFilter, selectedAlphabet, selectedFaskes, safetyFilter, fornasData, safetyAlertMap]);
 
   return (
     <div className="flex-1 p-4 lg:p-6 overflow-y-auto custom-scrollbar bg-slate-50 flex flex-col h-full">
@@ -240,7 +259,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 30 Kelas Terapi
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                {new Set(fornasData.map(d => d.namaObat)).size} Obat Generik
+                {uniqueGenericCount} Obat Generik
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                 {fornasData.length} Bentuk Sediaan
@@ -458,7 +477,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 Semua
               </button>
               {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => {
-                const hasDrugs = fornasData.some(p => p.namaObat.charAt(0).toUpperCase() === letter);
+                const hasDrugs = availableAlphabetSet.has(letter);
                 return (
                   <button
                     key={letter}
@@ -504,7 +523,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                   const hasMultiple = group.length > 1;
                   const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
                   const isExpanded = expandedGroups[groupKey];
-                  const safety = getDrugSafetyAlert(drug);
+                  const safety = safetyAlertMap.get(drug.id) || getDrugSafetyAlert(drug);
                   const isLasa = !!safety.lasa;
                   
                   return (

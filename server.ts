@@ -10,7 +10,8 @@ import {
   recordHeartbeat,
   getAggregatedAnalytics,
   getStoredEvents,
-  resetAnalyticsStore
+  resetAnalyticsStore,
+  resolveClientGeo
 } from "./api/_analyticsEngine.js";
 import {
   corsMiddleware,
@@ -559,11 +560,22 @@ FORMATTING:
     try {
       const timeRange = (req.query.timeRange as '24h' | '7d' | '30d') || '24h';
       const timezone = (req.query.timezone as string) || 'Asia/Jakarta';
-      const stats = getAggregatedAnalytics(timeRange, timezone);
+      const stats = getAggregatedAnalytics(timeRange, timezone, req);
       res.json(stats);
     } catch (err: any) {
       console.error("[Analytics Stats Error]", err);
       res.status(500).json({ error: "Gagal mengambil data statistik analitik." });
+    }
+  });
+
+  // 3b. Real-time client IP & Geolocation resolution endpoint
+  app.get("/api/analytics/geo", generalRateLimiter, async (req, res) => {
+    try {
+      const geo = await resolveClientGeo(req);
+      res.json(geo);
+    } catch (err: any) {
+      console.error("[Analytics Geo Error]", err);
+      res.status(500).json({ error: "Gagal mendeteksi lokasi IP klien." });
     }
   });
 

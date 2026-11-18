@@ -14,7 +14,7 @@ export default async function handler(req: any, res: any) {
     initAnalyticsEngine();
     const timeRange = (req.query?.timeRange as '24h' | '7d' | '30d') || '24h';
     const timezone = (req.query?.timezone as string) || 'Asia/Jakarta';
-    const stats = getAggregatedAnalytics(timeRange, timezone);
+    const stats = getAggregatedAnalytics(timeRange, timezone, req);
     return res.status(200).json(stats);
   } catch (err: any) {
     console.error("[Vercel Analytics Stats Error]", err);

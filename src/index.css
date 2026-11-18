@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 html {
-  scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
 }
 
@@ -16,75 +15,71 @@ html {
 }
 
 :root {
-  --glass-opacity: 0.82;
-  --glass-blur: 16px;
+  --glass-opacity: 0.94;
+  --glass-blur: 10px;
   --glass-bg: rgba(255, 255, 255, var(--glass-opacity));
-  --glass-border: rgba(255, 255, 255, calc(var(--glass-opacity) + 0.05));
-  --glass-header-bg: rgba(255, 255, 255, calc(var(--glass-opacity) * 0.92));
-  --glass-sidebar-bg: rgba(255, 255, 255, calc(var(--glass-opacity) * 1.02));
+  --glass-border: rgba(226, 232, 240, 0.9);
+  --glass-header-bg: rgba(255, 255, 255, 0.94);
+  --glass-sidebar-bg: rgba(255, 255, 255, 0.97);
 }
 
-/* Glassmorphism and Ambient Medical 3D Styles */
+/* Lightweight Ambient Medical Background - No fixed background attachment to prevent scroll repaint lag */
 body {
   font-family: var(--font-sans);
   background-color: #F8FAFC;
   color: #1E293B;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 .medical-ambient-bg {
   background-color: #F8FAFC;
   background-image: 
-    radial-gradient(1000px circle at 10% 5%, rgba(45, 212, 191, 0.15), transparent 45%),
-    radial-gradient(900px circle at 90% 15%, rgba(254, 205, 211, 0.18), transparent 45%),
-    radial-gradient(800px circle at 50% 95%, rgba(186, 230, 253, 0.18), transparent 50%),
-    radial-gradient(600px circle at 80% 80%, rgba(254, 240, 138, 0.14), transparent 45%);
-  background-attachment: fixed;
+    radial-gradient(900px circle at 8% 4%, rgba(45, 212, 191, 0.11), transparent 45%),
+    radial-gradient(800px circle at 92% 12%, rgba(254, 205, 211, 0.12), transparent 45%),
+    radial-gradient(700px circle at 50% 96%, rgba(186, 230, 253, 0.12), transparent 50%);
 }
 
+/* High-performance card surfaces (avoids per-card backdrop-filter GPU bottleneck on long lists) */
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
-  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.02);
+  box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
 }
 
 .glass-card-hover {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .glass-card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 36px -6px rgba(13, 148, 136, 0.1), 0 6px 16px -3px rgba(15, 23, 42, 0.04);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -6px rgba(13, 148, 136, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
 }
 
 .glass-pill {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
 .glass-sidebar {
   background: var(--glass-sidebar-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-right: 1px solid var(--glass-border);
+  transform: translateZ(0);
 }
 
 .glass-header {
   background: var(--glass-header-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--glass-border);
+  transform: translateZ(0);
 }
 
 .glass-nav-active {
   background: linear-gradient(135deg, #0D9488 0%, #10B981 100%);
   color: #ffffff;
-  box-shadow: 0 6px 20px -2px rgba(13, 148, 136, 0.35);
+  box-shadow: 0 4px 14px -2px rgba(13, 148, 136, 0.3);
 }
 
 /* Custom modern scrollbar */
@@ -96,91 +91,69 @@ body {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
+  background: rgba(148, 163, 184, 0.55);
 }
 
-/* Haptic & Major Alert Visual Animations */
-@keyframes majorAlertGlow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.55), 0 10px 25px -5px rgba(225, 29, 72, 0.2);
-    border-color: rgba(244, 63, 94, 0.9);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(225, 29, 72, 0), 0 15px 30px -5px rgba(225, 29, 72, 0.35);
-    border-color: rgba(225, 29, 72, 1);
-  }
-}
-
+/* Static High-Visibility Major Alert & Haptic Styles (Zero continuous repaint overhead) */
 @keyframes hapticVibrate {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  15% { transform: translate(-3px, -1px) rotate(-1.5deg); }
-  30% { transform: translate(3px, 1px) rotate(1.5deg); }
-  45% { transform: translate(-2px, 1px) rotate(-1deg); }
-  60% { transform: translate(2px, -1px) rotate(1deg); }
-  75% { transform: translate(-1px, 0) rotate(-0.5deg); }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(-2px, 0, 0); }
+  75% { transform: translate3d(2px, 0, 0); }
 }
 
 .animate-major-glow {
-  animation: majorAlertGlow 1.5s ease-in-out infinite;
+  border-color: rgba(225, 29, 72, 0.95);
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.18), 0 8px 20px -4px rgba(225, 29, 72, 0.18);
 }
 
 .animate-haptic-shake {
-  animation: hapticVibrate 0.45s ease-in-out 2;
+  animation: hapticVibrate 0.25s ease-in-out 1;
 }
 
 /* Fast scrolling & off-screen rendering optimization */
 .content-auto {
   content-visibility: auto;
-  contain-intrinsic-size: 0 160px;
+  contain-intrinsic-size: 0 130px;
 }
 
-/* LASA / NORUM Subtle Pulsing Animation for Quick Formularium Screening */
-@keyframes lasaRowPulse {
-  0%, 100% {
-    background-color: rgba(254, 243, 199, 0.35); /* soft amber tint */
-    box-shadow: inset 4px 0 0 0 #f59e0b;
-  }
-  50% {
-    background-color: rgba(254, 240, 138, 0.72); /* warmer amber pulse */
-    box-shadow: inset 5px 0 0 0 #d97706, inset 0 0 14px rgba(245, 158, 11, 0.22);
-  }
-}
-
-@keyframes lasaBadgePulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
-  }
-  50% {
-    transform: scale(1.04);
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
-  }
-}
-
+/* LASA / NORUM High-Contrast Highlight without continuous 60Hz box-shadow repaints */
 .drug-table-row {
   position: relative;
-  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+  transition: background-color 0.15s ease;
 }
 
 .drug-table-row.has-lasa,
-.drug-table-row-lasa,
-.drug-table-row:has(.lasa-badge) {
-  animation: lasaRowPulse 2.4s ease-in-out infinite;
+.drug-table-row-lasa {
+  background-color: rgba(254, 243, 199, 0.45);
+  box-shadow: inset 4px 0 0 0 #f59e0b;
 }
 
 .drug-table-row.has-lasa:hover,
-.drug-table-row-lasa:hover,
-.drug-table-row:has(.lasa-badge):hover {
-  background-color: rgba(254, 240, 138, 0.88) !important;
+.drug-table-row-lasa:hover {
+  background-color: rgba(254, 240, 138, 0.75) !important;
 }
 
-.drug-table-row.has-lasa .lasa-badge,
-.drug-table-row-lasa .lasa-badge,
-.drug-table-row:has(.lasa-badge) .lasa-badge {
-  animation: lasaBadgePulse 2.4s ease-in-out infinite;
+/* Hide scrollbars for horizontal chip/pill navigation bars while preserving touch scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+/* Modern Leaflet popup & zoom control polish */
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem !important;
+  box-shadow: 0 14px 28px -8px rgba(15, 23, 42, 0.14), 0 4px 10px -4px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  padding: 2px !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.1) !important;
+}

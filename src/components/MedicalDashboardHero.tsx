@@ -12,9 +12,10 @@ import {
   Heart, 
   Activity, 
   ChevronRight,
-  Sparkle,
   Search,
-  X
+  X,
+  Building2,
+  Navigation
 } from 'lucide-react';
 
 interface MedicalDashboardHeroProps {
@@ -31,45 +32,68 @@ export default function MedicalDashboardHero({
   totalDrugsCount = 930
 }: MedicalDashboardHeroProps) {
   return (
-    <div className="w-full space-y-6 mb-8">
-      {/* 3D Healthcare Hero Greeting & Search */}
-      <div className="relative overflow-hidden rounded-3xl glass-card p-6 sm:p-8 shadow-[0_12px_40px_rgba(13,148,136,0.06)]">
-        {/* Soft 3D Ambient Orbs */}
-        <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-teal-200/30 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-12 w-64 h-64 rounded-full bg-rose-200/25 blur-3xl pointer-events-none" />
+    <div className="w-full space-y-5 sm:space-y-6 mb-6 sm:mb-8">
+      {/* Modern Clinical Hero Greeting & Search */}
+      <div className="relative overflow-hidden rounded-3xl bg-white/90 backdrop-blur-xl border border-slate-200/80 p-5 sm:p-7 lg:p-8 shadow-[0_14px_40px_-10px_rgba(13,148,136,0.08)]">
+        {/* Subtle Ambient Accents */}
+        <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-teal-200/25 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-emerald-200/20 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-200/60 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-bold text-emerald-800 tracking-wide uppercase">
-                RSUD Palembang BARI • Portal Kefarmasian Klinis
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2.5 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-teal-700">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200/70 text-teal-800">
+                <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                RSUD Palembang BARI
               </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500">Portal Kefarmasian Klinis Terintegrasi</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
               Pusat Informasi Obat & Keamanan Resep
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-              Panduan terintegrasi untuk Apoteker, Dokter, Perawat dan Tenaga Kesehatan lainnya. Dilengkapi kalkulator klirens ginjal, skrining polifarmasi, kompatibilitas IV, dan Formularium Nasional.
+            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-2xl">
+              Panduan klinis terpadu bagi Apoteker, Dokter, Perawat, dan Tenaga Kesehatan. Dilengkapi skrining polifarmasi, kalkulator klirens ginjal, kompatibilitas IV, Formularium Nasional, serta peta sebaran faskes Palembang.
             </p>
+          </div>
+
+          {/* Quick Coordinate / Hospital CTA Card on Desktop */}
+          <div className="flex sm:inline-flex lg:flex-col items-center lg:items-end justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-sm shadow-teal-600/20 shrink-0">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-extrabold text-slate-800">Peta Faskes Palembang</div>
+                <div className="text-[11px] text-slate-500 font-mono tabular-nums">165 Faskes • Koordinat Akurat</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab("map")}
+              className="min-h-[38px] px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              <span>Buka Peta Interaktif</span>
+            </button>
           </div>
         </div>
 
-        {/* Quick Search Bar directly in Hero Greeting */}
+        {/* Quick Search Bar directly in Hero */}
         {onSearchChange && (
-          <div className="relative z-10 mt-6 pt-5 border-t border-slate-100/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <div className="relative z-10 mt-5 sm:mt-6 pt-5 border-t border-slate-200/70">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Search className="w-4 h-4 text-emerald-600" />
-                <span>Pencarian Cepat Obat (Nama Generik / Merek Dagang)</span>
+                <Search className="w-4 h-4 text-teal-600" />
+                <span>Pencarian Cepat Obat (Nama Generik / Merek Dagang / Indikasi)</span>
               </label>
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 w-fit">
-                {totalDrugsCount}+ Obat Terdaftar
+              <span className="text-[11px] font-bold text-teal-700 font-mono tabular-nums">
+                {totalDrugsCount}+ Monografi Obat Terverifikasi
               </span>
             </div>
             
             <div className="relative">
-              <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+              <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
@@ -77,14 +101,14 @@ export default function MedicalDashboardHero({
                   onSearchChange(e.target.value);
                   onNavigateTab("desc");
                 }}
-                placeholder="Cari obat berdasarkan nama generik atau merek dagang (cth: Parasetamol, Sanmol, Bisoprolol, Concor, Lasix)..."
-                className="w-full bg-white/95 border-2 border-emerald-100 hover:border-emerald-300 focus:border-emerald-500 rounded-2xl py-3 pl-11 pr-10 text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden shadow-xs transition-all"
+                placeholder="Ketik nama generik atau merek dagang (cth: Parasetamol, Sanmol, Bisoprolol, Concor, Lasix)..."
+                className="w-full min-h-[48px] bg-slate-50/80 hover:bg-white focus:bg-white border-2 border-slate-200/90 hover:border-teal-300 focus:border-teal-600 rounded-2xl py-3 pl-12 pr-11 text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden shadow-2xs transition-all"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => onSearchChange("")}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
                   title="Hapus pencarian"
                 >
                   <X className="w-4 h-4" />
@@ -92,9 +116,9 @@ export default function MedicalDashboardHero({
               )}
             </div>
 
-            {/* Quick Suggestions Chips */}
-            <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cari Cepat:</span>
+            {/* Quick Suggestions Chips - Horizontally scrollable on mobile */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 pb-0.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Populer:</span>
               {[
                 { label: "Parasetamol", q: "paracetamol" },
                 { label: "Sanmol", q: "sanmol" },
@@ -114,10 +138,10 @@ export default function MedicalDashboardHero({
                     onSearchChange(chip.q);
                     onNavigateTab("desc");
                   }}
-                  className={`text-[10px] px-2.5 py-1 rounded-xl font-semibold border transition-all cursor-pointer ${
+                  className={`text-[11px] px-3 py-1.5 rounded-xl font-semibold border transition-all cursor-pointer shrink-0 ${
                     searchQuery.toLowerCase() === chip.q.toLowerCase()
-                      ? "bg-emerald-600 text-white border-emerald-700 shadow-2xs"
-                      : "bg-white/80 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border-slate-200/80 hover:border-emerald-200"
+                      ? "bg-teal-600 text-white border-teal-700 shadow-2xs"
+                      : "bg-white hover:bg-teal-50/80 text-slate-600 hover:text-teal-700 border-slate-200/90 hover:border-teal-200"
                   }`}
                 >
                   {chip.label}
@@ -128,126 +152,130 @@ export default function MedicalDashboardHero({
         )}
       </div>
 
-      {/* 3D "Health Overview" Bento Grid (Inspired by Reference Design) */}
+      {/* Clinical Overview Bento Grid */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-teal-600" />
-            <h2 className="text-sm font-bold text-slate-800 tracking-tight">Ringkasan Layanan Klinis</h2>
+            <h2 className="text-sm font-extrabold text-slate-800 tracking-tight">Modul Utama Kefarmasian Klinis</h2>
           </div>
-          <span className="text-[11px] font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">
-            Sistem Aktif & Terverifikasi
+          <span className="text-[11px] font-medium text-slate-500 hidden sm:inline">
+            Pilih modul untuk memulai telaah klinis
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {/* Card 1: Skrining Multi-Obat & Interaksi */}
-          <div 
+          <button
+            type="button"
             onClick={() => onNavigateTab("ddi")}
-            className="group relative cursor-pointer overflow-hidden rounded-3xl glass-card glass-card-hover p-5 hover:border-rose-300/80 transition-all duration-300"
+            className="group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-rose-300 p-5 shadow-xs hover:shadow-md transition-all duration-200"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-50 to-rose-100/80 border border-rose-200/60 flex items-center justify-center shadow-inner text-rose-600 group-hover:scale-110 transition-transform">
-                <Heart className="w-6 h-6 fill-rose-500 text-rose-500 animate-pulse" />
+            <div className="flex items-start justify-between mb-3.5">
+              <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-200/70 flex items-center justify-center text-rose-600 group-hover:scale-105 transition-transform">
+                <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60">
-                100% Siaga
+              <span className="text-[11px] font-bold text-rose-700 font-mono tabular-nums">
+                Multi-Obat
               </span>
             </div>
-            <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center justify-between">
-              Skrining Interaksi
+            <h3 className="text-sm font-extrabold text-slate-900 mb-1 flex items-center justify-between">
+              <span>Skrining Interaksi (DDI)</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 group-hover:translate-x-0.5 transition-all" />
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium line-clamp-2">
-              Deteksi otomatis risiko interaksi mayor, moderat, & minor antar obat bersamaan.
+            <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
+              Deteksi otomatis risiko interaksi mayor, moderat, dan minor antar kombinasi resep.
             </p>
-          </div>
+          </button>
 
           {/* Card 2: Katalog & Dosis Obat */}
-          <div 
+          <button
+            type="button"
             onClick={() => onNavigateTab("desc")}
-            className="group relative cursor-pointer overflow-hidden rounded-3xl glass-card glass-card-hover p-5 hover:border-teal-300/80 transition-all duration-300"
+            className="group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-teal-300 p-5 shadow-xs hover:shadow-md transition-all duration-200"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-50 to-emerald-100/80 border border-teal-200/60 flex items-center justify-center shadow-inner text-teal-600 group-hover:scale-110 transition-transform">
-                <Pill className="w-6 h-6" />
+            <div className="flex items-start justify-between mb-3.5">
+              <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-200/70 flex items-center justify-center text-teal-600 group-hover:scale-105 transition-transform">
+                <Pill className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/60">
+              <span className="text-[11px] font-bold text-teal-700 font-mono tabular-nums">
                 {totalDrugsCount}+ Obat
               </span>
             </div>
-            <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center justify-between">
-              Informasi Obat
+            <h3 className="text-sm font-extrabold text-slate-900 mb-1 flex items-center justify-between">
+              <span>Monografi & Dosis Obat</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition-all" />
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium line-clamp-2">
-              Dosis standar, indikasi, kontraindikasi, dan kategori keamanan kehamilan FDA.
+            <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
+              Dosis dewasa & anak, indikasi, kontraindikasi, efek samping, dan indeks kehamilan FDA.
             </p>
-          </div>
+          </button>
 
           {/* Card 3: Kalkulator Medis Ginjal & Pediatrik */}
-          <div 
+          <button
+            type="button"
             onClick={() => onNavigateTab("medcalc")}
-            className="group relative cursor-pointer overflow-hidden rounded-3xl glass-card glass-card-hover p-5 hover:border-sky-300/80 transition-all duration-300"
+            className="group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-sky-300 p-5 shadow-xs hover:shadow-md transition-all duration-200"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-50 to-sky-100/80 border border-sky-200/60 flex items-center justify-center shadow-inner text-sky-600 group-hover:scale-110 transition-transform">
-                <Calculator className="w-6 h-6" />
+            <div className="flex items-start justify-between mb-3.5">
+              <div className="w-11 h-11 rounded-xl bg-sky-50 border border-sky-200/70 flex items-center justify-center text-sky-600 group-hover:scale-105 transition-transform">
+                <Calculator className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200/60">
+              <span className="text-[11px] font-bold text-sky-700 font-mono tabular-nums">
                 eGFR & CrCl
               </span>
             </div>
-            <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center justify-between">
-              Kalkulator Medis
+            <h3 className="text-sm font-extrabold text-slate-900 mb-1 flex items-center justify-between">
+              <span>Kalkulator Medis Klinis</span>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600 group-hover:translate-x-0.5 transition-all" />
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium line-clamp-2">
-              Cockcroft-Gault, CKD-EPI, penyesuaian dosis gangguan ginjal & pediatrik.
+            <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
+              Cockcroft-Gault, CKD-EPI, laju tetesan infus, BSA, dan penyesuaian dosis gagal ginjal.
             </p>
-          </div>
+          </button>
 
-          {/* Card 4: Asisten AI & Rekam SOAP */}
-          <div 
-            onClick={() => onNavigateTab("soap")}
-            className="group relative cursor-pointer overflow-hidden rounded-3xl glass-card glass-card-hover p-5 hover:border-purple-300/80 transition-all duration-300"
+          {/* Card 4: Peta Sebaran Faskes */}
+          <button
+            type="button"
+            onClick={() => onNavigateTab("map")}
+            className="group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-emerald-300 p-5 shadow-xs hover:shadow-md transition-all duration-200"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-50 to-violet-100/80 border border-purple-200/60 flex items-center justify-center shadow-inner text-purple-600 group-hover:scale-110 transition-transform">
-                <Sparkles className="w-6 h-6 text-purple-600" />
+            <div className="flex items-start justify-between mb-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+                <MapPin className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60">
-                AI Terintegrasi
+              <span className="text-[11px] font-bold text-emerald-700 font-mono tabular-nums">
+                GPS Real-Time
               </span>
             </div>
-            <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center justify-between">
-              Clinical SOAP & AI
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all" />
+            <h3 className="text-sm font-extrabold text-slate-900 mb-1 flex items-center justify-between">
+              <span>Peta Sebaran Faskes</span>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium line-clamp-2">
-              Penyusunan catatan rekam farmasi klinis dan konsultasi obat berbasis AI.
+            <p className="text-xs text-slate-500 font-medium line-clamp-2 leading-relaxed">
+              Lokasi akurat RS, Puskesmas, Klinik, & Apotek Palembang dengan urutan jarak terdekat.
             </p>
-          </div>
+          </button>
         </div>
       </div>
 
-      {/* Modern Squircle "Quick Actions" (Matching the reference's 4-column quick action row) */}
-      <div className="space-y-3">
+      {/* Responsive Quick Actions Bar */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-sm font-bold text-slate-800 tracking-tight">Menu Cepat (Quick Actions)</h2>
-          <span className="text-[11px] text-slate-400 font-medium">Klik untuk akses langsung</span>
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Akses Cepat Semua Layanan</h2>
+          <span className="text-[11px] text-slate-400 font-medium">Sentuh untuk beralih modul</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 sm:gap-3">
           {[
-            { id: "desc", label: "Katalog Obat", icon: Pill, color: "teal", bg: "bg-teal-50 text-teal-700 border-teal-200/60" },
-            { id: "ddi", label: "Skrining DDI", icon: ShieldAlert, color: "rose", bg: "bg-rose-50 text-rose-700 border-rose-200/60" },
-            { id: "medcalc", label: "Kalkulator", icon: Calculator, color: "sky", bg: "bg-sky-50 text-sky-700 border-sky-200/60" },
-            { id: "iv", label: "Injeksi IV", icon: Droplets, color: "cyan", bg: "bg-cyan-50 text-cyan-700 border-cyan-200/60" },
-            { id: "soap", label: "Form SOAP", icon: FileText, color: "indigo", bg: "bg-indigo-50 text-indigo-700 border-indigo-200/60" },
-            { id: "fornas", label: "Fornas 2025", icon: BookOpen, color: "emerald", bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60" },
-            { id: "diseases", label: "Penyakit", icon: Stethoscope, color: "amber", bg: "bg-amber-50 text-amber-700 border-amber-200/60" },
-            { id: "map", label: "Peta Faskes", icon: MapPin, color: "teal", bg: "bg-emerald-50 text-emerald-700 border-emerald-200/60" },
+            { id: "desc", label: "Katalog Obat", icon: Pill, bg: "bg-teal-50 text-teal-700 border-teal-200/70" },
+            { id: "ddi", label: "Skrining DDI", icon: ShieldAlert, bg: "bg-rose-50 text-rose-700 border-rose-200/70" },
+            { id: "medcalc", label: "Kalkulator", icon: Calculator, bg: "bg-sky-50 text-sky-700 border-sky-200/70" },
+            { id: "iv", label: "Injeksi IV", icon: Droplets, bg: "bg-cyan-50 text-cyan-700 border-cyan-200/70" },
+            { id: "soap", label: "Form SOAP", icon: FileText, bg: "bg-indigo-50 text-indigo-700 border-indigo-200/70" },
+            { id: "fornas", label: "Fornas 2025", icon: BookOpen, bg: "bg-emerald-50 text-emerald-700 border-emerald-200/70" },
+            { id: "diseases", label: "Penyakit", icon: Stethoscope, bg: "bg-amber-50 text-amber-700 border-amber-200/70" },
+            { id: "map", label: "Peta Faskes", icon: MapPin, bg: "bg-emerald-50 text-emerald-700 border-emerald-200/70" },
           ].map((item) => {
             const Icon = item.icon;
             return (
@@ -255,9 +283,9 @@ export default function MedicalDashboardHero({
                 key={item.id}
                 type="button"
                 onClick={() => onNavigateTab(item.id)}
-                className="flex flex-col items-center gap-2 p-3.5 rounded-2xl glass-pill shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all text-center group"
+                className="min-h-[68px] flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/90 hover:bg-white border border-slate-200/80 hover:border-teal-300 shadow-2xs hover:shadow-sm active:scale-95 transition-all text-center group cursor-pointer"
               >
-                <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center shadow-inner ${item.bg} group-hover:scale-105 transition-transform`}>
+                <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${item.bg} group-hover:scale-105 transition-transform`}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <span className="text-[11px] font-bold text-slate-700 group-hover:text-teal-700 transition-colors truncate w-full">

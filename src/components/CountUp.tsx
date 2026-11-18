@@ -11,24 +11,31 @@ interface CountUpProps {
 export default function CountUp({
   value,
   decimals = 2,
-  duration = 350,
+  duration = 220,
   className = "",
   suffix = "",
 }: CountUpProps) {
   const [displayValue, setDisplayValue] = useState(value);
+  const currentDisplayedRef = useRef(value);
   const startValueRef = useRef(value);
   const targetValueRef = useRef(value);
   const startTimeRef = useRef<number | null>(null);
   const requestRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // If the target value is the same, do nothing
     if (value === targetValueRef.current) {
       return;
     }
 
-    // Set up the animation from the current displayed value to the new target value
-    startValueRef.current = displayValue;
+    if (Math.abs(currentDisplayedRef.current - value) > 10000) {
+      currentDisplayedRef.current = value;
+      startValueRef.current = value;
+      targetValueRef.current = value;
+      setDisplayValue(value);
+      return;
+    }
+
+    startValueRef.current = currentDisplayedRef.current;
     targetValueRef.current = value;
     startTimeRef.current = null;
 
@@ -39,15 +46,17 @@ export default function CountUp({
       const progress = timestamp - startTimeRef.current;
       const percentage = Math.min(progress / duration, 1);
 
-      // Easing: easeOutQuad
       const ease = percentage * (2 - percentage);
-      const currentVal = startValueRef.current + (targetValueRef.current - startValueRef.current) * ease;
-      
+      const currentVal =
+        startValueRef.current + (targetValueRef.current - startValueRef.current) * ease;
+
+      currentDisplayedRef.current = currentVal;
       setDisplayValue(currentVal);
 
       if (progress < duration) {
         requestRef.current = requestAnimationFrame(animateCount);
       } else {
+        currentDisplayedRef.current = targetValueRef.current;
         setDisplayValue(targetValueRef.current);
       }
     };
@@ -59,17 +68,7 @@ export default function CountUp({
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [value, duration, displayValue]);
-
-  // Handle case where value is initially loaded
-  useEffect(() => {
-    // Sync if display value is far from target when component mounts or updates without animation
-    if (Math.abs(displayValue - value) > 10000) {
-      setDisplayValue(value);
-      startValueRef.current = value;
-      targetValueRef.current = value;
-    }
-  }, [value]);
+  }, [value, duration]);
 
   const formatted = displayValue.toLocaleString("id-ID", {
     minimumFractionDigits: decimals,

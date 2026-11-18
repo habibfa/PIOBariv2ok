@@ -1,8 +1,52 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        function isExtensionError(msg, stack, filename) {
+          var combined = ((msg || '') + ' ' + (stack || '') + ' ' + (filename || '')).toLowerCase();
+          return (
+            combined.indexOf('metamask') !== -1 ||
+            combined.indexOf('chrome-extension://') !== -1 ||
+            combined.indexOf('moz-extension://') !== -1 ||
+            combined.indexOf('safari-extension://') !== -1 ||
+            combined.indexOf('inpage.js') !== -1
+          );
+        }
+
+        window.addEventListener(
+          'error',
+          function (event) {
+            var msg = event && event.message ? String(event.message) : '';
+            var stack = event && event.error && event.error.stack ? String(event.error.stack) : '';
+            var filename = event && event.filename ? String(event.filename) : '';
+            if (isExtensionError(msg, stack, filename)) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return false;
+            }
+          },
+          true
+        );
+
+        window.addEventListener(
+          'unhandledrejection',
+          function (event) {
+            var reason = event ? event.reason : null;
+            var msg = reason && reason.message ? String(reason.message) : String(reason || '');
+            var stack = reason && reason.stack ? String(reason.stack) : '';
+            if (isExtensionError(msg, stack, '')) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return false;
+            }
+          },
+          true
+        );
+      })();
+    </script>
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <title>Pusat Informasi Obat RSUD Palembang BARI</title>
