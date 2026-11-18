@@ -21,7 +21,9 @@ const DiseasesConditions = lazy(() => import("./DiseasesConditions").then(m => (
 const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => ({ default: m.MedicalCalculators })));
 const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
 const AdminWebAnalytics = lazy(() => import("./components/AdminWebAnalytics"));
+const SiteRatingReviews = lazy(() => import("./components/SiteRatingReviews"));
 import { trackCustomEvent, trackPageView, sendHeartbeat, detectRealClientLocation, getDetectedClientGeoMeta } from "./services/analyticsService";
+import { setAdminWebCopyMode } from "./utils/clientProtection";
 
 const TabLoadingFallback = () => (
   <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -79,7 +81,8 @@ import {
   Vibrate,
   BellRing,
   BarChart3,
-  Lock
+  Lock,
+  Star
 } from "lucide-react";
 import HighlightText from "./components/HighlightText";
 import { matchDrugSimultaneous, SearchScope } from "./utils/searchUtils";
@@ -1493,10 +1496,16 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
+  // Sync Admin WebCopy permission whenever isAdmin changes
+  useEffect(() => {
+    setAdminWebCopyMode(isAdmin);
+  }, [isAdmin]);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (loginPassword.trim() === "519592Fa07$") {
       setIsAdmin(true);
+      setAdminWebCopyMode(true);
       setIsLoginModalOpen(false);
       setLoginPassword("");
       setLoginError("");
@@ -1541,7 +1550,7 @@ export default function App() {
   const [isFemale, setIsFemale] = useState<boolean>(false);
 
   // Tab Selection
-  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics">("desc");
+  const [activeTab, setActiveTab] = useState<"single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics" | "reviews">("desc");
 
   // Video Tab States
   const [activeVideoId, setActiveVideoId] = useState<string>("suppositoria");
@@ -2397,6 +2406,25 @@ export default function App() {
             Peta Faskes
           </button>
 
+          <button
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("reviews"); }}
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between group ${
+              activeTab === "reviews"
+                ? "bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-amber-700 hover:shadow-2xs"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Star className={`w-4 h-4 shrink-0 ${activeTab === "reviews" ? "fill-white text-white" : "fill-amber-400 text-amber-500"}`} />
+              <span>Penilaian & Ulasan</span>
+            </div>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              activeTab === "reviews" ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700 border border-amber-200/70"
+            }`}>
+              Real-Time
+            </span>
+          </button>
+
           {/* Admin Web Analytics Menu Item */}
           {isAdmin ? (
             <div className="pt-2">
@@ -2455,12 +2483,21 @@ export default function App() {
           </button>
 
           {isAdmin ? (
-            <button
-              onClick={() => setIsAdmin(false)}
-              className="w-full text-center px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold rounded-xl transition-colors border border-rose-200 uppercase tracking-wider"
-            >
-              Logout Admin
-            </button>
+            <>
+              <div className="px-3 py-2 rounded-xl bg-teal-50 border border-teal-200/80 text-[10px] font-bold text-teal-800 flex items-center justify-between">
+                <span>Akses WebCopy Admin</span>
+                <span className="px-1.5 py-0.5 rounded bg-teal-600 text-white font-mono">AKTIF</span>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAdmin(false);
+                  setAdminWebCopyMode(false);
+                }}
+                className="w-full text-center px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold rounded-xl transition-colors border border-rose-200 uppercase tracking-wider"
+              >
+                Logout Admin
+              </button>
+            </>
           ) : (
             <button
               onClick={() => setIsLoginModalOpen(true)}
@@ -2505,6 +2542,7 @@ export default function App() {
                  activeTab === "pharmacist" ? "Apoteker Siaga" : 
                  activeTab === "video" ? "Panduan Alat" : 
                  activeTab === "diseases" ? "Penyakit" : 
+                 activeTab === "reviews" ? "Penilaian Situs" :
                  activeTab === "map" ? "Peta Faskes" : "Klinis"}
               </span>
             </div>
@@ -2523,6 +2561,7 @@ export default function App() {
                  activeTab === "iv" ? "Kompatibilitas Obat Intravena (Y-Site)" : 
                  activeTab === "pharmacist" ? "Konsultasi Apoteker Siaga" : 
                  activeTab === "fornas" ? "Daftar Obat Fornas Kemenkes" : 
+                 activeTab === "reviews" ? "Penilaian Bintang & Komentar Ulasan Situs" :
                  activeTab === "analytics" ? "Web Analytics & Real-Time Insights" :
                  "Menu Kalkulator"}
               </span>
@@ -2540,6 +2579,7 @@ export default function App() {
               { id: "medcalc", label: "Kalkulator", icon: Calculator },
               { id: "iv", label: "Injeksi IV", icon: Droplets },
               { id: "map", label: "Peta Faskes", icon: MapPin },
+              { id: "reviews", label: "Ulasan Situs", icon: Star },
             ].map((tabItem) => {
               const TabIcon = tabItem.icon;
               const isTabActive = activeTab === tabItem.id;
@@ -2554,7 +2594,7 @@ export default function App() {
                       : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                   }`}
                 >
-                  <TabIcon className={`w-3.5 h-3.5 ${isTabActive ? "text-teal-600" : "text-slate-400"}`} />
+                  <TabIcon className={`w-3.5 h-3.5 ${isTabActive ? "text-teal-600" : tabItem.id === "reviews" ? "fill-amber-400 text-amber-500" : "text-slate-400"}`} />
                   <span>{tabItem.label}</span>
                 </button>
               );
@@ -2562,6 +2602,20 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab("reviews")}
+              className={`min-h-[38px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-2xs active:scale-95 cursor-pointer ${
+                activeTab === "reviews"
+                  ? "bg-amber-500 text-white border-amber-600"
+                  : "bg-amber-50/90 hover:bg-amber-100 text-amber-800 border-amber-200/90"
+              }`}
+              title="Beri Bintang & Komentar tentang Situs Ini"
+            >
+              <Star className={`w-3.5 h-3.5 shrink-0 ${activeTab === "reviews" ? "fill-white text-white" : "fill-amber-400 text-amber-500"}`} />
+              <span className="whitespace-nowrap">Nilai Situs</span>
+            </button>
+
             {isAdmin && (
               <button
                 type="button"
@@ -4328,6 +4382,15 @@ export default function App() {
           )}
         </section>
       </>
+    ) : activeTab === "reviews" ? (
+      <>
+        {/* SITE RATING & REVIEWS TAB */}
+        <section className="lg:col-span-12 w-full">
+          <Suspense fallback={<TabLoadingFallback />}>
+            <SiteRatingReviews isAdmin={isAdmin} />
+          </Suspense>
+        </section>
+      </>
     ) : activeTab === "desc" ? (
       <>
         {/* 3D HEALTHCARE MEDICAL HERO DASHBOARD OVERVIEW */}
@@ -6038,8 +6101,18 @@ export default function App() {
             <span className="text-slate-300">•</span>
             <span>Jl. Panca Usaha No.1, Seberang Ulu I, Kota Palembang</span>
           </div>
-          <div className="text-slate-500">
-            Verifikasi Keputusan Klinis: Selalu konfirmasi dosis & terapi bersama Apoteker Klinis
+          <div className="flex items-center gap-4">
+            <span className="text-slate-500">
+              Verifikasi Keputusan Klinis: Selalu konfirmasi dosis & terapi bersama Apoteker Klinis
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("reviews")}
+              className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-800 font-bold cursor-pointer"
+            >
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+              <span>Beri Penilaian & Komentar Situs</span>
+            </button>
           </div>
         </footer>
       </div>

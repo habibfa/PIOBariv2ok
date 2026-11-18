@@ -2,9 +2,12 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { initClientProtection } from './utils/clientProtection';
 
 // Guard against browser extension scripts (e.g., MetaMask inpage.js) throwing unhandled errors in iframe preview
 if (typeof window !== 'undefined') {
+  initClientProtection();
+
   const isBrowserExtensionIssue = (text: string) => {
     const lower = text.toLowerCase();
     return (

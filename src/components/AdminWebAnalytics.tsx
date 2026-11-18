@@ -81,7 +81,8 @@ import {
   setSelectedFaskesCity,
   getSelectedOrDetectedCity,
   detectRealClientLocation,
-  getDetectedClientGeoMeta
+  getDetectedClientGeoMeta,
+  calibrateClientLocationWithGPS
 } from "../services/analyticsService";
 
 export const AdminWebAnalytics: React.FC = () => {
@@ -681,7 +682,7 @@ export const AdminWebAnalytics: React.FC = () => {
                 {detectedClientGeo?.formatted ||
                   serverStats?.currentVisitorGeo?.city ||
                   getSelectedOrDetectedCity() ||
-                  "Kota Padang, Sumatera Barat"}
+                  "Kota Palembang, Sumatera Selatan"}
               </span>
               {(detectedClientGeo?.ip || serverStats?.currentVisitorGeo?.ip) && (
                 <span className="ml-2 text-[11px] font-mono text-slate-400">
@@ -689,6 +690,27 @@ export const AdminWebAnalytics: React.FC = () => {
                 </span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setToastMessage("Mengkalibrasi titik lokasi akurat GPS/Wi-Fi Anda...");
+                const res = await calibrateClientLocationWithGPS();
+                const meta = getDetectedClientGeoMeta();
+                if (meta) setDetectedClientGeo(meta);
+                await refreshServerData();
+                setToastMessage(
+                  res.success
+                    ? `Lokasi akurat terverifikasi via GPS: ${res.formatted}`
+                    : `Lokasi aktif disinkronisasi: ${res.formatted}`
+                );
+                setTimeout(() => setToastMessage(null), 4000);
+              }}
+              className="ml-1 px-2.5 py-1 rounded-xl bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 border border-teal-500/40 text-[10px] font-bold flex items-center gap-1 transition-all"
+              title="Kalibrasi lokasi fisik akurat menggunakan sensor GPS/Wi-Fi browser"
+            >
+              <Navigation className="w-3 h-3 text-teal-300" />
+              Kalibrasi GPS
+            </button>
           </div>
         </div>
 

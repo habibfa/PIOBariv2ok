@@ -15,7 +15,9 @@ import {
   Search,
   X,
   Building2,
-  Navigation
+  Navigation,
+  Star,
+  MessageSquare
 } from 'lucide-react';
 
 interface MedicalDashboardHeroProps {
@@ -57,25 +59,52 @@ export default function MedicalDashboardHero({
             </p>
           </div>
 
-          {/* Quick Coordinate / Hospital CTA Card on Desktop */}
-          <div className="flex sm:inline-flex lg:flex-col items-center lg:items-end justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-sm shadow-teal-600/20 shrink-0">
-                <MapPin className="w-5 h-5" />
+          {/* Quick Coordinate / Hospital & Site Rating CTA Card on Desktop */}
+          <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end justify-between gap-2.5 shrink-0">
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-sm shadow-teal-600/20 shrink-0">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-slate-800">Peta Faskes Palembang</div>
+                  <div className="text-[11px] text-slate-500 font-mono tabular-nums">165 Faskes • Koordinat Akurat</div>
+                </div>
               </div>
-              <div>
-                <div className="text-xs font-extrabold text-slate-800">Peta Faskes Palembang</div>
-                <div className="text-[11px] text-slate-500 font-mono tabular-nums">165 Faskes • Koordinat Akurat</div>
-              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab("map")}
+                className="min-h-[36px] px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Peta</span>
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigateTab("map")}
-              className="min-h-[38px] px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
-            >
-              <Navigation className="w-3.5 h-3.5" />
-              <span>Buka Peta Interaktif</span>
-            </button>
+
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shadow-amber-500/20 shrink-0">
+                  <Star className="w-4 h-4 fill-white" />
+                </div>
+                <div>
+                  <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                    <span>Rating Situs</span>
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded-md">
+                      Real-Time
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600">Kasih Bintang & Komentar</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigateTab("reviews")}
+                className="min-h-[36px] px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Nilai Situs</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -266,7 +295,7 @@ export default function MedicalDashboardHero({
           <span className="text-[11px] text-slate-400 font-medium">Sentuh untuk beralih modul</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2.5 sm:gap-3">
           {[
             { id: "desc", label: "Katalog Obat", icon: Pill, bg: "bg-teal-50 text-teal-700 border-teal-200/70" },
             { id: "ddi", label: "Skrining DDI", icon: ShieldAlert, bg: "bg-rose-50 text-rose-700 border-rose-200/70" },
@@ -276,6 +305,7 @@ export default function MedicalDashboardHero({
             { id: "fornas", label: "Fornas 2025", icon: BookOpen, bg: "bg-emerald-50 text-emerald-700 border-emerald-200/70" },
             { id: "diseases", label: "Penyakit", icon: Stethoscope, bg: "bg-amber-50 text-amber-700 border-amber-200/70" },
             { id: "map", label: "Peta Faskes", icon: MapPin, bg: "bg-emerald-50 text-emerald-700 border-emerald-200/70" },
+            { id: "reviews", label: "Beri Bintang", icon: Star, bg: "bg-amber-50 text-amber-600 border-amber-200/80" },
           ].map((item) => {
             const Icon = item.icon;
             return (

@@ -10,8 +10,17 @@ import {
   resetAnalyticsStore
 } from "../server/analyticsEngine";
 import {
+  initReviewsEngine,
+  getReviewsData,
+  addSiteReview,
+  markReviewHelpful,
+  addAdminReplyToReview,
+  deleteSiteReview
+} from "./_reviewsEngine";
+import {
   corsMiddleware,
   securityHeadersMiddleware,
+  antiCloningMiddleware,
   createRateLimiter,
   sanitizeInputText,
   verifyAdminAuth
@@ -25,7 +34,9 @@ import {
   SOAP_SYSTEM_INSTRUCTION,
   buildSoapPrompt,
   CHAT_SYSTEM_INSTRUCTION,
-  buildChatPrompt
+  buildChatPrompt,
+  detectPromptExtractionAttempt,
+  PROMPT_PROTECTION_REJECTION_MESSAGE
 } from "../src/utils/aiPrompts";
 
 dotenv.config();
@@ -54,6 +65,9 @@ app.use((req, res, next) => {
 
 // Apply production security headers (CSP, nosniff, frame-options, etc.)
 app.use(securityHeadersMiddleware);
+
+// Block website cloners, scrapers, and sourcemap probes
+app.use(antiCloningMiddleware);
 
 // Apply strict CORS origin validation
 app.use(corsMiddleware);
@@ -184,6 +198,10 @@ app.post(["/api/disease-info", "/disease-info"], aiRateLimiter, async (req, res)
       return res.status(400).json({ error: "Silakan berikan nama penyakit yang valid (maksimal 200 karakter)." });
     }
 
+    if (detectPromptExtractionAttempt(diseaseName)) {
+      return res.json({ text: PROMPT_PROTECTION_REJECTION_MESSAGE });
+    }
+
     const ai = getAIClient();
     if (!ai) {
       return res.json({ text: generateClinicalDiseaseFallback(diseaseName) });
@@ -234,6 +252,10 @@ app.post(["/api/calculate-ai", "/calculate-ai"], aiRateLimiter, async (req, res)
     }
 
     const sanitizedQuestion = sanitizeInputText(question, 1500) || "Analyze this dosage calculation for accuracy and safety guidelines.";
+
+    if (detectPromptExtractionAttempt(sanitizedQuestion)) {
+      return res.json({ text: PROMPT_PROTECTION_REJECTION_MESSAGE });
+    }
 
     // Helper function to generate high-fidelity rule-based clinical report when API fails
     const getFallbackReport = (inputs: any, calculated: any, preset: any, question: string): string => {
@@ -475,6 +497,10 @@ const handleChatAi = async (req: express.Request, res: express.Response) => {
       return res.status(400).json({ error: "Pesan tidak boleh kosong (maksimal 4000 karakter)." });
     }
 
+    if (detectPromptExtractionAttempt(message)) {
+      return res.json({ reply: PROMPT_PROTECTION_REJECTION_MESSAGE });
+    }
+
     const ai = getAIClient(req);
     if (!ai) {
       const fallback = generateClinicalChatFallback(message);
@@ -513,6 +539,10 @@ app.post(["/api/soap-ai", "/soap-ai"], aiRateLimiter, async (req, res) => {
 
     if (!patientData) {
       return res.status(400).json({ error: "Data pasien diperlukan (maksimal 8000 karakter)." });
+    }
+
+    if (detectPromptExtractionAttempt(patientData)) {
+      return res.json({ text: PROMPT_PROTECTION_REJECTION_MESSAGE });
     }
 
     const ai = getAIClient(req);
@@ -612,6 +642,56 @@ app.post(["/api/analytics/reset", "/analytics/reset"], (req, res) => {
   } catch (err: any) {
     console.error("[Analytics Reset Error]", err);
     res.status(500).json({ error: "Gagal mereset database telemetri." });
+  }
+});
+
+// ==========================================
+// SITE RATING & REVIEWS SYSTEM ROUTES
+// ==========================================
+initReviewsEngine();
+
+app.get(["/api/reviews", "/reviews"], generalRateLimiter, (_req, res) => {
+  try {
+    const data = getReviewsData();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Gagal memuat daftar penilaian & ulasan situs." });
+  }
+});
+
+app.post(["/api/reviews", "/reviews"], generalRateLimiter, (req, res) => {
+  try {
+    const result = addSiteReview(req.body || {});
+    res.status(201).json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || "Gagal menyimpan penilaian situs." });
+  }
+});
+
+app.post(["/api/reviews/:id/helpful", "/reviews/:id/helpful"], generalRateLimiter, (req, res) => {
+  try {
+    const result = markReviewHelpful(req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || "Gagal memperbarui dukungan ulasan." });
+  }
+});
+
+app.post(["/api/reviews/:id/reply", "/reviews/:id/reply"], generalRateLimiter, (req, res) => {
+  try {
+    const result = addAdminReplyToReview(req.params.id, req.body?.replyText || "");
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || "Gagal menyimpan balasan ulasan." });
+  }
+});
+
+app.delete(["/api/reviews/:id", "/reviews/:id"], generalRateLimiter, (req, res) => {
+  try {
+    const result = deleteSiteReview(req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || "Gagal menghapus ulasan." });
   }
 });
 

@@ -186,14 +186,18 @@ export function sanitizeInputText(value: unknown, maxLength: number): string | n
 }
 
 /**
- * Protects administrative endpoints like resetAnalyticsStore
+ * Checks if an incoming request carries valid Admin credentials
+ * (via X-Admin-Key header, Bearer token, admin_key query param, or piobari_admin_key cookie)
  */
-export function verifyAdminAuth(req: Request): boolean {
+export function hasAdminWebCopyAuthorization(req: Request): boolean {
   const adminSecret = process.env.ADMIN_RESET_SECRET || process.env.ADMIN_KEY || "519592Fa07$";
   const authHeader = req.headers.authorization;
   const adminKeyHeader = req.headers["x-admin-key"];
+  const queryKey = (req.query?.admin_key || req.query?.admin || req.query?.key) as string | undefined;
+  const rawCookie = String(req.headers.cookie || "");
 
   if (adminKeyHeader === adminSecret || adminKeyHeader === "519592Fa07$") return true;
+  if (queryKey === adminSecret || queryKey === "519592Fa07$") return true;
   if (
     authHeader &&
     authHeader.startsWith("Bearer ") &&
@@ -201,6 +205,20 @@ export function verifyAdminAuth(req: Request): boolean {
   ) {
     return true;
   }
+  if (
+    rawCookie.includes("piobari_admin_key=519592Fa07$") ||
+    rawCookie.includes(`piobari_admin_key=${encodeURIComponent("519592Fa07$")}`)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Protects administrative endpoints like resetAnalyticsStore
+ */
+export function verifyAdminAuth(req: Request): boolean {
+  if (hasAdminWebCopyAuthorization(req)) return true;
 
   // If in production and no valid header was provided, block public reset
   if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
@@ -210,3 +228,50 @@ export function verifyAdminAuth(req: Request): boolean {
   // Local development fallback
   return true;
 }
+
+// Known site cloners, offline downloaders, and automated scrapers
+const CLONER_USER_AGENT_REGEX =
+  /(httrack|wget|sitesucker|cyotek|webcopy|teleport|webzip|offline\s*explorer|webcopier|blackwidow|scrapy|python-requests|go-http-client|curl\/|libwww-perl|mechanize|lwp-trivial|nikto|sqlmap|nmap)/i;
+
+// Sensitive files that must never be served via HTTP to non-admins
+const PROTECTED_PATH_REGEX =
+  /(\.map$|\.env|\/\.git|\/server\/|server\.ts$|package\.json$|tsconfig\.json$|vite\.config\.ts$|aiPrompts\.ts$|_analyticsEngine\.ts$)/i;
+
+/**
+ * Anti-Cloning & Source File Protection Middleware
+ * Blocks automated website cloners (HTTrack, WebCopy, Wget, Scrapy) for general users,
+ * while explicitly permitting WebCopy and full access for authenticated Admins.
+ */
+export function antiCloningMiddleware(req: Request, res: Response, next: NextFunction) {
+  // If request is authenticated as Admin (cookie, header, Bearer, or ?admin_key=519592Fa07$), allow WebCopy
+  if (hasAdminWebCopyAuthorization(req)) {
+    return next();
+  }
+
+  const ua = String(req.headers["user-agent"] || "");
+  const reqPath = req.path || req.url || "";
+
+  if (CLONER_USER_AGENT_REGEX.test(ua)) {
+    return res.status(403).json({
+      error:
+        "Akses ditolak: WebCopy / duplikasi situs hanya diizinkan untuk Administrator. Sertakan kredensial Admin (Header X-Admin-Key atau parameter ?admin_key=PASSWORD_ADMIN)."
+    });
+  }
+
+  // Block sourcemaps and sensitive server/config files in production or direct HTTP probing
+  if (
+    reqPath.endsWith(".map") ||
+    (process.env.NODE_ENV === "production" && PROTECTED_PATH_REGEX.test(reqPath))
+  ) {
+    return res.status(403).send("403 Forbidden - Protected Resource");
+  }
+
+  // Prevent search engines / AI scrapers from indexing or caching raw API payloads
+  if (reqPath.startsWith("/api/")) {
+    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  }
+
+  next();
+}
+

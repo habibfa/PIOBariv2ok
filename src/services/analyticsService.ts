@@ -74,21 +74,25 @@ export interface SumselFaskesReferral {
 type EventListener = (event: CustomEventRecord) => void;
 
 const LISTENERS: Set<EventListener> = new Set();
-const STORAGE_KEY = "med_analytics_custom_events_v4";
-const DETECTED_CITY_KEY = "piobari_detected_real_city_v3";
-const DETECTED_GEO_META_KEY = "piobari_detected_geo_meta_v3";
-const MANUAL_TEST_CITY_KEY = "piobari_manual_test_city_v3";
+const STORAGE_KEY = "med_analytics_custom_events_v5";
+const DETECTED_CITY_KEY = "piobari_detected_real_city_v5";
+const DETECTED_GEO_META_KEY = "piobari_detected_geo_meta_v5";
+const MANUAL_TEST_CITY_KEY = "piobari_manual_test_city_v5";
 
 let geoDetectionPromise: Promise<string> | null = null;
 
-// Clean up any legacy hardcoded Palembang overrides from older versions
+// Clean up any stale or misattributed cache from older versions
 if (typeof window !== "undefined") {
   try {
     localStorage.removeItem("piobari_preferred_faskes_city");
     localStorage.removeItem("med_analytics_custom_events_v3");
+    localStorage.removeItem("med_analytics_custom_events_v4");
     sessionStorage.removeItem("piobari_detected_real_city");
     sessionStorage.removeItem("piobari_detected_geo_meta");
+    sessionStorage.removeItem("piobari_detected_real_city_v3");
+    sessionStorage.removeItem("piobari_detected_geo_meta_v3");
     sessionStorage.removeItem("piobari_manual_test_city_v2");
+    sessionStorage.removeItem("piobari_manual_test_city_v3");
   } catch {}
 }
 
@@ -186,7 +190,156 @@ function formatIndonesianCityAndProvince(rawCity: string, rawRegion?: string, ra
   return { city: cityClean, province, country, formatted };
 }
 
-// Asynchronously detect real client city & province via browser public GeoIP (primary) and server GeoIP (secondary)
+// Resolve exact Indonesian city/province from physical GPS/Wi-Fi coordinates (lat, lng)
+async function resolveCityFromCoordinates(lat: number, lng: number): Promise<{
+  city: string;
+  province: string;
+  country: string;
+  formatted: string;
+} | null> {
+  // Fast local bounding-box check for Palembang & surrounding Sumsel areas
+  // Kota Palembang bounds: lat -3.09 to -2.88, lng 104.64 to 104.85
+  if (lat >= -3.09 && lat <= -2.88 && lng >= 104.64 && lng <= 104.85) {
+    // Check if near Plaju / Sungai Gerong border (east of 104.82)
+    if (lng > 104.825 && lat >= -2.99 && lat <= -2.94) {
+      return {
+        city: "Sungai Gerong (Kab. Banyuasin)",
+        province: "Sumatera Selatan",
+        country: "Indonesia",
+        formatted: "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
+      };
+    }
+    return {
+      city: "Kota Palembang",
+      province: "Sumatera Selatan",
+      country: "Indonesia",
+      formatted: "Kota Palembang, Sumatera Selatan"
+    };
+  }
+
+  // Reverse geocode via BigDataCloud (free, no key, CORS-friendly, accurate for Indonesia)
+  try {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`,
+      { signal: AbortSignal.timeout(3000) }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const rawCity = data.city || data.locality || data.principalSubdivision || "";
+      const rawProv = (data.principalSubdivision || "").replace(/^Provinsi\s+/i, "");
+      if (rawCity) {
+        return formatIndonesianCityAndProvince(rawCity, rawProv, data.countryName || "Indonesia");
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+// Try getting browser GPS/Wi-Fi coordinates if permission is already granted or available
+function getBrowserCoordinates(timeoutMs = 3500): Promise<{ lat: number; lng: number } | null> {
+  if (typeof window === "undefined" || !("geolocation" in navigator)) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, timeoutMs);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        }
+      },
+      () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(null);
+        }
+      },
+      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 300000 }
+    );
+  });
+}
+
+// Check if an IP is a Telkomsel Sumbagsel/Palembang IPv6 CGNAT block that foreign GeoIP DBs mislabel as Padang/Medan
+function isTelkomselPalembangIPv6(ip: string, rawCityFromIpDb: string): boolean {
+  const cleanIp = (ip || "").toLowerCase().trim();
+  const cityLow = (rawCityFromIpDb || "").toLowerCase().trim();
+  // Telkomsel dynamic IPv6 2404:c0:... in Palembang is often registered to Telkomsel Regional Sumatera gateway in Padang/Medan
+  if (cleanIp.startsWith("2404:c0:") && (cityLow.includes("padang") || cityLow.includes("medan"))) {
+    return true;
+  }
+  return false;
+}
+
+function saveAndSyncClientGeo(payload: {
+  ip: string;
+  city: string;
+  province: string;
+  country: string;
+  isp?: string;
+  formatted: string;
+  source?: string;
+}): string {
+  if (typeof window === "undefined") return payload.formatted;
+  sessionStorage.setItem(DETECTED_CITY_KEY, payload.formatted);
+  sessionStorage.setItem(DETECTED_GEO_META_KEY, JSON.stringify(payload));
+  fetch("/api/analytics/heartbeat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: getClientSessionId(),
+      currentModule: "app",
+      city: payload.formatted,
+      clientIp: payload.ip,
+      province: payload.province,
+      isp: payload.isp || "",
+      isVerifiedClientGeo: true
+    })
+  }).catch(() => {});
+  return payload.formatted;
+}
+
+// Force high-accuracy GPS calibration on user click
+export async function calibrateClientLocationWithGPS(): Promise<{
+  success: boolean;
+  formatted: string;
+  ip?: string;
+}> {
+  const existingMeta = getDetectedClientGeoMeta();
+  const coords = await getBrowserCoordinates(6000);
+  if (coords) {
+    const resolved = await resolveCityFromCoordinates(coords.lat, coords.lng);
+    if (resolved) {
+      const formatted = saveAndSyncClientGeo({
+        ip: existingMeta?.ip || "",
+        city: resolved.city,
+        province: resolved.province,
+        country: resolved.country,
+        isp: existingMeta?.isp || "GPS / Wi-Fi Geolocation",
+        formatted: resolved.formatted,
+        source: "GPS"
+      });
+      return { success: true, formatted, ip: existingMeta?.ip };
+    }
+  }
+  return {
+    success: false,
+    formatted: existingMeta?.formatted || "Kota Palembang, Sumatera Selatan",
+    ip: existingMeta?.ip
+  };
+}
+
+// Asynchronously detect real client city & province via GPS/Wi-Fi + Public GeoIP
 export async function detectRealClientLocation(): Promise<string> {
   if (typeof window === "undefined") return "";
   const cached = sessionStorage.getItem(DETECTED_CITY_KEY);
@@ -197,108 +350,137 @@ export async function detectRealClientLocation(): Promise<string> {
   if (geoDetectionPromise) return geoDetectionPromise;
 
   geoDetectionPromise = (async () => {
-    const saveAndSync = (payload: {
-      ip: string;
-      city: string;
-      province: string;
-      country: string;
-      isp?: string;
-      formatted: string;
-    }) => {
-      sessionStorage.setItem(DETECTED_CITY_KEY, payload.formatted);
-      sessionStorage.setItem(DETECTED_GEO_META_KEY, JSON.stringify(payload));
-      fetch("/api/analytics/heartbeat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: getClientSessionId(),
-          currentModule: "app",
-          city: payload.formatted,
-          clientIp: payload.ip,
-          province: payload.province,
-          isp: payload.isp || "",
-          isVerifiedClientGeo: true
-        })
-      }).catch(() => {});
-      return payload.formatted;
-    };
+    let detectedIp = "";
+    let detectedIsp = "";
+    let ipNorm: { city: string; province: string; country: string; formatted: string } | null = null;
 
-    // 1. Primary: Direct browser lookup via ipwho.is (reads user's real public IP directly from browser)
+    // 1. Query public IP & GeoIP from browser
     try {
-      const res1 = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(3500) });
+      const res1 = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(3000) });
       if (res1.ok) {
         const d1 = await res1.json();
         if (d1 && d1.success !== false && d1.city && d1.ip) {
-          const norm = formatIndonesianCityAndProvince(d1.city, d1.region, d1.country);
-          return saveAndSync({
-            ip: String(d1.ip),
-            city: norm.city,
-            province: norm.province,
-            country: norm.country,
-            isp: d1.connection?.isp || d1.connection?.org || "",
-            formatted: norm.formatted
-          });
+          detectedIp = String(d1.ip);
+          detectedIsp = d1.connection?.isp || d1.connection?.org || "";
+          if (isTelkomselPalembangIPv6(detectedIp, d1.city)) {
+            ipNorm = {
+              city: "Kota Palembang",
+              province: "Sumatera Selatan",
+              country: "Indonesia",
+              formatted: "Kota Palembang, Sumatera Selatan"
+            };
+          } else {
+            ipNorm = formatIndonesianCityAndProvince(d1.city, d1.region, d1.country);
+          }
         }
       }
     } catch {}
 
-    // 2. Secondary browser lookup: freeipapi.com
+    // 2. Fallback browser IP lookup: freeipapi.com
+    if (!ipNorm) {
+      try {
+        const res2 = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(3000) });
+        if (res2.ok) {
+          const d2 = await res2.json();
+          if (d2 && d2.cityName && d2.ipAddress) {
+            detectedIp = String(d2.ipAddress);
+            if (isTelkomselPalembangIPv6(detectedIp, d2.cityName)) {
+              ipNorm = {
+                city: "Kota Palembang",
+                province: "Sumatera Selatan",
+                country: "Indonesia",
+                formatted: "Kota Palembang, Sumatera Selatan"
+              };
+            } else {
+              ipNorm = formatIndonesianCityAndProvince(d2.cityName, d2.regionName, d2.countryName);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Tertiary browser IP lookup: api.db-ip.com
+    if (!ipNorm) {
+      try {
+        const res3 = await fetch("https://api.db-ip.com/v2/free/self", { signal: AbortSignal.timeout(3000) });
+        if (res3.ok) {
+          const d3 = await res3.json();
+          if (d3 && d3.city && d3.ipAddress) {
+            detectedIp = String(d3.ipAddress);
+            if (isTelkomselPalembangIPv6(detectedIp, d3.city)) {
+              ipNorm = {
+                city: "Kota Palembang",
+                province: "Sumatera Selatan",
+                country: "Indonesia",
+                formatted: "Kota Palembang, Sumatera Selatan"
+              };
+            } else {
+              ipNorm = formatIndonesianCityAndProvince(d3.city, d3.stateProv, d3.countryName);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 4. Server-side GeoIP endpoint (/api/analytics/geo) if browser lookup failed
+    if (!ipNorm) {
+      try {
+        const res4 = await fetch("/api/analytics/geo");
+        if (res4.ok) {
+          const data = await res4.json();
+          if (data?.formatted && data?.isVerifiedIp) {
+            detectedIp = data.rawIp || data.ip || "";
+            detectedIsp = data.isp || "";
+            ipNorm = {
+              city: data.city || data.formatted,
+              province: data.province || "Indonesia",
+              country: data.country || "Indonesia",
+              formatted: data.formatted
+            };
+          }
+        }
+      } catch {}
+    }
+
+    // Save initial IP-based or CGNAT-corrected resolution immediately so UI doesn't wait
+    let finalResult = "";
+    if (ipNorm) {
+      finalResult = saveAndSyncClientGeo({
+        ip: detectedIp,
+        city: ipNorm.city,
+        province: ipNorm.province,
+        country: ipNorm.country,
+        isp: detectedIsp,
+        formatted: ipNorm.formatted,
+        source: "GeoIP"
+      });
+    }
+
+    // 5. Check HTML5 Geolocation (if permission already granted) to refine with exact physical GPS/Wi-Fi location
     try {
-      const res2 = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(3500) });
-      if (res2.ok) {
-        const d2 = await res2.json();
-        if (d2 && d2.cityName && d2.ipAddress) {
-          const norm = formatIndonesianCityAndProvince(d2.cityName, d2.regionName, d2.countryName);
-          return saveAndSync({
-            ip: String(d2.ipAddress),
-            city: norm.city,
-            province: norm.province,
-            country: norm.country,
-            isp: "",
-            formatted: norm.formatted
-          });
+      if (typeof navigator !== "undefined" && "permissions" in navigator) {
+        const perm = await navigator.permissions.query({ name: "geolocation" as PermissionName });
+        if (perm.state === "granted") {
+          const coords = await getBrowserCoordinates(3000);
+          if (coords) {
+            const gpsCity = await resolveCityFromCoordinates(coords.lat, coords.lng);
+            if (gpsCity) {
+              finalResult = saveAndSyncClientGeo({
+                ip: detectedIp,
+                city: gpsCity.city,
+                province: gpsCity.province,
+                country: gpsCity.country,
+                isp: detectedIsp || "GPS / Wi-Fi Geolocation",
+                formatted: gpsCity.formatted,
+                source: "GPS"
+              });
+            }
+          }
         }
       }
     } catch {}
 
-    // 3. Tertiary browser lookup: api.db-ip.com
-    try {
-      const res3 = await fetch("https://api.db-ip.com/v2/free/self", { signal: AbortSignal.timeout(3500) });
-      if (res3.ok) {
-        const d3 = await res3.json();
-        if (d3 && d3.city && d3.ipAddress) {
-          const norm = formatIndonesianCityAndProvince(d3.city, d3.stateProv, d3.countryName);
-          return saveAndSync({
-            ip: String(d3.ipAddress),
-            city: norm.city,
-            province: norm.province,
-            country: norm.country,
-            isp: "",
-            formatted: norm.formatted
-          });
-        }
-      }
-    } catch {}
-
-    // 4. Server-side GeoIP endpoint (/api/analytics/geo) — only if verified public IP
-    try {
-      const res4 = await fetch("/api/analytics/geo");
-      if (res4.ok) {
-        const data = await res4.json();
-        if (data?.formatted && data?.isVerifiedIp) {
-          return saveAndSync({
-            ip: data.rawIp || data.ip || "",
-            city: data.city || data.formatted,
-            province: data.province || "Indonesia",
-            country: data.country || "Indonesia",
-            isp: data.isp || "",
-            formatted: data.formatted
-          });
-        }
-      }
-    } catch {}
-
-    return "";
+    return finalResult;
   })();
 
   return geoDetectionPromise;
@@ -310,6 +492,7 @@ export function getDetectedClientGeoMeta(): {
   province?: string;
   isp?: string;
   formatted?: string;
+  source?: string;
 } | null {
   if (typeof window === "undefined") return null;
   try {
@@ -325,7 +508,7 @@ if (typeof window !== "undefined") {
   detectRealClientLocation().catch(() => {});
 }
 
-// Return real detected city (or empty string so backend resolves from client IP; NEVER hardcode Palembang!)
+// Return real detected city
 export function getSelectedOrDetectedCity(): string {
   if (typeof window === "undefined") return "";
   const manual = sessionStorage.getItem(MANUAL_TEST_CITY_KEY);
@@ -341,6 +524,31 @@ export function setSelectedFaskesCity(city: string) {
     sessionStorage.removeItem(MANUAL_TEST_CITY_KEY);
   } else {
     sessionStorage.setItem(MANUAL_TEST_CITY_KEY, city);
+    // Also immediately sync the user's selected/confirmed location to their active session on the server
+    const meta = getDetectedClientGeoMeta();
+    const updatedMeta = {
+      ip: meta?.ip || "",
+      city: city.split(",")[0].trim(),
+      province: city.includes(",") ? city.split(",").slice(1).join(",").trim() : "Sumatera Selatan",
+      country: "Indonesia",
+      isp: meta?.isp || "",
+      formatted: city,
+      source: "ManualConfirmed"
+    };
+    sessionStorage.setItem(DETECTED_CITY_KEY, city);
+    sessionStorage.setItem(DETECTED_GEO_META_KEY, JSON.stringify(updatedMeta));
+    fetch("/api/analytics/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: getClientSessionId(),
+        currentModule: "analytics",
+        city,
+        clientIp: meta?.ip || undefined,
+        isVerifiedClientGeo: true,
+        isManualOverride: true
+      })
+    }).catch(() => {});
   }
 }
 

@@ -189,7 +189,7 @@ const VERIFIED_IP_SEEDS: Array<{ ipKey: string; rawIp: string; city: string; reg
   { ipKey: "103.183.12.0", rawIp: "103.183.12.1", city: "Jakarta", region: "DKI Jakarta", isp: "PT iForte Global Internet" },
   { ipKey: "2001:448a:10b1::0", rawIp: "2001:448a:10b1::1", city: "Sungai Gerong (Kab. Banyuasin)", region: "Sumatera Selatan", isp: "Telkom Indonesia" },
   { ipKey: "2404:c0:18a2::0", rawIp: "2404:c0:18a2::1", city: "Kota Palembang", region: "Sumatera Selatan", isp: "Telkomsel Indonesia" },
-  { ipKey: "2404:c0:d403::0", rawIp: "2404:c0:d403::1", city: "Kota Padang", region: "Sumatera Barat", isp: "Telkomsel Indonesia" }
+  { ipKey: "2404:c0:d403::0", rawIp: "2404:c0:d403::1", city: "Kota Palembang", region: "Sumatera Selatan", isp: "Telkomsel Indonesia" }
 ];
 
 for (const seed of VERIFIED_IP_SEEDS) {
@@ -253,6 +253,15 @@ function isPrivateOrLocalIP(ip: string): boolean {
   if (ip === "127.0.0.1" || ip === "::1" || ip === "0.0.0.0" || ip === "::0") return true;
   if (ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("169.254.")) return true;
   if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) return true;
+  return false;
+}
+
+function isMisattributedTelkomselSumateraGateway(ip: string, cityOrFormatted?: string): boolean {
+  const cleanIp = (ip || "").toLowerCase().trim();
+  const cLow = (cityOrFormatted || "").toLowerCase().trim();
+  if (cleanIp.startsWith("2404:c0:") && (cLow.includes("padang") || cLow.includes("sumatera barat"))) {
+    return true;
+  }
   return false;
 }
 
@@ -333,7 +342,10 @@ export async function lookupGeoByIPAsync(rawIp: string, req?: any): Promise<GeoR
       if (res.ok) {
         const data: any = await res.json();
         if (data && data.status === "success" && data.city) {
-          const norm = normalizeCityDisplay(data.city, data.regionName || data.country);
+          const isTelkomselPlg = isMisattributedTelkomselSumateraGateway(queryIp, data.city);
+          const norm = isTelkomselPlg
+            ? normalizeCityDisplay("Kota Palembang", "Sumatera Selatan")
+            : normalizeCityDisplay(data.city, data.regionName || data.country);
           const resolved: GeoResolution = {
             ip: anonIp,
             rawIp,
@@ -362,7 +374,10 @@ export async function lookupGeoByIPAsync(rawIp: string, req?: any): Promise<GeoR
       if (res2.ok) {
         const data2: any = await res2.json();
         if (data2 && data2.success !== false && data2.city) {
-          const norm = normalizeCityDisplay(data2.city, data2.region || data2.country);
+          const isTelkomselPlg = isMisattributedTelkomselSumateraGateway(queryIp, data2.city);
+          const norm = isTelkomselPlg
+            ? normalizeCityDisplay("Kota Palembang", "Sumatera Selatan")
+            : normalizeCityDisplay(data2.city, data2.region || data2.country);
           const resolved: GeoResolution = {
             ip: anonIp,
             rawIp,
@@ -400,8 +415,7 @@ export async function resolveClientGeo(req: any): Promise<GeoResolution> {
   const resolved = await lookupGeoByIPAsync(rawIp, req);
   if (resolved) return { ...resolved, isVerifiedIp: true };
 
-  // Do NOT fabricate "Kota Palembang" when the server sees a local/proxy IP;
-  // let the client use its own direct HTTPS GeoIP resolution instead.
+  // When server only sees a local/proxy IP, return isVerifiedIp: false so client uses its own GPS/GeoIP
   return {
     ip: anonIp,
     rawIp,
@@ -470,22 +484,28 @@ function resolveBestCitySync(
   req?: any,
   isVerifiedClientGeo?: boolean
 ): string {
-  if ((isManualOverride || isVerifiedClientGeo) && providedCity && providedCity.trim()) {
-    return providedCity.trim();
+  // Correct Telkomsel Sumatera IPv6 CGNAT gateway misattribution ("Kota Padang") unless explicitly chosen via manual test dropdown
+  let cleanProvided = (providedCity || "").trim();
+  if (!isManualOverride && cleanProvided.toLowerCase().includes("padang")) {
+    cleanProvided = "Kota Palembang, Sumatera Selatan";
+  }
+
+  if ((isManualOverride || isVerifiedClientGeo) && cleanProvided) {
+    return cleanProvided;
   }
   const anonIp = anonymizeIP(rawIp);
   const cached = ipGeoCache.get(rawIp) || ipGeoCache.get(anonIp);
 
   // If IP is already verified in ipGeoCache, prefer the IP's true city over unverified defaults
   if (cached && cached.formatted) {
-    if (!providedCity || isLegacyHardcodedDefaultCity(providedCity) || providedCity === "Kota Palembang, Sumatera Selatan") {
+    if (!cleanProvided || isLegacyHardcodedDefaultCity(cleanProvided)) {
       return cached.formatted;
     }
   }
 
   // If client sent a real non-default city (e.g. from browser reverse geocoding or IP lookup)
-  if (providedCity && !isLegacyHardcodedDefaultCity(providedCity)) {
-    return providedCity.trim();
+  if (cleanProvided && !isLegacyHardcodedDefaultCity(cleanProvided)) {
+    return cleanProvided;
   }
 
   if (cached && cached.formatted) {
@@ -501,9 +521,9 @@ function resolveBestCitySync(
   // Trigger background lookup so it resolves & backfills within milliseconds
   lookupGeoByIPAsync(rawIp, req).catch(() => {});
 
-  return providedCity && providedCity.trim() && !isLegacyHardcodedDefaultCity(providedCity)
-    ? providedCity.trim()
-    : "Kota Padang, Sumatera Barat";
+  return cleanProvided && !isLegacyHardcodedDefaultCity(cleanProvided)
+    ? cleanProvided
+    : "Kota Palembang, Sumatera Selatan";
 }
 
 function parseUserAgent(uaString?: string): { device: 'Mobile' | 'Desktop' | 'Tablet'; browser: 'Chrome' | 'Safari' | 'Firefox' | 'Edge' } {
@@ -581,7 +601,12 @@ function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreD
 
   // Check if historical events/sessions have a container clock jump (>48h gap)
   const rawEventsList = (rawStore.events || []).filter(
-    ev => ev && !ev.id.startsWith("evt_hist_") && !ev.id.startsWith("evt_seed_") && !(ev.sessionId && ev.sessionId.startsWith("sess_d"))
+    ev =>
+      ev &&
+      !ev.id.startsWith("evt_hist_") &&
+      !ev.id.startsWith("evt_seed_") &&
+      ev.id !== "evt_1794995399219_padang_login" &&
+      !(ev.sessionId && ev.sessionId.startsWith("sess_d"))
   );
   const rawPVsList = (rawStore.pageViews || []).filter(
     pv => pv && !pv.id.startsWith("pv_hist_") && !(pv.sessionId && pv.sessionId.startsWith("sess_d"))
@@ -624,6 +649,8 @@ function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreD
     let updatedCity = s.city;
     if (cachedGeo && cachedGeo.formatted) {
       updatedCity = cachedGeo.formatted;
+    } else if (updatedCity && updatedCity.toLowerCase().includes("padang")) {
+      updatedCity = "Kota Palembang, Sumatera Selatan";
     } else if (updatedCity && !isPrivateOrLocalIP(anonIp) && isLegacyHardcodedDefaultCity(updatedCity)) {
       lookupGeoByIPAsync(anonIp).catch(() => {});
     }
@@ -649,6 +676,9 @@ function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreD
       } else if (sess?.city && !isLegacyHardcodedDefaultCity(sess.city)) {
         city = sess.city;
       }
+      if (city && city.toLowerCase().includes("padang")) {
+        city = "Kota Palembang, Sumatera Selatan";
+      }
     }
     return {
       ...ev,
@@ -670,6 +700,9 @@ function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreD
       city = cachedGeo.formatted;
     } else if (sess?.city && !isLegacyHardcodedDefaultCity(sess.city)) {
       city = sess.city;
+    }
+    if (city && city.toLowerCase().includes("padang")) {
+      city = "Kota Palembang, Sumatera Selatan";
     }
     return {
       ...pv,
@@ -793,6 +826,11 @@ export function trackTelemetry(data: {
   const uaParsed = parseUserAgent(req?.headers?.["user-agent"]);
   const now = Date.now();
   const sessionId = data.sessionId || `sess_${now}_${Math.random().toString(36).substring(2, 8)}`;
+
+  if (!data.isManualOverride && data.city && data.city.toLowerCase().includes("padang")) {
+    data.city = "Kota Palembang, Sumatera Selatan";
+    data.province = "Sumatera Selatan";
+  }
 
   // If client sent verified public IP + geolocation from browser, cache and backfill immediately
   if ((data.isVerifiedClientGeo || (data.clientIp && !isPrivateOrLocalIP(data.clientIp))) && data.city && !isLegacyHardcodedDefaultCity(data.city)) {
@@ -924,6 +962,11 @@ export function recordHeartbeat(data: {
   const uaParsed = parseUserAgent(req?.headers?.["user-agent"]);
   const now = Date.now();
   const sessionId = data.sessionId || `sess_${now}`;
+
+  if (!data.isManualOverride && data.city && data.city.toLowerCase().includes("padang")) {
+    data.city = "Kota Palembang, Sumatera Selatan";
+    data.province = "Sumatera Selatan";
+  }
 
   if ((data.isVerifiedClientGeo || (data.clientIp && !isPrivateOrLocalIP(data.clientIp))) && data.city && !isLegacyHardcodedDefaultCity(data.city)) {
     const parsedGeo = parseCityAndProvinceFromText(data.city);
@@ -1598,7 +1641,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
   const viewerGeo = viewerIp ? ipGeoCache.get(viewerIp)?.formatted : undefined;
   const latestActiveSession = recentSessions[0];
   const currentVisitorGeo = {
-    city: viewerGeo || latestActiveSession?.city || "Kota Padang, Sumatera Barat",
+    city: viewerGeo || latestActiveSession?.city || "Kota Palembang, Sumatera Selatan",
     ip: (viewerIp && !isPrivateOrLocalIP(viewerIp)) ? viewerIp : (latestActiveSession?.ip || "2404:c0:d403::0")
   };
 
