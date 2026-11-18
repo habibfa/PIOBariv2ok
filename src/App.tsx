@@ -21,7 +21,7 @@ const DiseasesConditions = lazy(() => import("./DiseasesConditions").then(m => (
 const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => ({ default: m.MedicalCalculators })));
 const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
 const AdminWebAnalytics = lazy(() => import("./components/AdminWebAnalytics"));
-import { trackCustomEvent, trackPageView, sendHeartbeat } from "./services/analyticsService";
+import { trackCustomEvent, trackPageView, sendHeartbeat, detectRealClientLocation, getDetectedClientGeoMeta } from "./services/analyticsService";
 
 const TabLoadingFallback = () => (
   <div className="w-full py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -1495,17 +1495,37 @@ export default function App() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginPassword === "habibfa07") {
+    if (loginPassword.trim() === "519592Fa07$") {
       setIsAdmin(true);
       setIsLoginModalOpen(false);
       setLoginPassword("");
       setLoginError("");
       setActiveTab("analytics");
-      trackCustomEvent("admin_login", {
-        category: "conversion",
-        label: "Admin RSUD Palembang BARI berhasil masuk ke sistem",
-        metadata: { role: "Administrator PIOBARI" }
-      });
+      detectRealClientLocation()
+        .then((detectedCity) => {
+          const geoMeta = getDetectedClientGeoMeta();
+          const finalCity = detectedCity || geoMeta?.formatted || "";
+          trackCustomEvent("admin_login", {
+            category: "conversion",
+            label: finalCity
+              ? `Login Admin Berhasil (${finalCity})`
+              : "Login Admin Berhasil (Terverifikasi)",
+            city: finalCity,
+            metadata: {
+              role: "Administrator PIOBARI",
+              ip: geoMeta?.ip || undefined,
+              isp: geoMeta?.isp || undefined,
+              province: geoMeta?.province || undefined
+            }
+          });
+        })
+        .catch(() => {
+          trackCustomEvent("admin_login", {
+            category: "conversion",
+            label: "Login Admin Berhasil (Terverifikasi)",
+            metadata: { role: "Administrator PIOBARI" }
+          });
+        });
     } else {
       setLoginError("Password salah!");
     }

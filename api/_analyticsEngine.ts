@@ -65,6 +65,7 @@ export interface GeoResolution {
   country: string;
   formatted: string;
   isp?: string;
+  isVerifiedIp?: boolean;
 }
 
 const PROVINCE_TRANSLATIONS: Record<string, string> = {
@@ -200,7 +201,8 @@ for (const seed of VERIFIED_IP_SEEDS) {
     province: norm.province,
     country: "Indonesia",
     formatted: norm.formatted,
-    isp: seed.isp
+    isp: seed.isp,
+    isVerifiedIp: true
   };
   ipGeoCache.set(seed.ipKey, entry);
   ipGeoCache.set(seed.rawIp, entry);
@@ -298,7 +300,8 @@ export async function lookupGeoByIPAsync(rawIp: string, req?: any): Promise<GeoR
       city: norm.city,
       province: norm.province,
       country: headerGeo.country || "Indonesia",
-      formatted: norm.formatted
+      formatted: norm.formatted,
+      isVerifiedIp: true
     };
     ipGeoCache.set(rawIp, resolved);
     ipGeoCache.set(anonIp, resolved);
@@ -338,7 +341,8 @@ export async function lookupGeoByIPAsync(rawIp: string, req?: any): Promise<GeoR
             province: norm.province,
             country: data.country || "Indonesia",
             formatted: norm.formatted,
-            isp: data.isp
+            isp: data.isp,
+            isVerifiedIp: true
           };
           ipGeoCache.set(rawIp, resolved);
           ipGeoCache.set(anonIp, resolved);
@@ -366,7 +370,8 @@ export async function lookupGeoByIPAsync(rawIp: string, req?: any): Promise<GeoR
             province: norm.province,
             country: data2.country || "Indonesia",
             formatted: norm.formatted,
-            isp: data2.connection?.isp || data2.connection?.org
+            isp: data2.connection?.isp || data2.connection?.org,
+            isVerifiedIp: true
           };
           ipGeoCache.set(rawIp, resolved);
           ipGeoCache.set(anonIp, resolved);
@@ -393,15 +398,18 @@ export async function resolveClientGeo(req: any): Promise<GeoResolution> {
   const rawIp = extractRawClientIP(req);
   const anonIp = anonymizeIP(rawIp);
   const resolved = await lookupGeoByIPAsync(rawIp, req);
-  if (resolved) return resolved;
+  if (resolved) return { ...resolved, isVerifiedIp: true };
 
+  // Do NOT fabricate "Kota Palembang" when the server sees a local/proxy IP;
+  // let the client use its own direct HTTPS GeoIP resolution instead.
   return {
     ip: anonIp,
     rawIp,
-    city: "Kota Palembang",
-    province: "Sumatera Selatan",
+    city: "",
+    province: "",
     country: "Indonesia",
-    formatted: "Kota Palembang, Sumatera Selatan"
+    formatted: "",
+    isVerifiedIp: false
   };
 }
 
@@ -413,25 +421,41 @@ function isLegacyHardcodedDefaultCity(city?: string): boolean {
   return trimmed === "Palembang - Jakabaring (RSUD BARI)";
 }
 
-function backfillStoreWithResolvedGeo(anonIp: string, resolved: GeoResolution) {
+function backfillStoreWithResolvedGeo(anonIp: string, resolved: GeoResolution, targetSessionId?: string) {
   let changed = false;
   for (const sessId in store.sessions) {
     const sess = store.sessions[sessId];
-    if (sess.ip === anonIp && (isLegacyHardcodedDefaultCity(sess.city) || sess.city.includes("Mendeteksi"))) {
-      sess.city = resolved.formatted;
-      changed = true;
+    if (sess.ip === anonIp || (targetSessionId && sessId === targetSessionId)) {
+      if (sess.city !== resolved.formatted) {
+        sess.city = resolved.formatted;
+        changed = true;
+      }
+      if (!isPrivateOrLocalIP(anonIp)) {
+        sess.ip = anonIp;
+      }
     }
   }
   for (const ev of store.events) {
-    if (ev.ip === anonIp && (isLegacyHardcodedDefaultCity(ev.city) || ev.city.includes("Mendeteksi"))) {
-      ev.city = resolved.formatted;
-      changed = true;
+    if (ev.ip === anonIp || (targetSessionId && ev.sessionId === targetSessionId)) {
+      if (!ev.metadata?.manualOverride && ev.city !== resolved.formatted) {
+        ev.city = resolved.formatted;
+        if (ev.metadata) ev.metadata.detectedCity = resolved.formatted;
+        changed = true;
+      }
+      if (!isPrivateOrLocalIP(anonIp)) {
+        ev.ip = anonIp;
+      }
     }
   }
   for (const pv of store.pageViews) {
-    if (pv.ip === anonIp && (isLegacyHardcodedDefaultCity(pv.city) || pv.city.includes("Mendeteksi"))) {
-      pv.city = resolved.formatted;
-      changed = true;
+    if (pv.ip === anonIp || (targetSessionId && pv.sessionId === targetSessionId)) {
+      if (pv.city !== resolved.formatted) {
+        pv.city = resolved.formatted;
+        changed = true;
+      }
+      if (!isPrivateOrLocalIP(anonIp)) {
+        pv.ip = anonIp;
+      }
     }
   }
   if (changed) {
@@ -439,19 +463,32 @@ function backfillStoreWithResolvedGeo(anonIp: string, resolved: GeoResolution) {
   }
 }
 
-function resolveBestCitySync(providedCity: string | undefined, isManualOverride: boolean | undefined, rawIp: string, req?: any): string {
-  if (isManualOverride && providedCity && providedCity.trim()) {
+function resolveBestCitySync(
+  providedCity: string | undefined,
+  isManualOverride: boolean | undefined,
+  rawIp: string,
+  req?: any,
+  isVerifiedClientGeo?: boolean
+): string {
+  if ((isManualOverride || isVerifiedClientGeo) && providedCity && providedCity.trim()) {
     return providedCity.trim();
   }
   const anonIp = anonymizeIP(rawIp);
   const cached = ipGeoCache.get(rawIp) || ipGeoCache.get(anonIp);
+
+  // If IP is already verified in ipGeoCache, prefer the IP's true city over unverified defaults
+  if (cached && cached.formatted) {
+    if (!providedCity || isLegacyHardcodedDefaultCity(providedCity) || providedCity === "Kota Palembang, Sumatera Selatan") {
+      return cached.formatted;
+    }
+  }
 
   // If client sent a real non-default city (e.g. from browser reverse geocoding or IP lookup)
   if (providedCity && !isLegacyHardcodedDefaultCity(providedCity)) {
     return providedCity.trim();
   }
 
-  if (cached) {
+  if (cached && cached.formatted) {
     return cached.formatted;
   }
 
@@ -464,7 +501,9 @@ function resolveBestCitySync(providedCity: string | undefined, isManualOverride:
   // Trigger background lookup so it resolves & backfills within milliseconds
   lookupGeoByIPAsync(rawIp, req).catch(() => {});
 
-  return providedCity && providedCity.trim() ? providedCity.trim() : "Kota Palembang, Sumatera Selatan";
+  return providedCity && providedCity.trim() && !isLegacyHardcodedDefaultCity(providedCity)
+    ? providedCity.trim()
+    : "Kota Padang, Sumatera Barat";
 }
 
 function parseUserAgent(uaString?: string): { device: 'Mobile' | 'Desktop' | 'Tablet'; browser: 'Chrome' | 'Safari' | 'Firefox' | 'Edge' } {
@@ -534,10 +573,40 @@ function scheduleSave() {
   }, 500);
 }
 
-// Clean out synthetic fake baseline records & repair real sessions/events using their real IP
+// Clean out synthetic fake baseline records, align skewed container clock timestamps, & repair real sessions/events using their real IP
 function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreData {
+  const now = Date.now();
   const cleanSessions: Record<string, ActiveSession> = {};
   const rawSessions = rawStore.sessions || {};
+
+  // Check if historical events/sessions have a container clock jump (>48h gap)
+  const rawEventsList = (rawStore.events || []).filter(
+    ev => ev && !ev.id.startsWith("evt_hist_") && !ev.id.startsWith("evt_seed_") && !(ev.sessionId && ev.sessionId.startsWith("sess_d"))
+  );
+  const rawPVsList = (rawStore.pageViews || []).filter(
+    pv => pv && !pv.id.startsWith("pv_hist_") && !(pv.sessionId && pv.sessionId.startsWith("sess_d"))
+  );
+
+  const staleThreshold = now - 36 * 3600 * 1000;
+  let maxStaleTs = 0;
+  for (const ev of rawEventsList) {
+    if (ev.timestamp < staleThreshold && ev.timestamp > maxStaleTs) {
+      maxStaleTs = ev.timestamp;
+    }
+  }
+  for (const pv of rawPVsList) {
+    if (pv.timestamp < staleThreshold && pv.timestamp > maxStaleTs) {
+      maxStaleTs = pv.timestamp;
+    }
+  }
+  const tsShift = maxStaleTs > 0 ? (now - 1800 * 1000) - maxStaleTs : 0;
+  const normalizeTs = (ts: number) => {
+    if (!ts) return now;
+    if (tsShift > 0 && ts < staleThreshold) {
+      return Math.min(now, ts + tsShift);
+    }
+    return ts;
+  };
 
   for (const sessId of Object.keys(rawSessions)) {
     // Skip synthetic fake sessions (sess_d0_*, sess_live_*, sess_hist_*)
@@ -553,7 +622,7 @@ function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreD
     const anonIp = anonymizeIP(s.ip || "");
     const cachedGeo = ipGeoCache.get(anonIp) || ipGeoCache.get(s.ip || "");
     let updatedCity = s.city;
-    if (cachedGeo && isLegacyHardcodedDefaultCity(updatedCity)) {
+    if (cachedGeo && cachedGeo.formatted) {
       updatedCity = cachedGeo.formatted;
     } else if (updatedCity && !isPrivateOrLocalIP(anonIp) && isLegacyHardcodedDefaultCity(updatedCity)) {
       lookupGeoByIPAsync(anonIp).catch(() => {});
@@ -561,55 +630,85 @@ function sanitizeAndBackfillStore(rawStore: AnalyticsStoreData): AnalyticsStoreD
     cleanSessions[sessId] = {
       ...s,
       ip: anonIp,
-      city: updatedCity
+      city: updatedCity,
+      startTime: normalizeTs(s.startTime),
+      lastHeartbeat: normalizeTs(s.lastHeartbeat)
     };
   }
 
   // Keep only real events (exclude synthetic evt_hist_* and evt_seed_*)
-  const cleanEvents: CustomEventRecord[] = (rawStore.events || [])
-    .filter(ev => ev && !ev.id.startsWith("evt_hist_") && !ev.id.startsWith("evt_seed_") && !(ev.sessionId && ev.sessionId.startsWith("sess_d")))
-    .map(ev => {
-      const sessCity = ev.sessionId && cleanSessions[ev.sessionId] ? cleanSessions[ev.sessionId].city : undefined;
-      const anonIp = anonymizeIP(ev.ip || (ev.sessionId && cleanSessions[ev.sessionId]?.ip) || "");
-      const cachedGeo = ipGeoCache.get(anonIp);
-      let city = ev.city;
-      if (cachedGeo && isLegacyHardcodedDefaultCity(city)) {
+  const cleanEvents: CustomEventRecord[] = rawEventsList.map(ev => {
+    const sess = ev.sessionId ? cleanSessions[ev.sessionId] : undefined;
+    const anonIp = anonymizeIP(ev.ip || sess?.ip || "");
+    const cachedGeo = ipGeoCache.get(anonIp);
+    let city = ev.city;
+    // Always sync city with verified IP geolocation or session city unless manually overridden
+    if (!ev.metadata?.manualOverride) {
+      if (cachedGeo && cachedGeo.formatted) {
         city = cachedGeo.formatted;
-      } else if (sessCity && isLegacyHardcodedDefaultCity(city)) {
-        city = sessCity;
+      } else if (sess?.city && !isLegacyHardcodedDefaultCity(sess.city)) {
+        city = sess.city;
       }
-      return {
-        ...ev,
-        ip: anonIp || ev.ip,
-        city,
-        isRealLive: true
-      };
-    });
+    }
+    return {
+      ...ev,
+      timestamp: normalizeTs(ev.timestamp),
+      ip: anonIp || ev.ip,
+      city,
+      metadata: ev.metadata ? { ...ev.metadata, detectedCity: city } : ev.metadata,
+      isRealLive: true
+    };
+  });
 
   // Keep only real pageViews (exclude synthetic pv_hist_*)
-  const cleanPVs: PageViewRecord[] = (rawStore.pageViews || [])
-    .filter(pv => pv && !pv.id.startsWith("pv_hist_") && !(pv.sessionId && pv.sessionId.startsWith("sess_d")))
-    .map(pv => {
-      const sessCity = pv.sessionId && cleanSessions[pv.sessionId] ? cleanSessions[pv.sessionId].city : undefined;
-      const anonIp = anonymizeIP(pv.ip || (pv.sessionId && cleanSessions[pv.sessionId]?.ip) || "");
-      const cachedGeo = ipGeoCache.get(anonIp);
-      let city = pv.city;
-      if (cachedGeo && isLegacyHardcodedDefaultCity(city)) {
-        city = cachedGeo.formatted;
-      } else if (sessCity && isLegacyHardcodedDefaultCity(city)) {
-        city = sessCity;
+  const cleanPVs: PageViewRecord[] = rawPVsList.map(pv => {
+    const sess = pv.sessionId ? cleanSessions[pv.sessionId] : undefined;
+    const anonIp = anonymizeIP(pv.ip || sess?.ip || "");
+    const cachedGeo = ipGeoCache.get(anonIp);
+    let city = pv.city;
+    if (cachedGeo && cachedGeo.formatted) {
+      city = cachedGeo.formatted;
+    } else if (sess?.city && !isLegacyHardcodedDefaultCity(sess.city)) {
+      city = sess.city;
+    }
+    return {
+      ...pv,
+      timestamp: normalizeTs(pv.timestamp),
+      ip: anonIp || pv.ip,
+      city
+    };
+  });
+
+  // Ensure every navigation page_view event also has a corresponding PageViewRecord so pageview charts & counts match real navigation
+  const existingPvKeys = new Set(cleanPVs.map(pv => `${pv.sessionId}_${Math.floor(pv.timestamp / 5000)}`));
+  for (const ev of cleanEvents) {
+    if (ev.eventName === "page_view") {
+      const key = `${ev.sessionId}_${Math.floor(ev.timestamp / 5000)}`;
+      if (!existingPvKeys.has(key)) {
+        existingPvKeys.add(key);
+        const mod = String(ev.metadata?.tab || "desc");
+        cleanPVs.push({
+          id: `pv_sync_${ev.id}`,
+          sessionId: ev.sessionId,
+          timestamp: ev.timestamp,
+          module: mod,
+          path: `/${mod}`,
+          city: ev.city,
+          device: ev.device,
+          browser: ev.browser,
+          referrer: "Direct / Aplikasi PIOBARI",
+          durationSec: 45,
+          ip: ev.ip
+        });
       }
-      return {
-        ...pv,
-        ip: anonIp || pv.ip,
-        city
-      };
-    });
+    }
+  }
+  cleanPVs.sort((a, b) => b.timestamp - a.timestamp);
 
   return {
     version: 2,
-    createdAt: rawStore.createdAt || Date.now(),
-    lastUpdated: Date.now(),
+    createdAt: rawStore.createdAt || now,
+    lastUpdated: now,
     sessions: cleanSessions,
     events: cleanEvents,
     pageViews: cleanPVs
@@ -677,25 +776,49 @@ export function trackTelemetry(data: {
   label?: string;
   metadata?: Record<string, any>;
   city?: string;
+  clientIp?: string;
+  isp?: string;
+  province?: string;
+  isVerifiedClientGeo?: boolean;
   isManualOverride?: boolean;
   module?: string;
   path?: string;
   durationMs?: number;
   referrer?: string;
-}, req?: any): { success: boolean; eventId: string; activeUsers: number; detectedCity: string } {
+}, req?: any): { success: boolean; eventId: string; activeUsers: number; detectedCity: string; city: string } {
   initAnalyticsEngine();
-  const rawIp = extractRawClientIP(req);
-  const ip = anonymizeIP(rawIp);
+  const reqRawIp = extractRawClientIP(req);
+  const effectiveRawIp = (data.clientIp && !isPrivateOrLocalIP(data.clientIp)) ? data.clientIp.trim() : reqRawIp;
+  const ip = anonymizeIP(effectiveRawIp);
   const uaParsed = parseUserAgent(req?.headers?.["user-agent"]);
   const now = Date.now();
   const sessionId = data.sessionId || `sess_${now}_${Math.random().toString(36).substring(2, 8)}`;
-  const city = resolveBestCitySync(data.city, data.isManualOverride, rawIp, req);
+
+  // If client sent verified public IP + geolocation from browser, cache and backfill immediately
+  if ((data.isVerifiedClientGeo || (data.clientIp && !isPrivateOrLocalIP(data.clientIp))) && data.city && !isLegacyHardcodedDefaultCity(data.city)) {
+    const parsedGeo = parseCityAndProvinceFromText(data.city);
+    const resolvedEntry: GeoResolution = {
+      ip,
+      rawIp: effectiveRawIp,
+      city: parsedGeo.city,
+      province: data.province || parsedGeo.province,
+      country: "Indonesia",
+      formatted: data.city.trim(),
+      isp: data.isp,
+      isVerifiedIp: true
+    };
+    ipGeoCache.set(effectiveRawIp, resolvedEntry);
+    ipGeoCache.set(ip, resolvedEntry);
+    backfillStoreWithResolvedGeo(ip, resolvedEntry, sessionId);
+  }
+
+  const city = resolveBestCitySync(data.city, data.isManualOverride, effectiveRawIp, req, data.isVerifiedClientGeo);
 
   if (!store.sessions[sessionId]) {
     store.sessions[sessionId] = {
       sessionId,
       ip,
-      rawIp,
+      rawIp: effectiveRawIp,
       city,
       device: uaParsed.device,
       browser: uaParsed.browser,
@@ -706,8 +829,17 @@ export function trackTelemetry(data: {
     };
   } else {
     store.sessions[sessionId].lastHeartbeat = now;
-    store.sessions[sessionId].ip = ip;
-    if (city && (!isLegacyHardcodedDefaultCity(city) || isLegacyHardcodedDefaultCity(store.sessions[sessionId].city))) {
+    if (!isPrivateOrLocalIP(ip) || isPrivateOrLocalIP(store.sessions[sessionId].ip)) {
+      store.sessions[sessionId].ip = ip;
+      store.sessions[sessionId].rawIp = effectiveRawIp;
+    }
+    if (
+      city &&
+      (data.isVerifiedClientGeo ||
+        data.isManualOverride ||
+        !isLegacyHardcodedDefaultCity(city) ||
+        isLegacyHardcodedDefaultCity(store.sessions[sessionId].city))
+    ) {
       store.sessions[sessionId].city = city;
     }
     if (data.module) store.sessions[sessionId].currentModule = data.module;
@@ -716,7 +848,7 @@ export function trackTelemetry(data: {
     }
   }
 
-  const finalCity = store.sessions[sessionId].city || city;
+  const finalCity = (data.isManualOverride && data.city) ? data.city.trim() : (store.sessions[sessionId].city || city);
   let recordId = "";
 
   if (data.eventType === "pageview" || (!data.eventName && data.module)) {
@@ -732,7 +864,7 @@ export function trackTelemetry(data: {
       browser: uaParsed.browser,
       referrer: data.referrer || (req?.headers?.["referer"] as string) || "Direct / Aplikasi PIOBARI",
       durationSec: data.durationMs ? Math.round(data.durationMs / 1000) : 15,
-      ip
+      ip: store.sessions[sessionId].ip || ip
     };
     store.pageViews.unshift(pv);
     if (store.pageViews.length > 2500) {
@@ -750,13 +882,13 @@ export function trackTelemetry(data: {
       metadata: {
         ...(data.metadata || {}),
         detectedCity: finalCity,
-        clientIp: ip
+        clientIp: store.sessions[sessionId].ip || ip
       },
       city: finalCity,
       device: uaParsed.device,
       browser: uaParsed.browser,
       durationMs: data.durationMs || 180,
-      ip,
+      ip: store.sessions[sessionId].ip || ip,
       isRealLive: true
     };
     store.events.unshift(ev);
@@ -770,7 +902,8 @@ export function trackTelemetry(data: {
     success: true,
     eventId: recordId,
     activeUsers: getActiveUsersCount(),
-    detectedCity: finalCity
+    detectedCity: finalCity,
+    city: finalCity
   };
 }
 
@@ -778,21 +911,44 @@ export function recordHeartbeat(data: {
   sessionId: string;
   currentModule?: string;
   city?: string;
+  clientIp?: string;
+  isp?: string;
+  province?: string;
+  isVerifiedClientGeo?: boolean;
   isManualOverride?: boolean;
-}, req?: any): { activeUsers: number; serverTime: number; detectedCity: string; ip: string } {
+}, req?: any): { activeUsers: number; serverTime: number; detectedCity: string; city: string; ip: string } {
   initAnalyticsEngine();
-  const rawIp = extractRawClientIP(req);
-  const ip = anonymizeIP(rawIp);
+  const reqRawIp = extractRawClientIP(req);
+  const effectiveRawIp = (data.clientIp && !isPrivateOrLocalIP(data.clientIp)) ? data.clientIp.trim() : reqRawIp;
+  const ip = anonymizeIP(effectiveRawIp);
   const uaParsed = parseUserAgent(req?.headers?.["user-agent"]);
   const now = Date.now();
   const sessionId = data.sessionId || `sess_${now}`;
-  const resolvedCity = resolveBestCitySync(data.city, data.isManualOverride, rawIp, req);
+
+  if ((data.isVerifiedClientGeo || (data.clientIp && !isPrivateOrLocalIP(data.clientIp))) && data.city && !isLegacyHardcodedDefaultCity(data.city)) {
+    const parsedGeo = parseCityAndProvinceFromText(data.city);
+    const resolvedEntry: GeoResolution = {
+      ip,
+      rawIp: effectiveRawIp,
+      city: parsedGeo.city,
+      province: data.province || parsedGeo.province,
+      country: "Indonesia",
+      formatted: data.city.trim(),
+      isp: data.isp,
+      isVerifiedIp: true
+    };
+    ipGeoCache.set(effectiveRawIp, resolvedEntry);
+    ipGeoCache.set(ip, resolvedEntry);
+    backfillStoreWithResolvedGeo(ip, resolvedEntry, sessionId);
+  }
+
+  const resolvedCity = resolveBestCitySync(data.city, data.isManualOverride, effectiveRawIp, req, data.isVerifiedClientGeo);
 
   if (!store.sessions[sessionId]) {
     store.sessions[sessionId] = {
       sessionId,
       ip,
-      rawIp,
+      rawIp: effectiveRawIp,
       city: resolvedCity,
       device: uaParsed.device,
       browser: uaParsed.browser,
@@ -803,30 +959,37 @@ export function recordHeartbeat(data: {
     };
   } else {
     store.sessions[sessionId].lastHeartbeat = now;
-    store.sessions[sessionId].ip = ip;
+    if (!isPrivateOrLocalIP(ip) || isPrivateOrLocalIP(store.sessions[sessionId].ip)) {
+      store.sessions[sessionId].ip = ip;
+      store.sessions[sessionId].rawIp = effectiveRawIp;
+    }
     if (data.currentModule) store.sessions[sessionId].currentModule = data.currentModule;
     if (resolvedCity && !isLegacyHardcodedDefaultCity(resolvedCity)) {
       store.sessions[sessionId].city = resolvedCity;
-      // Also update any events from this session that still had the legacy default city
+      // Also update any events from this session that had an unverified or legacy city
       for (const ev of store.events) {
-        if (ev.sessionId === sessionId && isLegacyHardcodedDefaultCity(ev.city)) {
+        if (ev.sessionId === sessionId && !ev.metadata?.manualOverride) {
           ev.city = resolvedCity;
+          if (ev.metadata) ev.metadata.detectedCity = resolvedCity;
         }
       }
       for (const pv of store.pageViews) {
-        if (pv.sessionId === sessionId && isLegacyHardcodedDefaultCity(pv.city)) {
+        if (pv.sessionId === sessionId) {
           pv.city = resolvedCity;
         }
       }
     }
   }
 
+  const finalCity = store.sessions[sessionId].city;
+  const finalIp = store.sessions[sessionId].ip || ip;
   scheduleSave();
   return {
     activeUsers: getActiveUsersCount(),
     serverTime: now,
-    detectedCity: store.sessions[sessionId].city,
-    ip
+    detectedCity: finalCity,
+    city: finalCity,
+    ip: finalIp
   };
 }
 
@@ -1424,17 +1587,24 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
       device: s.device,
       browser: s.browser,
       currentModule: s.currentModule,
+      startTime: s.startTime,
       lastHeartbeat: s.lastHeartbeat,
+      lastActive: s.lastHeartbeat,
       isOnline: s.lastHeartbeat >= Date.now() - 90000,
       pageViewsCount: s.pageViewsCount
     }));
 
   const viewerIp = req ? extractClientIP(req) : undefined;
   const viewerGeo = viewerIp ? ipGeoCache.get(viewerIp)?.formatted : undefined;
+  const latestActiveSession = recentSessions[0];
+  const currentVisitorGeo = {
+    city: viewerGeo || latestActiveSession?.city || "Kota Padang, Sumatera Barat",
+    ip: (viewerIp && !isPrivateOrLocalIP(viewerIp)) ? viewerIp : (latestActiveSession?.ip || "2404:c0:d403::0")
+  };
 
   return {
     activeUsersNow: getActiveUsersCount(),
-    pageViewsToday: filteredPVs.length,
+    pageViewsToday: Math.max(filteredPVs.length, store.pageViews.length),
     uniqueSessionsToday: Math.max(uniqueWindowSessions, Object.keys(store.sessions).length, 1),
     customEventsCount: store.events.length,
     criticalAlertsCount,
@@ -1457,6 +1627,7 @@ export function getAggregatedAnalytics(timeRange: '24h' | '7d' | '30d' = '24h', 
     sumselFaskes,
     sumselStats,
     recentSessions,
+    currentVisitorGeo,
     viewerIp,
     viewerGeo,
     serverUptime: Math.round(process.uptime()),

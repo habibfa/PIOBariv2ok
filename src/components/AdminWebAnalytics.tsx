@@ -762,7 +762,7 @@ export const AdminWebAnalytics: React.FC = () => {
                           /{sess.currentModule || "home"}
                         </td>
                         <td className="py-2 px-3.5 text-right font-mono text-[11px] text-slate-400">
-                          {new Date(sess.lastActive).toLocaleString("id-ID", {
+                          {new Date(sess.lastActive || sess.lastHeartbeat || Date.now()).toLocaleString("id-ID", {
                             day: "2-digit",
                             month: "short",
                             hour: "2-digit",
@@ -941,9 +941,9 @@ export const AdminWebAnalytics: React.FC = () => {
             <span className="text-4xl font-black tracking-tight">{stats.activeUsers}</span>
             <span className="text-xs text-teal-100 font-semibold">pengguna online</span>
           </div>
-          <p className="mt-2 text-[11px] text-teal-100/90 flex items-center gap-1">
-            <TrendingUp className="w-3.5 h-3.5" />
-            +18.4% dibandingkan jam sibuk kemarin
+          <p className="mt-2 text-[11px] text-teal-100/90 flex items-center gap-1 truncate">
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
+            {detectedClientGeo?.formatted || serverStats?.currentVisitorGeo?.city || getSelectedOrDetectedCity()}
           </p>
         </div>
 
@@ -962,8 +962,8 @@ export const AdminWebAnalytics: React.FC = () => {
               {stats.totalTodayViews.toLocaleString("id-ID")}
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
-              <span>{stats.uniqueSessions.toLocaleString("id-ID")} Sesi Klinis Unik</span>
-              <span className="text-emerald-600 font-bold">+12.6%</span>
+              <span>{stats.uniqueSessions.toLocaleString("id-ID")} Sesi IP Unik</span>
+              <span className="text-emerald-600 font-bold">{geoDistribution.length} Kota Real</span>
             </div>
           </div>
         </div>
@@ -984,7 +984,7 @@ export const AdminWebAnalytics: React.FC = () => {
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500">
               <span>{stats.clinicalCount} aksi klinis tercatat</span>
-              <span className="text-purple-600 font-bold">100% Terpantau</span>
+              <span className="text-purple-600 font-bold">Real-Time DB</span>
             </div>
           </div>
         </div>

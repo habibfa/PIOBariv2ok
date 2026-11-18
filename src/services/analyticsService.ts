@@ -75,20 +75,20 @@ type EventListener = (event: CustomEventRecord) => void;
 
 const LISTENERS: Set<EventListener> = new Set();
 const STORAGE_KEY = "med_analytics_custom_events_v4";
-const DETECTED_CITY_KEY = "piobari_detected_real_city";
-const DETECTED_GEO_META_KEY = "piobari_detected_geo_meta";
-const MANUAL_TEST_CITY_KEY = "piobari_manual_test_city_v2";
+const DETECTED_CITY_KEY = "piobari_detected_real_city_v3";
+const DETECTED_GEO_META_KEY = "piobari_detected_geo_meta_v3";
+const MANUAL_TEST_CITY_KEY = "piobari_manual_test_city_v3";
 
 let geoDetectionPromise: Promise<string> | null = null;
 
 // Clean up any legacy hardcoded Palembang overrides from older versions
 if (typeof window !== "undefined") {
   try {
-    const legacyCity = localStorage.getItem("piobari_preferred_faskes_city");
-    if (legacyCity === "Palembang - Jakabaring (RSUD BARI)") {
-      localStorage.removeItem("piobari_preferred_faskes_city");
-    }
+    localStorage.removeItem("piobari_preferred_faskes_city");
     localStorage.removeItem("med_analytics_custom_events_v3");
+    sessionStorage.removeItem("piobari_detected_real_city");
+    sessionStorage.removeItem("piobari_detected_geo_meta");
+    sessionStorage.removeItem("piobari_manual_test_city_v2");
   } catch {}
 }
 
@@ -105,81 +105,195 @@ export function getClientSessionId(): string {
 
 const PROVINCE_MAP_ID: Record<string, string> = {
   "South Sumatra": "Sumatera Selatan",
+  "Sumatera Selatan": "Sumatera Selatan",
   "West Sumatra": "Sumatera Barat",
+  "Sumatera Barat": "Sumatera Barat",
   "North Sumatra": "Sumatera Utara",
+  "Sumatera Utara": "Sumatera Utara",
   "Jakarta": "DKI Jakarta",
+  "DKI Jakarta": "DKI Jakarta",
   "Special Capital Region of Jakarta": "DKI Jakarta",
   "West Java": "Jawa Barat",
+  "Jawa Barat": "Jawa Barat",
   "Central Java": "Jawa Tengah",
+  "Jawa Tengah": "Jawa Tengah",
   "East Java": "Jawa Timur",
+  "Jawa Timur": "Jawa Timur",
   "Special Region of Yogyakarta": "DI Yogyakarta",
+  "DI Yogyakarta": "DI Yogyakarta",
+  "Banten": "Banten",
+  "Riau": "Riau",
   "Riau Islands": "Kepulauan Riau",
+  "Jambi": "Jambi",
+  "Bengkulu": "Bengkulu",
+  "Lampung": "Lampung",
+  "Aceh": "Aceh",
+  "Bali": "Bali",
   "Bangka Belitung Islands": "Kep. Bangka Belitung",
   "East Kalimantan": "Kalimantan Timur",
   "South Kalimantan": "Kalimantan Selatan",
   "West Kalimantan": "Kalimantan Barat",
+  "Central Kalimantan": "Kalimantan Tengah",
+  "North Kalimantan": "Kalimantan Utara",
   "South Sulawesi": "Sulawesi Selatan",
-  "North Sulawesi": "Sulawesi Utara"
+  "North Sulawesi": "Sulawesi Utara",
+  "Central Sulawesi": "Sulawesi Tengah",
+  "Southeast Sulawesi": "Sulawesi Tenggara"
 };
 
-// Asynchronously detect real client city & province via server GeoIP and public GeoIP fallback
+function formatIndonesianCityAndProvince(rawCity: string, rawRegion?: string, rawCountry?: string): {
+  city: string;
+  province: string;
+  country: string;
+  formatted: string;
+} {
+  const country = (rawCountry || "Indonesia").trim();
+  const regTrim = (rawRegion || "").trim();
+  let province = PROVINCE_MAP_ID[regTrim] || regTrim || country;
+
+  let cityClean = (rawCity || "").trim();
+  const cityLow = cityClean.toLowerCase();
+  if (cityLow.includes("padang")) province = "Sumatera Barat";
+  else if (cityLow.includes("jakarta")) province = "DKI Jakarta";
+  else if (cityLow.includes("bandung") || cityLow.includes("bekasi") || cityLow.includes("depok") || cityLow.includes("bogor")) province = "Jawa Barat";
+  else if (cityLow.includes("surabaya") || cityLow.includes("malang")) province = "Jawa Timur";
+  else if (cityLow.includes("semarang") || cityLow.includes("surakarta") || cityLow.includes("solo")) province = "Jawa Tengah";
+  else if (cityLow.includes("yogyakarta") || cityLow.includes("sleman")) province = "DI Yogyakarta";
+  else if (cityLow.includes("medan")) province = "Sumatera Utara";
+  else if (cityLow.includes("pekanbaru")) province = "Riau";
+  else if (cityLow.includes("batam")) province = "Kepulauan Riau";
+  else if (cityLow.includes("palembang") || cityLow.includes("banyuasin") || cityLow.includes("sungai gerong") || cityLow.includes("sungaigerong") || cityLow.includes("ogan") || cityLow.includes("prabumulih")) {
+    province = "Sumatera Selatan";
+  }
+
+  if (cityLow === "sungaigerong" || cityLow === "sungai gerong") {
+    cityClean = "Sungai Gerong (Kab. Banyuasin)";
+  } else if (cityLow === "jakarta" || cityLow.startsWith("jakarta ")) {
+    cityClean = "Jakarta";
+  } else if (
+    country.toLowerCase().includes("indonesia") &&
+    !cityLow.startsWith("kota ") &&
+    !cityLow.startsWith("kab") &&
+    !cityLow.includes("(")
+  ) {
+    cityClean = `Kota ${cityClean}`;
+  }
+
+  const formatted = cityClean.toLowerCase().includes(province.toLowerCase())
+    ? cityClean
+    : `${cityClean}, ${province}`;
+
+  return { city: cityClean, province, country, formatted };
+}
+
+// Asynchronously detect real client city & province via browser public GeoIP (primary) and server GeoIP (secondary)
 export async function detectRealClientLocation(): Promise<string> {
   if (typeof window === "undefined") return "";
   const cached = sessionStorage.getItem(DETECTED_CITY_KEY);
-  if (cached && cached !== "Mendeteksi Lokasi...") {
+  const cachedMeta = getDetectedClientGeoMeta();
+  if (cached && cached !== "Mendeteksi Lokasi..." && cachedMeta?.ip) {
     return cached;
   }
   if (geoDetectionPromise) return geoDetectionPromise;
 
   geoDetectionPromise = (async () => {
-    // 1. Try server-side IP resolution first (/api/analytics/geo)
+    const saveAndSync = (payload: {
+      ip: string;
+      city: string;
+      province: string;
+      country: string;
+      isp?: string;
+      formatted: string;
+    }) => {
+      sessionStorage.setItem(DETECTED_CITY_KEY, payload.formatted);
+      sessionStorage.setItem(DETECTED_GEO_META_KEY, JSON.stringify(payload));
+      fetch("/api/analytics/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: getClientSessionId(),
+          currentModule: "app",
+          city: payload.formatted,
+          clientIp: payload.ip,
+          province: payload.province,
+          isp: payload.isp || "",
+          isVerifiedClientGeo: true
+        })
+      }).catch(() => {});
+      return payload.formatted;
+    };
+
+    // 1. Primary: Direct browser lookup via ipwho.is (reads user's real public IP directly from browser)
     try {
-      const res = await fetch("/api/analytics/geo");
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.formatted && !data.formatted.includes("Jaringan Lokal")) {
-          sessionStorage.setItem(DETECTED_CITY_KEY, data.formatted);
-          sessionStorage.setItem(DETECTED_GEO_META_KEY, JSON.stringify(data));
-          return data.formatted as string;
+      const res1 = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(3500) });
+      if (res1.ok) {
+        const d1 = await res1.json();
+        if (d1 && d1.success !== false && d1.city && d1.ip) {
+          const norm = formatIndonesianCityAndProvince(d1.city, d1.region, d1.country);
+          return saveAndSync({
+            ip: String(d1.ip),
+            city: norm.city,
+            province: norm.province,
+            country: norm.country,
+            isp: d1.connection?.isp || d1.connection?.org || "",
+            formatted: norm.formatted
+          });
         }
       }
     } catch {}
 
-    // 2. Fallback to direct browser lookup via ipwho.is (recognizes the client's public IP even behind local proxy)
+    // 2. Secondary browser lookup: freeipapi.com
     try {
-      const res2 = await fetch("https://ipwho.is/");
+      const res2 = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(3500) });
       if (res2.ok) {
         const d2 = await res2.json();
-        if (d2 && d2.success !== false && d2.city) {
-          const rawProv = String(d2.region || d2.country || "Indonesia").trim();
-          const prov = PROVINCE_MAP_ID[rawProv] || rawProv;
-          const cityClean = String(d2.city).trim();
-          const formatted = cityClean.toLowerCase().includes("kota ") || cityClean.toLowerCase().includes("kab")
-            ? `${cityClean}, ${prov}`
-            : `Kota ${cityClean}, ${prov}`;
-          sessionStorage.setItem(DETECTED_CITY_KEY, formatted);
-          sessionStorage.setItem(
-            DETECTED_GEO_META_KEY,
-            JSON.stringify({
-              ip: d2.ip || "",
-              city: `Kota ${cityClean}`,
-              province: prov,
-              country: d2.country || "Indonesia",
-              isp: d2.connection?.isp || d2.connection?.org || "",
-              formatted
-            })
-          );
-          // Inform server heartbeat immediately with the newly detected public city
-          fetch("/api/analytics/heartbeat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId: getClientSessionId(),
-              currentModule: "app",
-              city: formatted
-            })
-          }).catch(() => {});
-          return formatted;
+        if (d2 && d2.cityName && d2.ipAddress) {
+          const norm = formatIndonesianCityAndProvince(d2.cityName, d2.regionName, d2.countryName);
+          return saveAndSync({
+            ip: String(d2.ipAddress),
+            city: norm.city,
+            province: norm.province,
+            country: norm.country,
+            isp: "",
+            formatted: norm.formatted
+          });
+        }
+      }
+    } catch {}
+
+    // 3. Tertiary browser lookup: api.db-ip.com
+    try {
+      const res3 = await fetch("https://api.db-ip.com/v2/free/self", { signal: AbortSignal.timeout(3500) });
+      if (res3.ok) {
+        const d3 = await res3.json();
+        if (d3 && d3.city && d3.ipAddress) {
+          const norm = formatIndonesianCityAndProvince(d3.city, d3.stateProv, d3.countryName);
+          return saveAndSync({
+            ip: String(d3.ipAddress),
+            city: norm.city,
+            province: norm.province,
+            country: norm.country,
+            isp: "",
+            formatted: norm.formatted
+          });
+        }
+      }
+    } catch {}
+
+    // 4. Server-side GeoIP endpoint (/api/analytics/geo) — only if verified public IP
+    try {
+      const res4 = await fetch("/api/analytics/geo");
+      if (res4.ok) {
+        const data = await res4.json();
+        if (data?.formatted && data?.isVerifiedIp) {
+          return saveAndSync({
+            ip: data.rawIp || data.ip || "",
+            city: data.city || data.formatted,
+            province: data.province || "Indonesia",
+            country: data.country || "Indonesia",
+            isp: data.isp || "",
+            formatted: data.formatted
+          });
         }
       }
     } catch {}
@@ -214,10 +328,10 @@ if (typeof window !== "undefined") {
 // Return real detected city (or empty string so backend resolves from client IP; NEVER hardcode Palembang!)
 export function getSelectedOrDetectedCity(): string {
   if (typeof window === "undefined") return "";
-  const detected = sessionStorage.getItem(DETECTED_CITY_KEY);
-  if (detected) return detected;
   const manual = sessionStorage.getItem(MANUAL_TEST_CITY_KEY);
   if (manual) return manual;
+  const detected = sessionStorage.getItem(DETECTED_CITY_KEY);
+  if (detected) return detected;
   return "";
 }
 
@@ -323,6 +437,8 @@ export function trackPageView(module: string, path?: string, label?: string): vo
   const { device, browser } = detectClientDevice();
 
   const sendTrack = (resolvedCity: string) => {
+    const geoMeta = getDetectedClientGeoMeta();
+    const isManual = typeof window !== "undefined" && Boolean(sessionStorage.getItem(MANUAL_TEST_CITY_KEY));
     try {
       fetch("/api/analytics/track", {
         method: "POST",
@@ -334,6 +450,11 @@ export function trackPageView(module: string, path?: string, label?: string): vo
           path: path || `/${module}`,
           label: label || `Akses Modul: ${module}`,
           city: resolvedCity,
+          clientIp: geoMeta?.ip || undefined,
+          isp: geoMeta?.isp || undefined,
+          province: geoMeta?.province || undefined,
+          isVerifiedClientGeo: Boolean(resolvedCity && (geoMeta?.ip || isManual)),
+          isManualOverride: isManual,
           device,
           browser,
           referrer: typeof document !== "undefined" ? document.referrer : ""
@@ -365,6 +486,7 @@ export function trackCustomEvent(
   const { device, browser } = detectClientDevice();
   const detectedOrManual = params.city || getSelectedOrDetectedCity();
   const sessionId = getClientSessionId();
+  const geoMeta = getDetectedClientGeoMeta();
 
   const record: CustomEventRecord = {
     id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -373,8 +495,12 @@ export function trackCustomEvent(
     eventName,
     category: params.category || 'custom',
     label: params.label,
-    metadata: params.metadata || {},
-    city: detectedOrManual || "Deteksi Otomatis IP",
+    metadata: {
+      ...(params.metadata || {}),
+      ...(geoMeta?.ip ? { clientIp: geoMeta.ip } : {}),
+      ...(geoMeta?.isp ? { isp: geoMeta.isp } : {})
+    },
+    city: detectedOrManual || geoMeta?.formatted || "Mendeteksi Lokasi IP...",
     device,
     browser,
     durationMs: Math.floor(Math.random() * 400) + 110,
@@ -395,6 +521,8 @@ export function trackCustomEvent(
   });
 
   const dispatchToServer = (finalCity: string) => {
+    const latestMeta = getDetectedClientGeoMeta();
+    const isManual = Boolean(params.city) || (typeof window !== "undefined" && Boolean(sessionStorage.getItem(MANUAL_TEST_CITY_KEY)));
     try {
       fetch("/api/analytics/track", {
         method: "POST",
@@ -407,6 +535,11 @@ export function trackCustomEvent(
           label: record.label,
           metadata: record.metadata,
           city: finalCity,
+          clientIp: latestMeta?.ip || undefined,
+          isp: latestMeta?.isp || undefined,
+          province: latestMeta?.province || undefined,
+          isVerifiedClientGeo: Boolean(finalCity && (latestMeta?.ip || isManual)),
+          isManualOverride: isManual,
           device,
           browser,
           durationMs: record.durationMs
@@ -414,8 +547,9 @@ export function trackCustomEvent(
       })
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => {
-          if (json?.city && json.city !== record.city) {
-            record.city = json.city;
+          const resolved = json?.detectedCity || json?.city;
+          if (resolved && resolved !== record.city) {
+            record.city = resolved;
           }
         })
         .catch(() => {});
@@ -443,11 +577,6 @@ export async function fetchRealAnalyticsStats(timeRange: '24h' | '7d' | '30d' = 
     const res = await fetch(`/api/analytics/stats?timeRange=${timeRange}&timezone=${encodeURIComponent(tz)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (data?.currentVisitorGeo?.city && typeof window !== "undefined") {
-      if (!data.currentVisitorGeo.city.includes("Jaringan Lokal")) {
-        sessionStorage.setItem(DETECTED_CITY_KEY, data.currentVisitorGeo.city);
-      }
-    }
     return data;
   } catch (err) {
     return null;
@@ -480,20 +609,24 @@ export async function fetchRealEvents(options?: {
 export async function sendHeartbeat(currentModule: string, city?: string): Promise<number | null> {
   try {
     const resolvedCity = city || getSelectedOrDetectedCity() || (await detectRealClientLocation());
+    const geoMeta = getDetectedClientGeoMeta();
+    const isManual = Boolean(city) || (typeof window !== "undefined" && Boolean(sessionStorage.getItem(MANUAL_TEST_CITY_KEY)));
     const res = await fetch("/api/analytics/heartbeat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         sessionId: getClientSessionId(),
         currentModule,
-        city: resolvedCity || ""
+        city: resolvedCity || "",
+        clientIp: geoMeta?.ip || undefined,
+        isp: geoMeta?.isp || undefined,
+        province: geoMeta?.province || undefined,
+        isVerifiedClientGeo: Boolean(resolvedCity && (geoMeta?.ip || isManual)),
+        isManualOverride: isManual
       })
     });
     if (res.ok) {
       const json = await res.json();
-      if (json.city && typeof window !== "undefined" && !json.city.includes("Jaringan Lokal")) {
-        sessionStorage.setItem(DETECTED_CITY_KEY, json.city);
-      }
       return json.activeUsers;
     }
   } catch (err) {}
@@ -503,7 +636,13 @@ export async function sendHeartbeat(currentModule: string, city?: string): Promi
 // Reset database
 export async function resetServerDatabase(): Promise<boolean> {
   try {
-    const res = await fetch("/api/analytics/reset", { method: "POST" });
+    const res = await fetch("/api/analytics/reset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": "519592Fa07$"
+      }
+    });
     if (res.ok) {
       clearAllCustomEvents();
       return true;
