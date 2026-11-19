@@ -11,8 +11,33 @@ import {
   ShieldCheck,
   Building2,
   UserCheck,
-  X
+  X,
+  LogIn,
+  LogOut
 } from "lucide-react";
+import {
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  limit,
+  onSnapshot,
+  serverTimestamp,
+  increment,
+  Timestamp
+} from "firebase/firestore";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import {
+  db,
+  auth,
+  OperationType,
+  handleFirestoreError,
+  signInWithGoogleAdmin,
+  signOutFirebase
+} from "../firebase";
 import { trackCustomEvent } from "../services/analyticsService";
 
 export interface SiteReviewItem {
@@ -108,9 +133,26 @@ const QUICK_TAGS = [
   "Tampilan Modern & Bersih"
 ];
 
+const COLLECTION_NAME = "site_reviews";
 const OLD_CACHE_KEY = "piobari_site_reviews_cache_v1";
-const LOCAL_CACHE_KEY = "piobari_site_reviews_cache_v2";
-const HELPFUL_VOTED_KEY = "piobari_helpful_voted_ids_v2";
+const LOCAL_CACHE_KEY = "piobari_site_reviews_firestore_cache_v3";
+const HELPFUL_VOTED_KEY = "piobari_helpful_voted_ids_v3";
+
+function toIsoDate(value: unknown): string {
+  if (!value) return new Date().toISOString();
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString();
+  }
+  if (typeof (value as any)?.toDate === "function") {
+    try {
+      return (value as any).toDate().toISOString();
+    } catch {
+      return new Date().toISOString();
+    }
+  }
+  if (typeof value === "string") return value;
+  return new Date().toISOString();
+}
 
 function computeLocalStats(list: SiteReviewItem[]): SiteReviewStats {
   const starCounts: { 5: number; 4: number; 3: number; 2: number; 1: number } = {
@@ -163,6 +205,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
   const [reviews, setReviews] = useState<SiteReviewItem[]>(() => {
     try {
       localStorage.removeItem(OLD_CACHE_KEY);
+      localStorage.removeItem("piobari_site_reviews_cache_v2");
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
@@ -178,6 +221,11 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitSuccess, setSubmitSuccess] = useState<string>("");
   const [submitError, setSubmitError] = useState<string>("");
+  const [adminActionError, setAdminActionError] = useState<string>("");
+
+  // Firebase Auth state for Cloud Admin Moderation
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const [isSigningInAdmin, setIsSigningInAdmin] = useState<boolean>(false);
 
   // Form state (Non-anonymous: authorName is mandatory)
   const [selectedRating, setSelectedRating] = useState<number>(5);
@@ -186,7 +234,10 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
   const [role, setRole] = useState<string>(ROLE_OPTIONS[0]);
   const [institution, setInstitution] = useState<string>("RSUD Palembang BARI");
   const [aspect, setAspect] = useState<string>(ASPECT_OPTIONS[0]);
-  const [selectedTags, setSelectedTags] = useState<string[]>(["Data Klinis Akurat", "Loading Cepat & Responsif"]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([
+    "Data Klinis Akurat",
+    "Loading Cepat & Responsif"
+  ]);
   const [comment, setComment] = useState<string>("");
 
   // Filter & Sort state
@@ -216,34 +267,85 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
     }
   }, [stats, onStatsUpdated]);
 
-  const fetchReviews = async () => {
-    try {
-      const res = await fetch("/api/reviews");
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data?.reviews)) {
-          setReviews(data.reviews);
-          try {
-            localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(data.reviews));
-          } catch {
-            // ignore
-          }
+  // Listen to Firebase Auth state for admin cloud moderation
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Real-time Cloud Firestore listener for persistent reviews across all sessions & devices
+  useEffect(() => {
+    const reviewsRef = collection(db, COLLECTION_NAME);
+    const reviewsQuery = query(
+      reviewsRef,
+      where("isPublic", "==", true),
+      limit(200)
+    );
+
+    const unsubscribe = onSnapshot(
+      reviewsQuery,
+      (snapshot) => {
+        const loaded: SiteReviewItem[] = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const hasReply =
+            typeof data.adminReplyText === "string" && data.adminReplyText.trim().length > 0;
+          return {
+            id: docSnap.id,
+            authorName: String(data.authorName || "Pengguna PIOBARI"),
+            role: String(data.role || "Tenaga Kesehatan"),
+            institution: String(data.institution || "Kota Palembang"),
+            rating: Math.max(1, Math.min(5, Math.round(Number(data.rating) || 5))),
+            aspect: String(data.aspect || "Keseluruhan Situs PIOBARI"),
+            tags: Array.isArray(data.tags) ? data.tags.map(String).slice(0, 5) : [],
+            comment: String(data.comment || ""),
+            createdAt: toIsoDate(data.createdAt),
+            helpfulCount: Number(data.helpfulCount) || 0,
+            verified: Boolean(data.verified ?? true),
+            ...(hasReply
+              ? {
+                  adminReply: {
+                    text: String(data.adminReplyText),
+                    repliedBy: String(
+                      data.adminRepliedBy || "Tim Farmasi Klinis • RSUD Palembang BARI"
+                    ),
+                    repliedAt: toIsoDate(data.adminRepliedAt)
+                  }
+                }
+              : {})
+          };
+        });
+
+        loaded.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        setReviews(loaded);
+        setIsLoading(false);
+
+        try {
+          localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(loaded));
+        } catch {
+          // ignore storage quota errors
+        }
+      },
+      (error) => {
+        setIsLoading(false);
+        try {
+          handleFirestoreError(error, OperationType.LIST, COLLECTION_NAME);
+        } catch {
+          // Logged via handleFirestoreError; keep cached reviews visible
         }
       }
-    } catch {
-      // Offline / fallback to cached reviews
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    );
 
-  useEffect(() => {
-    fetchReviews();
+    return () => unsubscribe();
   }, []);
 
   const handleToggleTag = (tag: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag].slice(0, 5)
     );
   };
 
@@ -252,110 +354,75 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
     setSubmitError("");
     setSubmitSuccess("");
 
-    const trimmedName = authorName.trim();
-    if (trimmedName.length < 2) {
-      setSubmitError("Mohon isi Nama Lengkap / Panggilan Anda terlebih dahulu.");
+    // Strict defensive payload validation synchronized with firebase-blueprint.json & firestore.rules
+    const cleanName = authorName.trim().slice(0, 80);
+    if (cleanName.length < 2) {
+      setSubmitError("Mohon isi Nama Lengkap / Panggilan minimal 2 karakter.");
       return;
     }
 
-    const trimmedComment = comment.trim();
-    if (trimmedComment.length < 5) {
-      setSubmitError("Mohon tuliskan komentar atau masukan Anda minimal 5 karakter.");
+    const cleanComment = comment.trim().slice(0, 1200);
+    if (cleanComment.length < 3) {
+      setSubmitError("Mohon tuliskan komentar atau masukan Anda minimal 3 karakter.");
       return;
     }
+
+    const cleanRole = (role.trim() || "Tenaga Kesehatan").slice(0, 60);
+    const cleanInstitution = (institution.trim() || "Kota Palembang").slice(0, 100);
+    const cleanAspect = (aspect.trim() || "Keseluruhan Situs PIOBARI").slice(0, 80);
+    const cleanRating = Math.max(1, Math.min(5, Math.round(Number(selectedRating) || 5)));
+    const cleanTags = selectedTags
+      .map((t) => t.trim().slice(0, 50))
+      .filter((t) => t.length > 0)
+      .slice(0, 5);
 
     setIsSubmitting(true);
 
-    const payload = {
-      authorName: trimmedName,
-      role,
-      institution: institution.trim() || "Kota Palembang",
-      rating: selectedRating,
-      aspect,
-      tags: selectedTags,
-      comment: trimmedComment
-    };
+    const reviewId = `rev_${Date.now().toString(36)}_${Math.random()
+      .toString(36)
+      .replace(/[^a-z0-9]/g, "")
+      .slice(0, 8)}`;
+
+    const docPath = `${COLLECTION_NAME}/${reviewId}`;
 
     try {
-      const res = await fetch("/api/reviews", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      await setDoc(doc(db, COLLECTION_NAME, reviewId), {
+        authorName: cleanName,
+        role: cleanRole,
+        institution: cleanInstitution,
+        rating: cleanRating,
+        aspect: cleanAspect,
+        tags: cleanTags,
+        comment: cleanComment,
+        createdAt: serverTimestamp(),
+        helpfulCount: 0,
+        verified: true,
+        isPublic: true
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.review) {
-          setReviews((prev) => {
-            const updated = [data.review, ...prev.filter((r) => r.id !== data.review.id)];
-            try {
-              localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(updated));
-            } catch {
-              // ignore
-            }
-            return updated;
-          });
-        }
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        if (errData?.error) {
-          setSubmitError(errData.error);
-          setIsSubmitting(false);
-          return;
-        }
-        const localReview: SiteReviewItem = {
-          id: "rev_local_" + Date.now(),
-          ...payload,
-          createdAt: new Date().toISOString(),
-          helpfulCount: 0,
-          verified: true
-        };
-        setReviews((prev) => {
-          const updated = [localReview, ...prev];
-          try {
-            localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-          return updated;
-        });
-      }
 
       trackCustomEvent("submit_site_review", {
         category: "conversion",
-        label: `Penilaian Situs ${selectedRating} Bintang (${aspect}) oleh ${trimmedName}`,
+        label: `Penilaian Situs ${cleanRating} Bintang (${cleanAspect}) oleh ${cleanName}`,
         metadata: {
-          rating: selectedRating,
-          role,
-          aspect,
-          authorName: trimmedName
+          rating: cleanRating,
+          role: cleanRole,
+          aspect: cleanAspect,
+          authorName: cleanName
         }
       });
 
       setComment("");
       setSubmitSuccess(
-        `Terima kasih, ${trimmedName}! Penilaian ${selectedRating} bintang dan komentar Anda telah berhasil dipublikasikan secara real-time.`
+        `Terima kasih, ${cleanName}! Penilaian ${cleanRating} bintang dan komentar Anda sudah tersimpan permanen di database cloud secara real-time.`
       );
-    } catch {
-      const localReview: SiteReviewItem = {
-        id: "rev_local_" + Date.now(),
-        ...payload,
-        createdAt: new Date().toISOString(),
-        helpfulCount: 0,
-        verified: true
-      };
-      setReviews((prev) => {
-        const updated = [localReview, ...prev];
-        try {
-          localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-        return updated;
-      });
-      setComment("");
-      setSubmitSuccess(
-        `Terima kasih, ${trimmedName}! Penilaian ${selectedRating} bintang dan komentar Anda telah tersimpan.`
+    } catch (err: any) {
+      try {
+        handleFirestoreError(err, OperationType.CREATE, docPath);
+      } catch {
+        // Structured error logged
+      }
+      setSubmitError(
+        "Gagal menyimpan komentar ke database cloud. Pastikan koneksi internet aktif lalu coba kirim kembali."
       );
     } finally {
       setIsSubmitting(false);
@@ -373,81 +440,88 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
       // ignore
     }
 
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === reviewId ? { ...r, helpfulCount: (r.helpfulCount || 0) + 1 } : r
-      )
-    );
-
+    const docPath = `${COLLECTION_NAME}/${reviewId}`;
     try {
-      await fetch(`/api/reviews/${encodeURIComponent(reviewId)}/helpful`, {
-        method: "POST"
+      await updateDoc(doc(db, COLLECTION_NAME, reviewId), {
+        helpfulCount: increment(1)
       });
-    } catch {
-      // ignore
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.UPDATE, docPath);
+      } catch {
+        // Logged via handleFirestoreError
+      }
+    }
+  };
+
+  const handleConnectGoogleAdmin = async () => {
+    setAdminActionError("");
+    setIsSigningInAdmin(true);
+    try {
+      await signInWithGoogleAdmin();
+    } catch (err: any) {
+      setAdminActionError(
+        "Gagal menghubungkan akun Google Admin. Pastikan popup browser diizinkan dan gunakan akun administrator terdaftar."
+      );
+    } finally {
+      setIsSigningInAdmin(false);
     }
   };
 
   const handleAdminReplySubmit = async (reviewId: string) => {
-    const trimmed = adminReplyText.trim();
+    setAdminActionError("");
+    const trimmed = adminReplyText.trim().slice(0, 1000);
     if (!trimmed) return;
 
+    if (!auth.currentUser) {
+      setAdminActionError(
+        "Untuk menyimpan balasan permanen ke cloud, klik tombol 'Hubungkan Google Admin' di atas terlebih dahulu."
+      );
+      return;
+    }
+
+    const docPath = `${COLLECTION_NAME}/${reviewId}`;
     try {
-      const res = await fetch(`/api/reviews/${encodeURIComponent(reviewId)}/reply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ replyText: trimmed })
+      await updateDoc(doc(db, COLLECTION_NAME, reviewId), {
+        adminReplyText: trimmed,
+        adminRepliedBy: "Tim Farmasi Klinis • RSUD Palembang BARI",
+        adminRepliedAt: serverTimestamp()
       });
-
-      const replyObj = {
-        text: trimmed,
-        repliedBy: "Tim Farmasi Klinis • RSUD Palembang BARI",
-        repliedAt: new Date().toISOString()
-      };
-
-      if (res.ok) {
-        const data = await res.json();
-        setReviews((prev) => {
-          const updated = prev.map((r) =>
-            r.id === reviewId ? data.review || { ...r, adminReply: replyObj } : r
-          );
-          try {
-            localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
-          return updated;
-        });
-      } else {
-        setReviews((prev) =>
-          prev.map((r) => (r.id === reviewId ? { ...r, adminReply: replyObj } : r))
-        );
-      }
-    } catch {
-      // fallback local update
-    } finally {
       setReplyingToId(null);
       setAdminReplyText("");
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.UPDATE, docPath);
+      } catch {
+        // Logged via handleFirestoreError
+      }
+      setAdminActionError(
+        "Akses ditolak: Pastikan Anda masuk dengan akun Google Administrator terdaftar (habibfa07@gmail.com)."
+      );
     }
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    setReviews((prev) => {
-      const updated = prev.filter((r) => r.id !== reviewId);
-      try {
-        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(updated));
-      } catch {
-        // ignore
-      }
-      return updated;
-    });
+    setAdminActionError("");
+    if (!auth.currentUser) {
+      setAdminActionError(
+        "Untuk menghapus ulasan secara permanen di cloud, klik tombol 'Hubungkan Google Admin' terlebih dahulu."
+      );
+      return;
+    }
 
+    const docPath = `${COLLECTION_NAME}/${reviewId}`;
     try {
-      await fetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
-        method: "DELETE"
-      });
-    } catch {
-      // ignore
+      await deleteDoc(doc(db, COLLECTION_NAME, reviewId));
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.DELETE, docPath);
+      } catch {
+        // Logged via handleFirestoreError
+      }
+      setAdminActionError(
+        "Akses ditolak saat menghapus ulasan. Pastikan akun Google Administrator terdaftar."
+      );
     }
   };
 
@@ -522,13 +596,13 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                 Penilaian & Komentar Situs
               </h1>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Seluruh bintang dan komentar di halaman ini tercatat secara{" "}
-                <span className="font-bold text-slate-800">real-time</span> dari pengguna{" "}
+                Seluruh bintang dan komentar tersimpan permanen secara{" "}
+                <span className="font-bold text-slate-800">real-time</span> di database cloud{" "}
                 <span className="font-bold text-slate-800">PIOBARI RSUD Palembang BARI</span>.
               </p>
               <div className="pt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-medium">
                 <span className="font-mono tabular-nums font-bold text-slate-900">
-                  {stats.totalReviews} Ulasan Masuk
+                  {stats.totalReviews} Ulasan Tersimpan
                 </span>
                 <span aria-hidden="true">·</span>
                 <span className="font-mono tabular-nums font-bold text-emerald-700">
@@ -599,6 +673,56 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
         </div>
       </div>
 
+      {/* Cloud Admin Moderation Bar (only visible when Admin is logged in) */}
+      {isAdmin && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-teal-600" />
+              <span>Moderasi Ulasan Cloud (Mode Admin)</span>
+            </div>
+            <p className="text-[11px] text-slate-600">
+              {firebaseUser
+                ? `Terhubung sebagai ${firebaseUser.email || "Administrator"} — Anda dapat membalas dan menghapus ulasan secara permanen.`
+                : "Hubungkan akun Google Administrator (habibfa07@gmail.com) untuk membalas atau menghapus ulasan di database cloud."}
+            </p>
+          </div>
+          {firebaseUser ? (
+            <button
+              type="button"
+              onClick={() => signOutFirebase()}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-colors cursor-pointer shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Putuskan Google Admin</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={isSigningInAdmin}
+              onClick={handleConnectGoogleAdmin}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>{isSigningInAdmin ? "Menghubungkan..." : "Hubungkan Google Admin"}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {adminActionError && (
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex items-center justify-between gap-3">
+          <span>{adminActionError}</span>
+          <button
+            type="button"
+            onClick={() => setAdminActionError("")}
+            className="p-1 text-rose-500 hover:text-rose-700 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Main Content Grid: Left = Rate & Comment Form, Right = Live Reviews Stream */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Interactive Star Rating & Comment Form */}
@@ -665,6 +789,8 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
               <input
                 type="text"
                 required
+                minLength={2}
+                maxLength={80}
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
                 placeholder="Masukkan nama Anda (cth: apt. Andi Pratama, S.Farm / dr. Rina)"
@@ -697,6 +823,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                 </label>
                 <input
                   type="text"
+                  maxLength={100}
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
                   placeholder="Cth: RSUD Palembang BARI / Palembang"
@@ -726,7 +853,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
             {/* 5. Quick Evaluation Buttons */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700">
-                4. Hal yang Paling Anda Sukai (Opsional)
+                4. Hal yang Paling Anda Sukai (Opsional, maks. 5)
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {QUICK_TAGS.map((tag) => {
@@ -762,6 +889,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
               <textarea
                 rows={4}
                 required
+                minLength={3}
                 maxLength={1200}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
@@ -791,7 +919,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
               <Send className="w-4 h-4" />
               <span>
                 {isSubmitting
-                  ? "Mengirim Penilaian..."
+                  ? "Menyimpan ke Database Cloud..."
                   : `Kirim Penilaian (${selectedRating} Bintang) & Komentar`}
               </span>
             </button>
@@ -892,7 +1020,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                 </h3>
                 <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                   {reviews.length === 0
-                    ? "Penilaian berjalan secara real-time. Silakan isi nama, pilih bintang, dan kirimkan komentar pertama Anda pada formulir di samping."
+                    ? "Penilaian berjalan secara real-time dan tersimpan permanen di database cloud. Silakan isi nama, pilih bintang, dan kirimkan komentar pertama Anda pada formulir di samping."
                     : "Silakan ubah filter bintang atau kata kunci pencarian untuk melihat ulasan lainnya."}
                 </p>
               </div>
@@ -925,7 +1053,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                           {item.verified && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700">
                               <UserCheck className="w-3.5 h-3.5 text-teal-600" />
-                              <span>Real-Time</span>
+                              <span>Tersimpan Cloud</span>
                             </span>
                           )}
                         </div>
@@ -1008,6 +1136,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                       <div className="bg-slate-50 border border-teal-200 rounded-xl p-3 space-y-2">
                         <textarea
                           rows={2}
+                          maxLength={1000}
                           value={adminReplyText}
                           onChange={(e) => setAdminReplyText(e.target.value)}
                           placeholder="Tulis tanggapan resmi Tim Farmasi Klinis RSUD Palembang BARI..."
@@ -1046,7 +1175,9 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                             : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                         }`}
                       >
-                        <ThumbsUp className={`w-3.5 h-3.5 ${hasVoted ? "fill-teal-600 text-teal-600" : ""}`} />
+                        <ThumbsUp
+                          className={`w-3.5 h-3.5 ${hasVoted ? "fill-teal-600 text-teal-600" : ""}`}
+                        />
                         <span>Membantu</span>
                         <span className="font-mono tabular-nums font-bold">
                           ({item.helpfulCount || 0})

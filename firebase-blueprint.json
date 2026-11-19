@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "SiteReview": {
+      "title": "SiteReview",
+      "description": "Public star rating and clinical feedback review submitted by users for the PIOBARI RSUD Palembang BARI website.",
+      "type": "object",
+      "properties": {
+        "authorName": {
+          "type": "string",
+          "description": "Full name or display name of the reviewer (non-anonymous).",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "description": "Clinical profession or user role.",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "institution": {
+          "type": "string",
+          "description": "Hospital unit, workplace, or city of the reviewer.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "rating": {
+          "type": "integer",
+          "description": "Star rating from 1 to 5."
+        },
+        "aspect": {
+          "type": "string",
+          "description": "Application module or feature being evaluated.",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "tags": {
+          "type": "array",
+          "description": "Optional list of up to 5 quick appreciation tags."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Review comment text provided by the user.",
+          "minLength": 3,
+          "maxLength": 1200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the review was created (immutable)."
+        },
+        "helpfulCount": {
+          "type": "integer",
+          "description": "Number of helpful upvotes received by this review."
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Indicates the review passed server validation."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Indicates the review is publicly visible on the PIOBARI review wall."
+        },
+        "adminReplyText": {
+          "type": "string",
+          "description": "Optional official reply from the RSUD Palembang BARI clinical pharmacy team.",
+          "maxLength": 1000
+        },
+        "adminRepliedBy": {
+          "type": "string",
+          "description": "Name of the admin team responding to the review.",
+          "maxLength": 100
+        },
+        "adminRepliedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin reply was saved."
+        }
+      },
+      "required": [
+        "authorName",
+        "role",
+        "institution",
+        "rating",
+        "aspect",
+        "tags",
+        "comment",
+        "createdAt",
+        "helpfulCount",
+        "verified",
+        "isPublic"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized PIOBARI administrator registry record.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["admin"],
+          "description": "Administrator role identifier."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the admin record was created."
+        }
+      },
+      "required": ["role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/site_reviews/{reviewId}": {
+      "schema": {
+        "$ref": "#/entities/SiteReview"
+      },
+      "description": "Stores real-time, persistent user star ratings and comments for the PIOBARI website."
+    },
+    "/admins/{userId}": {
+      "schema": {
+        "$ref": "#/entities/AdminUser"
+      },
+      "description": "Stores authorized administrator UIDs for role-based moderation."
+    }
+  }
+}

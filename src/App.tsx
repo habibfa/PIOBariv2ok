@@ -22,6 +22,7 @@ const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => (
 const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
 const AdminWebAnalytics = lazy(() => import("./components/AdminWebAnalytics"));
 const SiteRatingReviews = lazy(() => import("./components/SiteRatingReviews"));
+import FirestoreErrorBoundary from "./components/FirestoreErrorBoundary";
 import { trackCustomEvent, trackPageView, sendHeartbeat, detectRealClientLocation, getDetectedClientGeoMeta } from "./services/analyticsService";
 import { setAdminWebCopyMode } from "./utils/clientProtection";
 
@@ -4386,9 +4387,11 @@ export default function App() {
       <>
         {/* SITE RATING & REVIEWS TAB */}
         <section className="lg:col-span-12 w-full">
-          <Suspense fallback={<TabLoadingFallback />}>
-            <SiteRatingReviews isAdmin={isAdmin} />
-          </Suspense>
+          <FirestoreErrorBoundary>
+            <Suspense fallback={<TabLoadingFallback />}>
+              <SiteRatingReviews isAdmin={isAdmin} />
+            </Suspense>
+          </FirestoreErrorBoundary>
         </section>
       </>
     ) : activeTab === "desc" ? (
