@@ -5,12 +5,22 @@ import firebaseConfig from "../firebase-applet-config.json";
 
 const app = initializeApp(firebaseConfig);
 
+export const ADMIN_CLOUD_EMAIL = "habibfa07@gmail.com";
+
 export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 // CRITICAL: Pass firebaseConfig.firestoreDatabaseId so queries target the provisioned database
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  login_hint: ADMIN_CLOUD_EMAIL,
+  prompt: "select_account",
+});
+
+export function isVerifiedCloudAdmin(user: { email?: string | null } | null): boolean {
+  return Boolean(user?.email && user.email.toLowerCase() === ADMIN_CLOUD_EMAIL);
+}
 
 export enum OperationType {
   CREATE = "create",
@@ -66,6 +76,27 @@ export function handleFirestoreError(
 
 export async function signInWithGoogleAdmin() {
   return signInWithPopup(auth, googleProvider);
+}
+
+export async function ensureGoogleAdminSignedIn() {
+  if (isVerifiedCloudAdmin(auth.currentUser)) {
+    return auth.currentUser!;
+  }
+
+  if (auth.currentUser) {
+    await signOut(auth);
+  }
+
+  const credential = await signInWithPopup(auth, googleProvider);
+  if (!isVerifiedCloudAdmin(credential.user)) {
+    const wrongEmail = credential.user.email || "akun tidak dikenal";
+    await signOut(auth);
+    const err = new Error(`WRONG_ADMIN_ACCOUNT:${wrongEmail}`);
+    (err as any).code = "auth/wrong-admin-account";
+    throw err;
+  }
+
+  return credential.user;
 }
 
 export async function signOutFirebase() {

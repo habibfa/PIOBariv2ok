@@ -33,9 +33,11 @@ import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import {
   db,
   auth,
+  ADMIN_CLOUD_EMAIL,
   OperationType,
   handleFirestoreError,
-  signInWithGoogleAdmin,
+  ensureGoogleAdminSignedIn,
+  isVerifiedCloudAdmin,
   signOutFirebase
 } from "../firebase";
 import { trackCustomEvent } from "../services/analyticsService";
@@ -222,10 +224,16 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
   const [submitSuccess, setSubmitSuccess] = useState<string>("");
   const [submitError, setSubmitError] = useState<string>("");
   const [adminActionError, setAdminActionError] = useState<string>("");
+  const [adminActionSuccess, setAdminActionSuccess] = useState<string>("");
 
   // Firebase Auth state for Cloud Admin Moderation
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
   const [isSigningInAdmin, setIsSigningInAdmin] = useState<boolean>(false);
+  const [isSavingReply, setIsSavingReply] = useState<boolean>(false);
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const isCloudAdminConnected = isVerifiedCloudAdmin(firebaseUser);
 
   // Form state (Non-anonymous: authorName is mandatory)
   const [selectedRating, setSelectedRating] = useState<number>(5);
@@ -454,15 +462,38 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
     }
   };
 
+  const formatGoogleAdminAuthError = (err: any): string => {
+    const code = String(err?.code || "");
+    const message = String(err?.message || "");
+    if (code === "auth/wrong-admin-account" || message.startsWith("WRONG_ADMIN_ACCOUNT:")) {
+      const wrongEmail = message.replace("WRONG_ADMIN_ACCOUNT:", "") || "akun lain";
+      return `Akun Google yang dipilih (${wrongEmail}) bukan Administrator terdaftar. Silakan masuk menggunakan akun ${ADMIN_CLOUD_EMAIL}.`;
+    }
+    if (code === "auth/popup-blocked") {
+      return `Popup login Google diblokir oleh browser Anda. Mohon izinkan popup untuk situs ini lalu klik tombol 'Hubungkan Google Admin' kembali.`;
+    }
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+      return `Jendela login Google ditutup sebelum selesai. Klik 'Hubungkan Google Admin' atau 'Simpan Tanggapan' lagi untuk masuk dengan ${ADMIN_CLOUD_EMAIL}.`;
+    }
+    if (code === "auth/unauthorized-domain") {
+      const host = typeof window !== "undefined" ? window.location.hostname : "domain ini";
+      return `Domain '${host}' belum terdaftar di Authorized Domains Firebase Auth. Tambahkan '${host}' di Firebase Console → Authentication → Settings → Authorized domains, atau moderasi langsung melalui URL aplikasi AI Studio.`;
+    }
+    return `Gagal menghubungkan akun Google Admin (${code || "koneksi terputus"}). Pastikan popup browser diizinkan dan pilih akun ${ADMIN_CLOUD_EMAIL}.`;
+  };
+
   const handleConnectGoogleAdmin = async () => {
     setAdminActionError("");
+    setAdminActionSuccess("");
     setIsSigningInAdmin(true);
     try {
-      await signInWithGoogleAdmin();
-    } catch (err: any) {
-      setAdminActionError(
-        "Gagal menghubungkan akun Google Admin. Pastikan popup browser diizinkan dan gunakan akun administrator terdaftar."
+      const user = await ensureGoogleAdminSignedIn();
+      setFirebaseUser(user);
+      setAdminActionSuccess(
+        `Akun Google Admin (${user.email}) berhasil terhubung! Anda sekarang dapat langsung menyimpan balasan dan menghapus ulasan secara permanen di cloud.`
       );
+    } catch (err: any) {
+      setAdminActionError(formatGoogleAdminAuthError(err));
     } finally {
       setIsSigningInAdmin(false);
     }
@@ -470,58 +501,88 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
 
   const handleAdminReplySubmit = async (reviewId: string) => {
     setAdminActionError("");
+    setAdminActionSuccess("");
     const trimmed = adminReplyText.trim().slice(0, 1000);
-    if (!trimmed) return;
-
-    if (!auth.currentUser) {
-      setAdminActionError(
-        "Untuk menyimpan balasan permanen ke cloud, klik tombol 'Hubungkan Google Admin' di atas terlebih dahulu."
-      );
+    if (!trimmed) {
+      setAdminActionError("Mohon tuliskan isi tanggapan Admin terlebih dahulu.");
       return;
     }
 
-    const docPath = `${COLLECTION_NAME}/${reviewId}`;
+    setIsSavingReply(true);
     try {
-      await updateDoc(doc(db, COLLECTION_NAME, reviewId), {
-        adminReplyText: trimmed,
-        adminRepliedBy: "Tim Farmasi Klinis • RSUD Palembang BARI",
-        adminRepliedAt: serverTimestamp()
-      });
-      setReplyingToId(null);
-      setAdminReplyText("");
-    } catch (err) {
-      try {
-        handleFirestoreError(err, OperationType.UPDATE, docPath);
-      } catch {
-        // Logged via handleFirestoreError
+      // Automatically connect Google Admin in one seamless click if not yet connected
+      if (!isVerifiedCloudAdmin(auth.currentUser)) {
+        setIsSigningInAdmin(true);
+        try {
+          const connectedUser = await ensureGoogleAdminSignedIn();
+          setFirebaseUser(connectedUser);
+        } finally {
+          setIsSigningInAdmin(false);
+        }
       }
-      setAdminActionError(
-        "Akses ditolak: Pastikan Anda masuk dengan akun Google Administrator terdaftar (habibfa07@gmail.com)."
-      );
+
+      const docPath = `${COLLECTION_NAME}/${reviewId}`;
+      try {
+        await updateDoc(doc(db, COLLECTION_NAME, reviewId), {
+          adminReplyText: trimmed,
+          adminRepliedBy: "Tim Farmasi Klinis • RSUD Palembang BARI",
+          adminRepliedAt: serverTimestamp()
+        });
+        setReplyingToId(null);
+        setAdminReplyText("");
+        setAdminActionSuccess("Tanggapan resmi Admin berhasil disimpan permanen di database cloud!");
+      } catch (err) {
+        try {
+          handleFirestoreError(err, OperationType.UPDATE, docPath);
+        } catch {
+          // Logged via handleFirestoreError
+        }
+        setAdminActionError(
+          `Akses Firestore ditolak: Pastikan Anda masuk dengan akun Google Administrator terdaftar (${ADMIN_CLOUD_EMAIL}).`
+        );
+      }
+    } catch (authErr: any) {
+      setAdminActionError(formatGoogleAdminAuthError(authErr));
+    } finally {
+      setIsSavingReply(false);
     }
   };
 
   const handleDeleteReview = async (reviewId: string) => {
     setAdminActionError("");
-    if (!auth.currentUser) {
-      setAdminActionError(
-        "Untuk menghapus ulasan secara permanen di cloud, klik tombol 'Hubungkan Google Admin' terlebih dahulu."
-      );
-      return;
-    }
-
-    const docPath = `${COLLECTION_NAME}/${reviewId}`;
+    setAdminActionSuccess("");
+    setDeletingReviewId(reviewId);
     try {
-      await deleteDoc(doc(db, COLLECTION_NAME, reviewId));
-    } catch (err) {
-      try {
-        handleFirestoreError(err, OperationType.DELETE, docPath);
-      } catch {
-        // Logged via handleFirestoreError
+      // Automatically connect Google Admin in one seamless click if not yet connected
+      if (!isVerifiedCloudAdmin(auth.currentUser)) {
+        setIsSigningInAdmin(true);
+        try {
+          const connectedUser = await ensureGoogleAdminSignedIn();
+          setFirebaseUser(connectedUser);
+        } finally {
+          setIsSigningInAdmin(false);
+        }
       }
-      setAdminActionError(
-        "Akses ditolak saat menghapus ulasan. Pastikan akun Google Administrator terdaftar."
-      );
+
+      const docPath = `${COLLECTION_NAME}/${reviewId}`;
+      try {
+        await deleteDoc(doc(db, COLLECTION_NAME, reviewId));
+        setConfirmDeleteId(null);
+        setAdminActionSuccess("Ulasan berhasil dihapus secara permanen dari database cloud.");
+      } catch (err) {
+        try {
+          handleFirestoreError(err, OperationType.DELETE, docPath);
+        } catch {
+          // Logged via handleFirestoreError
+        }
+        setAdminActionError(
+          `Akses ditolak saat menghapus ulasan. Pastikan akun Google Administrator terdaftar (${ADMIN_CLOUD_EMAIL}).`
+        );
+      }
+    } catch (authErr: any) {
+      setAdminActionError(formatGoogleAdminAuthError(authErr));
+    } finally {
+      setDeletingReviewId(null);
     }
   };
 
@@ -675,22 +736,34 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
 
       {/* Cloud Admin Moderation Bar (only visible when Admin is logged in) */}
       {isAdmin && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div
+          className={`rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border ${
+            isCloudAdminConnected
+              ? "bg-emerald-50/70 border-emerald-200/90"
+              : "bg-teal-50/70 border-teal-200/90"
+          }`}
+        >
           <div className="space-y-0.5">
             <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-teal-600" />
+              <ShieldCheck
+                className={`w-4 h-4 ${isCloudAdminConnected ? "text-emerald-600" : "text-teal-600"}`}
+              />
               <span>Moderasi Ulasan Cloud (Mode Admin)</span>
             </div>
             <p className="text-[11px] text-slate-600">
-              {firebaseUser
-                ? `Terhubung sebagai ${firebaseUser.email || "Administrator"} — Anda dapat membalas dan menghapus ulasan secara permanen.`
-                : "Hubungkan akun Google Administrator (habibfa07@gmail.com) untuk membalas atau menghapus ulasan di database cloud."}
+              {isCloudAdminConnected
+                ? `Terhubung sebagai ${firebaseUser?.email} — Balasan resmi dan penghapusan ulasan langsung tersimpan permanen di cloud.`
+                : `Hubungkan akun Google Administrator (${ADMIN_CLOUD_EMAIL}) — atau langsung klik 'Hubungkan Google & Simpan' saat membalas ulasan di bawah.`}
             </p>
           </div>
-          {firebaseUser ? (
+          {isCloudAdminConnected ? (
             <button
               type="button"
-              onClick={() => signOutFirebase()}
+              onClick={() => {
+                setAdminActionSuccess("");
+                setAdminActionError("");
+                signOutFirebase();
+              }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-colors cursor-pointer shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -701,7 +774,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
               type="button"
               disabled={isSigningInAdmin}
               onClick={handleConnectGoogleAdmin}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-xs font-bold transition-colors cursor-pointer shrink-0 shadow-2xs"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>{isSigningInAdmin ? "Menghubungkan..." : "Hubungkan Google Admin"}</span>
@@ -710,16 +783,45 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
         </div>
       )}
 
-      {adminActionError && (
-        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex items-center justify-between gap-3">
-          <span>{adminActionError}</span>
+      {adminActionSuccess && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{adminActionSuccess}</span>
+          </span>
           <button
             type="button"
-            onClick={() => setAdminActionError("")}
-            className="p-1 text-rose-500 hover:text-rose-700 cursor-pointer"
+            onClick={() => setAdminActionSuccess("")}
+            className="p-1 text-emerald-600 hover:text-emerald-800 cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {adminActionError && (
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <span>{adminActionError}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {isAdmin && !isCloudAdminConnected && (
+              <button
+                type="button"
+                disabled={isSigningInAdmin}
+                onClick={handleConnectGoogleAdmin}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>{isSigningInAdmin ? "Menghubungkan..." : "Hubungkan Google Admin"}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setAdminActionError("")}
+              className="p-1 text-rose-500 hover:text-rose-700 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1133,7 +1235,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
 
                     {/* Admin Reply Input Box */}
                     {isAdmin && replyingToId === item.id && (
-                      <div className="bg-slate-50 border border-teal-200 rounded-xl p-3 space-y-2">
+                      <div className="bg-slate-50 border border-teal-200 rounded-xl p-3 space-y-2.5">
                         <textarea
                           rows={2}
                           maxLength={1000}
@@ -1142,23 +1244,72 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                           placeholder="Tulis tanggapan resmi Tim Farmasi Klinis RSUD Palembang BARI..."
                           className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-teal-600"
                         />
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <span className="text-[11px] font-medium text-slate-500">
+                            {isCloudAdminConnected
+                              ? `Terhubung Cloud: ${firebaseUser?.email}`
+                              : `Klik simpan untuk langsung menghubungkan Google Admin (${ADMIN_CLOUD_EMAIL})`}
+                          </span>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              disabled={isSavingReply}
+                              onClick={() => {
+                                setReplyingToId(null);
+                                setAdminReplyText("");
+                              }}
+                              className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSavingReply}
+                              onClick={() => handleAdminReplySubmit(item.id)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-lg cursor-pointer"
+                            >
+                              {!isCloudAdminConnected && <LogIn className="w-3.5 h-3.5" />}
+                              <span>
+                                {isSavingReply
+                                  ? isSigningInAdmin
+                                    ? "Menghubungkan Google..."
+                                    : "Menyimpan ke Cloud..."
+                                  : isCloudAdminConnected
+                                  ? "Simpan Tanggapan"
+                                  : "Hubungkan Google & Simpan"}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Inline Delete Confirmation for Admin */}
+                    {isAdmin && confirmDeleteId === item.id && (
+                      <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-rose-800">
+                          Hapus ulasan ini secara permanen dari database cloud?
+                        </span>
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => {
-                              setReplyingToId(null);
-                              setAdminReplyText("");
-                            }}
-                            className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg cursor-pointer"
+                            disabled={deletingReviewId === item.id}
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white rounded-lg cursor-pointer"
                           >
                             Batal
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleAdminReplySubmit(item.id)}
-                            className="px-3 py-1.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg cursor-pointer"
+                            disabled={deletingReviewId === item.id}
+                            onClick={() => handleDeleteReview(item.id)}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-60 rounded-lg cursor-pointer"
                           >
-                            Simpan Tanggapan
+                            {deletingReviewId === item.id
+                              ? "Menghapus..."
+                              : isCloudAdminConnected
+                              ? "Ya, Hapus Permanen"
+                              : "Hubungkan Google & Hapus"}
                           </button>
                         </div>
                       </div>
@@ -1189,6 +1340,7 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                           <button
                             type="button"
                             onClick={() => {
+                              setConfirmDeleteId(null);
                               setReplyingToId(item.id);
                               setAdminReplyText(item.adminReply?.text || "");
                             }}
@@ -1199,7 +1351,10 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteReview(item.id)}
+                            onClick={() => {
+                              setReplyingToId(null);
+                              setConfirmDeleteId(item.id);
+                            }}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
