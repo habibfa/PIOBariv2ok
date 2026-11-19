@@ -1,3 +1,8 @@
+import type { ChemoCancerCategory } from "./chemoDrugLibrary";
+import { EXTENDED_CHEMO_REGIMENS_PART1 } from "./chemoRegimensPart1";
+import { EXTENDED_CHEMO_REGIMENS_PART2 } from "./chemoRegimensPart2";
+
+export type { ChemoCancerCategory };
 export type ChemoTherapyGoal = "neoadjuvant" | "adjuvant" | "curative" | "palliative";
 
 export interface ChemoGoalDefinition {
@@ -61,7 +66,7 @@ export interface ChemoDrugComponent {
   role: string;
   dosageFormula: string; // e.g. "25 mg/m² IV"
   defaultDoseValue: number; // e.g. 25
-  doseUnit: "mg/m2" | "mg/kg" | "AUC" | "mg_flat" | "unit/m2";
+  doseUnit: "mg/m2" | "mg/kg" | "mcg/kg" | "AUC" | "mg_flat" | "unit/m2" | "unit_flat";
   adminRoute: string; // e.g. "IV Bolus lambat 5-10 menit", "IV Infus 2 jam"
   diluentStandard: string; // e.g. "NaCl 0.9% 100 mL"
   diluentForbidden?: string; // e.g. "Dilarang menggunakan Dextrose!", "Dilarang menggunakan NaCl!"
@@ -75,7 +80,7 @@ export interface ChemoRegimen {
   id: string;
   acronym: string;
   fullName: string;
-  cancerCategory: "limfoma" | "kolorektal" | "payudara" | "ginekologi" | "lainnya";
+  cancerCategory: ChemoCancerCategory;
   cancerCategoryLabel: string;
   cancerTypeDetail: string;
   applicableGoals: ChemoTherapyGoal[];
@@ -216,7 +221,7 @@ export const CHEMO_REGIMENS_DATA: ChemoRegimen[] = [
   },
   {
     id: "r_chop",
-    acronym: "R-CHOP",
+    acronym: "CHOP-R / R-CHOP",
     fullName: "Rituximab, Cyclophosphamide, Hydroxydaunorubicin (Doxorubicin), Oncovin (Vincristine), Prednisone",
     cancerCategory: "limfoma",
     cancerCategoryLabel: "Limfoma",
@@ -1046,5 +1051,7 @@ export const CHEMO_REGIMENS_DATA: ChemoRegimen[] = [
       "Dosis mingguan biasanya dibatasi maksimal 70 mg/dosis untuk mencegah toksisitas ginjal tanpa mengurangi efikasi radiosensitasi."
     ],
     references: "Rose PG et al. N Engl J Med 1999 (GOG 120); Keys HM et al. N Engl J Med 1999; NCCN Clinical Practice Guidelines in Oncology: Cervical Cancer."
-  }
+  },
+  ...EXTENDED_CHEMO_REGIMENS_PART1,
+  ...EXTENDED_CHEMO_REGIMENS_PART2
 ];

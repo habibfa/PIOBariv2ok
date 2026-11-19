@@ -103,7 +103,7 @@ export const ChemoRegimensView: React.FC<ChemoRegimensViewProps> = ({ onSelectRe
               Regimen Kemoterapi & Klasifikasi Tujuan Terapi
             </h2>
             <p className="text-sm md:text-base text-indigo-200/90 font-sans mt-1.5 max-w-4xl leading-relaxed">
-              Panduan lengkap protokol kemoterapi kombinasi berbasis bukti klinis (ABVD, R-CHOP, FOLFOX, FOLFIRI, TCHP, FAC, AC), urutan pemberian infus intravena, pelarut yang diperbolehkan/dilarang, kalkulator dosis personal BSA, dan pemantauan toksisitas organ vital.
+              Panduan lengkap {CHEMO_REGIMENS_DATA.length} protokol kemoterapi kombinasi berbasis bukti klinis (7+3, ABVD, R-CHOP, BEACOPP, BEP, CAPOX, FLOT, FOLFOX, FOLFIRINOX, TCH/TCHP, CYBORD, RVD, R-Benda, VDC-IE, dll.), urutan infus intravena, pelarut, kalkulator dosis personal BSA, dan pemantauan toksisitas organ vital.
             </p>
           </div>
 
@@ -202,9 +202,14 @@ export const ChemoRegimensView: React.FC<ChemoRegimensViewProps> = ({ onSelectRe
             {[
               { id: "all", label: "Semua Kanker" },
               { id: "limfoma", label: "Limfoma" },
-              { id: "kolorektal", label: "Kolorektal" },
+              { id: "leukemia", label: "Leukemia & MDS" },
+              { id: "mieloma", label: "Mieloma" },
               { id: "payudara", label: "Payudara" },
-              { id: "ginekologi", label: "Ginekologi & Ovarium" },
+              { id: "kolorektal", label: "GI & Kolorektal" },
+              { id: "paru", label: "Paru" },
+              { id: "urogenital", label: "Testis & Urologi" },
+              { id: "ginekologi", label: "Ginekologi" },
+              { id: "sarkoma_pediatri", label: "Sarkoma, Otak & Pediatri" },
             ].map(cat => (
               <button
                 key={cat.id}
@@ -471,14 +476,20 @@ export const ChemoRegimensView: React.FC<ChemoRegimensViewProps> = ({ onSelectRe
                             } else if (comp.doseUnit === "unit/m2") {
                               const totalUnits = Math.round(comp.defaultDoseValue * numericBsa);
                               calculatedPatientDoseText = `≈ ${totalUnits} unit (untuk BSA ${numericBsa} m²)`;
+                            } else if (comp.doseUnit === "unit_flat") {
+                              calculatedPatientDoseText = `${comp.defaultDoseValue} unit (Dosis Tetap / Flat)`;
                             } else if (comp.doseUnit === "mg/kg") {
                               const weightVal = typeof patientWeight === 'number' && patientWeight > 0 ? patientWeight : 60;
-                              const totalDose = Math.round(comp.defaultDoseValue * weightVal);
+                              const totalDose = Number((comp.defaultDoseValue * weightVal).toFixed(2));
                               calculatedPatientDoseText = `≈ ${totalDose} mg (untuk BB ${weightVal} kg)`;
+                            } else if (comp.doseUnit === "mcg/kg") {
+                              const weightVal = typeof patientWeight === 'number' && patientWeight > 0 ? patientWeight : 60;
+                              const totalDose = Math.round(comp.defaultDoseValue * weightVal);
+                              calculatedPatientDoseText = `≈ ${totalDose} mcg (untuk BB ${weightVal} kg)`;
                             } else if (comp.doseUnit === "AUC") {
                               calculatedPatientDoseText = `Gunakan Rumus Calvert: AUC × (GFR + 25)`;
                             } else {
-                              calculatedPatientDoseText = `Dosis Tetap (Flat Dose)`;
+                              calculatedPatientDoseText = `${comp.defaultDoseValue} mg (Dosis Tetap / Flat)`;
                             }
 
                             const isVesicant = comp.vesicantStatus.includes("Vesikant");

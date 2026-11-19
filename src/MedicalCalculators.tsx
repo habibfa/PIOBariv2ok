@@ -22,7 +22,9 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
-  RefreshCw
+  RefreshCw,
+  Search,
+  X
 } from "lucide-react";
 import { CHEMO_REGIMENS_DATA, ChemoRegimen, ChemoDrugComponent } from "./data/chemoRegimensData";
 
@@ -64,6 +66,7 @@ export function MedicalCalculators() {
   const [chemoBeva, setChemoBeva] = useState("7.5");
   const [chemoDosePercent, setChemoDosePercent] = useState<number>(100);
   const [chemoCategoryFilter, setChemoCategoryFilter] = useState<string>("all");
+  const [chemoSearchQuery, setChemoSearchQuery] = useState<string>("");
   const [chemoHasCalculated, setChemoHasCalculated] = useState(false);
   const [chemoActiveTab, setChemoActiveTab] = useState<"drugs" | "sequence" | "premed" | "vital">("drugs");
   const [copiedNotification, setCopiedNotification] = useState(false);
@@ -901,10 +904,10 @@ export function MedicalCalculators() {
         calculationFormulaStr = `${bsa.toFixed(2)} m² × ${comp.defaultDoseValue} mg/m²`;
 
         // Clinical caps check
-        if (comp.drugId === "Vinblastin" && calculatedDose > 10) {
+        if (comp.drugId.toLowerCase().includes("vinblastin") && calculatedDose > 10) {
           ceilingWarning = "Plafon Maksimal: 10 mg/dosis per pemberian (Kurangi ke 10 mg)";
         }
-        if (comp.drugId === "Vincristin" && calculatedDose > 2.0) {
+        if (comp.drugId.toLowerCase().includes("vincristin") && calculatedDose > 2.0) {
           ceilingWarning = "Plafon Maksimal: 2.0 mg/dosis untuk cegah paralisis/neurotoksisitas fatal!";
         }
         if (selectedRegimen.id === "cisplatin_cervix" && calculatedDose > 70) {
@@ -915,12 +918,22 @@ export function MedicalCalculators() {
         calculatedDose = standardDose * (chemoDosePercent / 100);
         unit = "unit";
         calculationFormulaStr = `${bsa.toFixed(2)} m² × ${comp.defaultDoseValue} unit/m²`;
+      } else if (comp.doseUnit === "unit_flat") {
+        standardDose = comp.defaultDoseValue;
+        calculatedDose = standardDose * (chemoDosePercent / 100);
+        unit = "unit";
+        calculationFormulaStr = `Dosis flat ${comp.defaultDoseValue} unit`;
       } else if (comp.doseUnit === "mg/kg") {
         const factor = comp.drugId.toLowerCase().includes("bevacizumab") ? beva : comp.defaultDoseValue;
         standardDose = weight * factor;
         calculatedDose = standardDose * (chemoDosePercent / 100);
         unit = "mg";
         calculationFormulaStr = `${weight} kg × ${factor} mg/kgBB`;
+      } else if (comp.doseUnit === "mcg/kg") {
+        standardDose = weight * comp.defaultDoseValue;
+        calculatedDose = standardDose * (chemoDosePercent / 100);
+        unit = "mcg";
+        calculationFormulaStr = `${weight} kg × ${comp.defaultDoseValue} mcg/kgBB`;
       } else if (comp.doseUnit === "AUC") {
         // Formula Calvert: Dose = AUC * (CrCl + 25)
         standardDose = auc * (effectiveCrCl + 25);
@@ -1005,10 +1018,26 @@ export function MedicalCalculators() {
       setTimeout(() => setCopiedNotification(false), 3000);
     };
 
-    // Filtered regimens for dropdown selection
+    // Filtered regimens for dropdown selection (by category + search query)
     const filteredRegimensList = CHEMO_REGIMENS_DATA.filter(r => {
-      if (chemoCategoryFilter === "all") return true;
-      return r.cancerCategory === chemoCategoryFilter;
+      if (chemoCategoryFilter !== "all" && r.cancerCategory !== chemoCategoryFilter) {
+        return false;
+      }
+      if (chemoSearchQuery.trim()) {
+        const q = chemoSearchQuery.trim().toLowerCase();
+        return (
+          r.acronym.toLowerCase().includes(q) ||
+          r.fullName.toLowerCase().includes(q) ||
+          r.cancerTypeDetail.toLowerCase().includes(q) ||
+          r.cancerCategoryLabel.toLowerCase().includes(q) ||
+          r.components.some(
+            c =>
+              c.drugName.toLowerCase().includes(q) ||
+              (c.genericAlias && c.genericAlias.toLowerCase().includes(q))
+          )
+        );
+      }
+      return true;
     });
 
     return (
@@ -1025,7 +1054,7 @@ export function MedicalCalculators() {
                   Kalkulator Dosis Onkologi & Protokol Kanker
                 </span>
                 <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
-                  9 Regimen Standar RSUD BARI
+                  {CHEMO_REGIMENS_DATA.length} Regimen Kemoterapi Klinis
                 </span>
               </div>
               <h3 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
@@ -1065,22 +1094,35 @@ export function MedicalCalculators() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-teal-600" />
-                Pilih Regimen Kemoterapi
+                Pilih Regimen Kemoterapi ({filteredRegimensList.length} / {CHEMO_REGIMENS_DATA.length})
               </label>
 
               {/* Category Quick Filter */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none text-[11px]">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none text-[11px] flex-wrap">
                 {[
-                  { id: "all", label: "Semua Kanker" },
+                  { id: "all", label: "Semua" },
                   { id: "limfoma", label: "Limfoma" },
-                  { id: "kolorektal", label: "Kolorektal" },
+                  { id: "leukemia", label: "Leukemia & MDS" },
+                  { id: "mieloma", label: "Mieloma" },
                   { id: "payudara", label: "Payudara" },
+                  { id: "kolorektal", label: "GI & Kolorektal" },
+                  { id: "paru", label: "Paru" },
+                  { id: "urogenital", label: "Testis & Urologi" },
                   { id: "ginekologi", label: "Ginekologi" },
+                  { id: "sarkoma_pediatri", label: "Sarkoma, Otak & Pediatri" },
                 ].map(cat => (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => setChemoCategoryFilter(cat.id)}
+                    onClick={() => {
+                      setChemoCategoryFilter(cat.id);
+                      const firstMatch = CHEMO_REGIMENS_DATA.find(r =>
+                        cat.id === "all" ? true : r.cancerCategory === cat.id
+                      );
+                      if (firstMatch && cat.id !== "all") {
+                        setChemoRegimen(firstMatch.id);
+                      }
+                    }}
                     className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
                       chemoCategoryFilter === cat.id
                         ? "bg-teal-700 text-white shadow-xs"
@@ -1093,21 +1135,72 @@ export function MedicalCalculators() {
               </div>
             </div>
 
+            {/* Instant Search Bar for 100+ Regimens */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={chemoSearchQuery}
+                onChange={(e) => {
+                  const nextQuery = e.target.value;
+                  setChemoSearchQuery(nextQuery);
+                  if (nextQuery.trim()) {
+                    const q = nextQuery.trim().toLowerCase();
+                    const firstHit = CHEMO_REGIMENS_DATA.find(
+                      r =>
+                        (chemoCategoryFilter === "all" || r.cancerCategory === chemoCategoryFilter) &&
+                        (r.acronym.toLowerCase().includes(q) ||
+                          r.fullName.toLowerCase().includes(q) ||
+                          r.cancerTypeDetail.toLowerCase().includes(q) ||
+                          r.components.some(
+                            c =>
+                              c.drugName.toLowerCase().includes(q) ||
+                              (c.genericAlias && c.genericAlias.toLowerCase().includes(q))
+                          ))
+                    );
+                    if (firstHit) setChemoRegimen(firstHit.id);
+                  }
+                }}
+                placeholder="Cari cepat regimen (7+3, ABVD, BEP, CAPOX, FLOT, FOLFIRINOX, R-Benda, CYBORD, VTD-PACE...), kanker, atau nama obat..."
+                className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+              />
+              {chemoSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setChemoSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
             {/* Dropdown Regimen */}
             <div className="relative">
               <select
-                value={currentRegimenId}
+                value={
+                  filteredRegimensList.some(r => r.id === currentRegimenId)
+                    ? currentRegimenId
+                    : filteredRegimensList[0]?.id || currentRegimenId
+                }
                 onChange={(e) => {
                   setChemoRegimen(e.target.value);
                   setChemoHasCalculated(true);
                 }}
                 className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all shadow-xs cursor-pointer"
               >
-                {filteredRegimensList.map(reg => (
-                  <option key={reg.id} value={reg.id}>
-                    [{reg.cancerCategoryLabel.toUpperCase()}] {reg.acronym} — {reg.fullName}
+                {filteredRegimensList.length === 0 ? (
+                  <option value={currentRegimenId}>
+                    Tidak ada regimen cocok dengan kata kunci &quot;{chemoSearchQuery}&quot;
                   </option>
-                ))}
+                ) : (
+                  filteredRegimensList.map(reg => (
+                    <option key={reg.id} value={reg.id}>
+                      [{reg.cancerCategoryLabel.toUpperCase()}] {reg.acronym} — {reg.fullName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
