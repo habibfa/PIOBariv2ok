@@ -1,33 +1,107 @@
 {
-  "events": [
-    {
-      "id": "evt_1794995399219_padang_login",
-      "sessionId": "sess_1794993792096_f1h88n",
-      "timestamp": 1794995399219,
-      "eventName": "admin_login",
-      "category": "custom",
-      "label": "Login Admin Berhasil (Kota Padang, Sumatera Barat)",
-      "metadata": {
-        "role": "admin",
-        "ip": "2404:c0:d403::0",
-        "isp": "Telkomsel Indonesia",
-        "province": "Sumatera Barat"
-      },
-      "city": "Kota Padang, Sumatera Barat",
+  "version": 2,
+  "createdAt": 1790126691286,
+  "lastUpdated": 1795176415701,
+  "sessions": {
+    "sess_1790126028581_r37svu": {
+      "sessionId": "sess_1790126028581_r37svu",
+      "ip": "103.183.12.0",
+      "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
       "browser": "Chrome",
-      "durationMs": 145,
+      "currentModule": "desc",
+      "startTime": 1795009472845,
+      "lastHeartbeat": 1795015102469,
+      "pageViewsCount": 10
+    },
+    "sess_1790154826377_t7o1a0": {
+      "sessionId": "sess_1790154826377_t7o1a0",
+      "ip": "2001:448a:10b1::0",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
+      "device": "Mobile",
+      "browser": "Chrome",
+      "currentModule": "desc",
+      "startTime": 1795028018312,
+      "lastHeartbeat": 1795028693232,
+      "pageViewsCount": 3
+    },
+    "sess_1790163761627_5kbllq": {
+      "sessionId": "sess_1790163761627_5kbllq",
+      "ip": "2404:c0:18a2::0",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "soap",
+      "startTime": 1795036953301,
+      "lastHeartbeat": 1795070445394,
+      "pageViewsCount": 19
+    },
+    "sess_1790297835356_j0kelr": {
+      "sessionId": "sess_1790297835356_j0kelr",
+      "ip": "103.183.12.0",
+      "city": "Jakarta, DKI Jakarta",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "analytics",
+      "startTime": 1795171027981,
+      "lastHeartbeat": 1795175996470,
+      "pageViewsCount": 9
+    },
+    "sess_1794993792096_f1h88n": {
+      "sessionId": "sess_1794993792096_f1h88n",
+      "ip": "2404:c0:d403::0",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "analytics",
+      "startTime": 1795175996470,
+      "lastHeartbeat": 1795175996470,
+      "pageViewsCount": 1
+    },
+    "sess_1795175957756_1w3qah": {
+      "sessionId": "sess_1795175957756_1w3qah",
+      "ip": "2404:c0:18a2::0",
+      "rawIp": "2404:c0:18a2:f5ee:11c4:4226:cf41:70b0",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "ddi",
+      "startTime": 1795176007641,
+      "lastHeartbeat": 1795176415196,
+      "pageViewsCount": 2
+    }
+  },
+  "events": [
+    {
+      "id": "evt_1795176018094_vgox",
+      "sessionId": "sess_1795175957756_1w3qah",
+      "timestamp": 1795176018094,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DDI",
+      "metadata": {
+        "tab": "ddi",
+        "clientIp": "2404:c0:18a2::0",
+        "isp": "GPS / Wi-Fi Geolocation",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 285,
+      "ip": "2404:c0:18a2::0",
       "isRealLive": true
     },
     {
       "id": "evt_1790301005089_mvjm",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790301005089,
+      "timestamp": 1795174196469,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul ANALYTICS",
       "metadata": {
-        "tab": "analytics"
+        "tab": "analytics",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -39,12 +113,13 @@
     {
       "id": "evt_1790301005087_ffhb",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790301005087,
+      "timestamp": 1795174196467,
       "eventName": "admin_login",
       "category": "conversion",
       "label": "Admin RSUD Palembang BARI berhasil masuk ke sistem",
       "metadata": {
-        "role": "Administrator PIOBARI"
+        "role": "Administrator PIOBARI",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -56,12 +131,13 @@
     {
       "id": "evt_1790298811085_fdul",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790298811085,
+      "timestamp": 1795172002465,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -73,12 +149,13 @@
     {
       "id": "evt_1790298811083_kqg3",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790298811083,
+      "timestamp": 1795172002463,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -90,12 +167,13 @@
     {
       "id": "evt_1790297888755_f7mn",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297888755,
+      "timestamp": 1795171080135,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul ANALYTICS",
       "metadata": {
-        "tab": "analytics"
+        "tab": "analytics",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -107,12 +185,13 @@
     {
       "id": "evt_1790297888749_xe8j",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297888749,
+      "timestamp": 1795171080129,
       "eventName": "admin_login",
       "category": "conversion",
       "label": "Admin RSUD Palembang BARI berhasil masuk ke sistem",
       "metadata": {
-        "role": "Administrator PIOBARI"
+        "role": "Administrator PIOBARI",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -124,12 +203,13 @@
     {
       "id": "evt_1790297858928_jnff",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297858928,
+      "timestamp": 1795171050308,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -141,12 +221,13 @@
     {
       "id": "evt_1790297858921_amtf",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297858921,
+      "timestamp": 1795171050301,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -158,12 +239,13 @@
     {
       "id": "evt_1790297836607_j3wv",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297836607,
+      "timestamp": 1795171027987,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -175,12 +257,13 @@
     {
       "id": "evt_1790297836601_8h9j",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297836601,
+      "timestamp": 1795171027981,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -192,14 +275,15 @@
     {
       "id": "evt_1790196879007_n7hv",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790196879007,
+      "timestamp": 1795070070387,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul SOAP",
       "metadata": {
-        "tab": "soap"
+        "tab": "soap",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 340,
@@ -209,14 +293,15 @@
     {
       "id": "evt_1790195389814_92z1",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790195389814,
+      "timestamp": 1795068581194,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 317,
@@ -226,14 +311,15 @@
     {
       "id": "evt_1790195389798_0b09",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790195389798,
+      "timestamp": 1795068581178,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 337,
@@ -243,14 +329,15 @@
     {
       "id": "evt_1790193847464_9zpi",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193847464,
+      "timestamp": 1795067038844,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul SOAP",
       "metadata": {
-        "tab": "soap"
+        "tab": "soap",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 253,
@@ -260,14 +347,15 @@
     {
       "id": "evt_1790193807463_kzmy",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193807463,
+      "timestamp": 1795066998843,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 316,
@@ -277,14 +365,15 @@
     {
       "id": "evt_1790193807458_b991",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193807458,
+      "timestamp": 1795066998838,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 283,
@@ -294,14 +383,15 @@
     {
       "id": "evt_1790193388723_nlpz",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193388723,
+      "timestamp": 1795066580103,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul SOAP",
       "metadata": {
-        "tab": "soap"
+        "tab": "soap",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 191,
@@ -311,14 +401,15 @@
     {
       "id": "evt_1790167063066_s2s2",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790167063066,
+      "timestamp": 1795040254446,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 195,
@@ -328,14 +419,15 @@
     {
       "id": "evt_1790167063063_ghi8",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790167063063,
+      "timestamp": 1795040254443,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 376,
@@ -345,14 +437,15 @@
     {
       "id": "evt_1790166812960_7a4e",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790166812960,
+      "timestamp": 1795040004340,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul IV",
       "metadata": {
-        "tab": "iv"
+        "tab": "iv",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 187,
@@ -362,14 +455,15 @@
     {
       "id": "evt_1790166599752_ruic",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790166599752,
+      "timestamp": 1795039791132,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul SOAP",
       "metadata": {
-        "tab": "soap"
+        "tab": "soap",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "durationMs": 226,
@@ -379,12 +473,13 @@
     {
       "id": "evt_1790165840794_73mo",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790165840794,
+      "timestamp": 1795039032174,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -396,12 +491,13 @@
     {
       "id": "evt_1790165840784_kckp",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790165840784,
+      "timestamp": 1795039032164,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -413,12 +509,13 @@
     {
       "id": "evt_1790164540007_482t",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790164540007,
+      "timestamp": 1795037731387,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -430,12 +527,13 @@
     {
       "id": "evt_1790164540006_gn3w",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790164540006,
+      "timestamp": 1795037731386,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -447,12 +545,13 @@
     {
       "id": "evt_1790163802768_0s4o",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163802768,
+      "timestamp": 1795036994148,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -464,12 +563,13 @@
     {
       "id": "evt_1790163802763_kbfo",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163802763,
+      "timestamp": 1795036994143,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -481,12 +581,13 @@
     {
       "id": "evt_1790163761931_4u9z",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163761931,
+      "timestamp": 1795036953311,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -498,12 +599,13 @@
     {
       "id": "evt_1790163761924_daza",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163761924,
+      "timestamp": 1795036953304,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan"
       },
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
@@ -515,12 +617,13 @@
     {
       "id": "evt_1790154826941_pytp",
       "sessionId": "sess_1790154826377_t7o1a0",
-      "timestamp": 1790154826941,
+      "timestamp": 1795028018321,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
       "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Mobile",
@@ -532,12 +635,13 @@
     {
       "id": "evt_1790154826932_vzbs",
       "sessionId": "sess_1790154826377_t7o1a0",
-      "timestamp": 1790154826932,
+      "timestamp": 1795028018312,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan"
       },
       "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Mobile",
@@ -549,12 +653,13 @@
     {
       "id": "evt_1790138335304_73uv",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138335304,
+      "timestamp": 1795011526684,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -566,12 +671,13 @@
     {
       "id": "evt_1790138335299_isex",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138335299,
+      "timestamp": 1795011526679,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -583,12 +689,13 @@
     {
       "id": "evt_1790138057488_xstq",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138057488,
+      "timestamp": 1795011248868,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -600,12 +707,13 @@
     {
       "id": "evt_1790138057426_wws3",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138057426,
+      "timestamp": 1795011248806,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -617,12 +725,13 @@
     {
       "id": "evt_1790137758430_n5yf",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790137758430,
+      "timestamp": 1795010949810,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -634,12 +743,13 @@
     {
       "id": "evt_1790137758426_mflw",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790137758426,
+      "timestamp": 1795010949806,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -651,12 +761,13 @@
     {
       "id": "evt_1790136655478_flia",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136655478,
+      "timestamp": 1795009846858,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -668,12 +779,13 @@
     {
       "id": "evt_1790136655473_azz0",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136655473,
+      "timestamp": 1795009846853,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -685,12 +797,13 @@
     {
       "id": "evt_1790136281475_vrwx",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136281475,
+      "timestamp": 1795009472855,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -702,12 +815,13 @@
     {
       "id": "evt_1790136281471_izrc",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136281471,
+      "timestamp": 1795009472851,
       "eventName": "page_view",
       "category": "navigation",
       "label": "Navigasi ke modul DESC",
       "metadata": {
-        "tab": "desc"
+        "tab": "desc",
+        "detectedCity": "Jakarta, DKI Jakarta"
       },
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
@@ -719,9 +833,22 @@
   ],
   "pageViews": [
     {
+      "id": "pv_1795176018090_2ajr",
+      "sessionId": "sess_1795175957756_1w3qah",
+      "timestamp": 1795176018090,
+      "module": "ddi",
+      "path": "/ddi",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "2404:c0:18a2::0"
+    },
+    {
       "id": "pv_1790301005090_r4h1",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790301005090,
+      "timestamp": 1795174196470,
       "module": "analytics",
       "path": "/analytics",
       "city": "Jakarta, DKI Jakarta",
@@ -734,7 +861,7 @@
     {
       "id": "pv_1790298811081_pmzk",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790298811081,
+      "timestamp": 1795172002461,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -747,7 +874,7 @@
     {
       "id": "pv_1790298811074_zn87",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790298811074,
+      "timestamp": 1795172002454,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -760,7 +887,7 @@
     {
       "id": "pv_1790297888754_sygn",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297888754,
+      "timestamp": 1795171080134,
       "module": "analytics",
       "path": "/analytics",
       "city": "Jakarta, DKI Jakarta",
@@ -773,7 +900,7 @@
     {
       "id": "pv_1790297858926_dav9",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297858926,
+      "timestamp": 1795171050306,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -786,7 +913,7 @@
     {
       "id": "pv_1790297858922_buri",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297858922,
+      "timestamp": 1795171050302,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -799,7 +926,7 @@
     {
       "id": "pv_1790297836606_epuh",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297836606,
+      "timestamp": 1795171027986,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -812,7 +939,7 @@
     {
       "id": "pv_1790297836604_49z5",
       "sessionId": "sess_1790297835356_j0kelr",
-      "timestamp": 1790297836604,
+      "timestamp": 1795171027984,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -825,10 +952,10 @@
     {
       "id": "pv_1790196879005_fuw3",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790196879005,
+      "timestamp": 1795070070385,
       "module": "soap",
       "path": "/soap",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -838,10 +965,10 @@
     {
       "id": "pv_1790195389812_caki",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790195389812,
+      "timestamp": 1795068581192,
       "module": "desc",
       "path": "/desc",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -851,10 +978,10 @@
     {
       "id": "pv_1790195389796_1lcb",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790195389796,
+      "timestamp": 1795068581176,
       "module": "desc",
       "path": "/desc",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -864,10 +991,10 @@
     {
       "id": "pv_1790193847462_k6rx",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193847462,
+      "timestamp": 1795067038842,
       "module": "soap",
       "path": "/soap",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -877,10 +1004,10 @@
     {
       "id": "pv_1790193807461_qhbk",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193807461,
+      "timestamp": 1795066998841,
       "module": "desc",
       "path": "/desc",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -890,10 +1017,10 @@
     {
       "id": "pv_1790193807459_mjef",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193807459,
+      "timestamp": 1795066998839,
       "module": "desc",
       "path": "/desc",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -903,10 +1030,10 @@
     {
       "id": "pv_1790193388720_pm7a",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790193388720,
+      "timestamp": 1795066580100,
       "module": "soap",
       "path": "/soap",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -916,10 +1043,10 @@
     {
       "id": "pv_1790167063065_7zyi",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790167063065,
+      "timestamp": 1795040254445,
       "module": "desc",
       "path": "/desc",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -929,10 +1056,10 @@
     {
       "id": "pv_1790167063057_wnmc",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790167063057,
+      "timestamp": 1795040254437,
       "module": "desc",
       "path": "/desc",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -942,10 +1069,10 @@
     {
       "id": "pv_1790166812957_rnqv",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790166812957,
+      "timestamp": 1795040004337,
       "module": "iv",
       "path": "/iv",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -955,10 +1082,10 @@
     {
       "id": "pv_1790166599748_wvsd",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790166599748,
+      "timestamp": 1795039791128,
       "module": "soap",
       "path": "/soap",
-      "city": "Kota Palembang, Sumatera Selatan",
+      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "referrer": "https://aistudio.google.com/",
@@ -968,7 +1095,7 @@
     {
       "id": "pv_1790165840792_hni4",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790165840792,
+      "timestamp": 1795039032172,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -981,7 +1108,7 @@
     {
       "id": "pv_1790165840788_j06r",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790165840788,
+      "timestamp": 1795039032168,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -994,7 +1121,7 @@
     {
       "id": "pv_1790164540010_d6f3",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790164540010,
+      "timestamp": 1795037731390,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -1007,7 +1134,7 @@
     {
       "id": "pv_1790164540001_5ls3",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790164540001,
+      "timestamp": 1795037731381,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -1020,7 +1147,7 @@
     {
       "id": "pv_1790163802761_us2d",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163802761,
+      "timestamp": 1795036994141,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -1033,7 +1160,7 @@
     {
       "id": "pv_1790163802758_o7jm",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163802758,
+      "timestamp": 1795036994138,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -1046,7 +1173,7 @@
     {
       "id": "pv_1790163761929_46ay",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163761929,
+      "timestamp": 1795036953309,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -1059,7 +1186,7 @@
     {
       "id": "pv_1790163761921_a8kh",
       "sessionId": "sess_1790163761627_5kbllq",
-      "timestamp": 1790163761921,
+      "timestamp": 1795036953301,
       "module": "desc",
       "path": "/desc",
       "city": "Kota Palembang, Sumatera Selatan",
@@ -1072,7 +1199,7 @@
     {
       "id": "pv_1790154826938_jckg",
       "sessionId": "sess_1790154826377_t7o1a0",
-      "timestamp": 1790154826938,
+      "timestamp": 1795028018318,
       "module": "desc",
       "path": "/desc",
       "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
@@ -1085,7 +1212,7 @@
     {
       "id": "pv_1790154826936_298n",
       "sessionId": "sess_1790154826377_t7o1a0",
-      "timestamp": 1790154826936,
+      "timestamp": 1795028018316,
       "module": "desc",
       "path": "/desc",
       "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
@@ -1098,7 +1225,7 @@
     {
       "id": "pv_1790138335301_dh95",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138335301,
+      "timestamp": 1795011526681,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1111,7 +1238,7 @@
     {
       "id": "pv_1790138335297_l95v",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138335297,
+      "timestamp": 1795011526677,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1124,7 +1251,7 @@
     {
       "id": "pv_1790138056613_9a88",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138056613,
+      "timestamp": 1795011247993,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1137,7 +1264,7 @@
     {
       "id": "pv_1790138055982_psi5",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790138055982,
+      "timestamp": 1795011247362,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1150,7 +1277,7 @@
     {
       "id": "pv_1790137758431_cvvx",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790137758431,
+      "timestamp": 1795010949811,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1163,7 +1290,7 @@
     {
       "id": "pv_1790137758423_6xig",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790137758423,
+      "timestamp": 1795010949803,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1176,7 +1303,7 @@
     {
       "id": "pv_1790136655477_nj3p",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136655477,
+      "timestamp": 1795009846857,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1189,7 +1316,7 @@
     {
       "id": "pv_1790136655471_0jyj",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136655471,
+      "timestamp": 1795009846851,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1202,7 +1329,7 @@
     {
       "id": "pv_1790136281472_dgqa",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136281472,
+      "timestamp": 1795009472852,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1215,7 +1342,7 @@
     {
       "id": "pv_1790136281465_uec9",
       "sessionId": "sess_1790126028581_r37svu",
-      "timestamp": 1790136281465,
+      "timestamp": 1795009472845,
       "module": "desc",
       "path": "/desc",
       "city": "Jakarta, DKI Jakarta",
@@ -1225,66 +1352,5 @@
       "durationSec": 15,
       "ip": "103.183.12.0"
     }
-  ],
-  "sessions": {
-    "sess_1790126028581_r37svu": {
-      "sessionId": "sess_1790126028581_r37svu",
-      "ip": "103.183.12.0",
-      "city": "Jakarta, DKI Jakarta",
-      "device": "Desktop",
-      "browser": "Chrome",
-      "currentModule": "desc",
-      "startTime": 1790136281465,
-      "lastHeartbeat": 1790141911089,
-      "pageViewsCount": 10
-    },
-    "sess_1790154826377_t7o1a0": {
-      "sessionId": "sess_1790154826377_t7o1a0",
-      "ip": "2001:448a:10b1::0",
-      "city": "Sungai Gerong (Kab. Banyuasin), Sumatera Selatan",
-      "device": "Mobile",
-      "browser": "Chrome",
-      "currentModule": "desc",
-      "startTime": 1790154826932,
-      "lastHeartbeat": 1790155501852,
-      "pageViewsCount": 3
-    },
-    "sess_1790163761627_5kbllq": {
-      "sessionId": "sess_1790163761627_5kbllq",
-      "ip": "2404:c0:18a2::0",
-      "city": "Kota Palembang, Sumatera Selatan",
-      "device": "Desktop",
-      "browser": "Chrome",
-      "currentModule": "soap",
-      "startTime": 1790163761921,
-      "lastHeartbeat": 1790197254014,
-      "pageViewsCount": 19
-    },
-    "sess_1790297835356_j0kelr": {
-      "sessionId": "sess_1790297835356_j0kelr",
-      "ip": "103.183.12.0",
-      "city": "Jakarta, DKI Jakarta",
-      "device": "Desktop",
-      "browser": "Chrome",
-      "currentModule": "analytics",
-      "startTime": 1790297836601,
-      "lastHeartbeat": 1790303158641,
-      "pageViewsCount": 9
-    },
-    "sess_1794993792096_f1h88n": {
-      "sessionId": "sess_1794993792096_f1h88n",
-      "ip": "2404:c0:d403::0",
-      "city": "Kota Padang, Sumatera Barat",
-      "device": "Desktop",
-      "browser": "Chrome",
-      "currentModule": "analytics",
-      "startTime": 1794994296458,
-      "lastHeartbeat": 1794995396828,
-      "pageViewsCount": 1
-    }
-  },
-  "totalHistoricalPageViews": 39,
-  "totalHistoricalSessions": 5,
-  "createdAt": 1790126691286,
-  "lastSavedAt": 1794995399219
+  ]
 }

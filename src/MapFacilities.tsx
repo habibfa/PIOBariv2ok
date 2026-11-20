@@ -1,7 +1,15 @@
-import React, { useEffect, useState, useMemo, useCallback, useDeferredValue } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import {
+  APIProvider,
+  Map as GoogleMap,
+  AdvancedMarker,
+  InfoWindow,
+  useMap,
+  useMapsLibrary,
+} from '@vis.gl/react-google-maps';
 import {
   Upload,
   Save,
@@ -27,17 +35,160 @@ import {
   ArrowUpDown,
   ListFilter,
   Clock,
-  ShieldCheck
+  Star,
+  Globe,
+  RefreshCw,
+  MapPinned,
+  AlertCircle,
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { getFacilitiesFromDb, saveFacilitiesToDb, deleteAllFacilities, Facility } from './services/facilitiesService';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts';
+import {
+  getFacilitiesFromDb,
+  saveFacilitiesToDb,
+  deleteAllFacilities,
+  Facility,
+} from './services/facilitiesService';
+import {
+  SUMSEL_REGIONS,
+  SUMSEL_KOTA_REGIONS,
+  SUMSEL_KABUPATEN_REGIONS,
+  SUMSEL_PROVINCE_CENTER,
+  getSumselRegionById,
+  getRegionBoundsLiteral,
+  SumselRegion,
+} from './data/sumselRegions';
 
-// Haversine formula to compute real-world geodesic distance in kilometers
+const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
+const GMP_ATTRIBUTION_IDS = ['gmp_mcp_codeassist_v1_aistudio'];
+const RSUD_BARI_COORDS = { lat: -3.010222, lng: 104.768972 };
+
+type FacilityCategory = 'Hospital' | 'Puskesmas' | 'Clinic' | 'Pharmacy';
+type FilterCategory = 'Semua' | FacilityCategory;
+type MapStyleKey = 'roadmap' | 'hybrid' | 'terrain';
+
+const ALL_CATEGORIES: FacilityCategory[] = ['Hospital', 'Puskesmas', 'Clinic', 'Pharmacy'];
+
+const CATEGORY_QUERY_CONFIG: Record<
+  FacilityCategory,
+  {
+    label: string;
+    shortLabel: string;
+    queryPrefix: string;
+    includedType?: string;
+    colorHex: string;
+  }
+> = {
+  Hospital: {
+    label: 'Rumah Sakit (RS)',
+    shortLabel: 'RS',
+    queryPrefix: 'Rumah Sakit di',
+    includedType: 'hospital',
+    colorHex: '#ef4444',
+  },
+  Puskesmas: {
+    label: 'Puskesmas',
+    shortLabel: 'Puskesmas',
+    queryPrefix: 'Puskesmas di',
+    colorHex: '#f97316',
+  },
+  Clinic: {
+    label: 'Klinik',
+    shortLabel: 'Klinik',
+    queryPrefix: 'Klinik Kesehatan di',
+    colorHex: '#3b82f6',
+  },
+  Pharmacy: {
+    label: 'Apotek',
+    shortLabel: 'Apotek',
+    queryPrefix: 'Apotek di',
+    includedType: 'pharmacy',
+    colorHex: '#10b981',
+  },
+};
+
+const QUICK_CATEGORY_CHIPS = [
+  {
+    id: 'Semua' as const,
+    shortLabel: 'Semua',
+    fullLabel: 'Semua Faskes',
+    dot: 'bg-teal-500',
+    activeClass: 'bg-slate-900 text-white border-slate-900 shadow-xs',
+    inactiveClass: 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90',
+    badgeActive: 'bg-white/20 text-white',
+    badgeInactive: 'bg-slate-100 text-slate-600',
+  },
+  {
+    id: 'Hospital' as const,
+    shortLabel: 'RS',
+    fullLabel: 'Rumah Sakit (RS)',
+    dot: 'bg-red-500',
+    activeClass: 'bg-red-600 text-white border-red-600 shadow-xs',
+    inactiveClass: 'bg-red-50/60 hover:bg-red-50 text-red-800 border-red-200/80',
+    badgeActive: 'bg-white/20 text-white',
+    badgeInactive: 'bg-red-100/80 text-red-700',
+  },
+  {
+    id: 'Puskesmas' as const,
+    shortLabel: 'Puskesmas',
+    fullLabel: 'Puskesmas',
+    dot: 'bg-orange-500',
+    activeClass: 'bg-orange-500 text-white border-orange-500 shadow-xs',
+    inactiveClass: 'bg-orange-50/60 hover:bg-orange-50 text-orange-800 border-orange-200/80',
+    badgeActive: 'bg-white/20 text-white',
+    badgeInactive: 'bg-orange-100/80 text-orange-700',
+  },
+  {
+    id: 'Clinic' as const,
+    shortLabel: 'Klinik',
+    fullLabel: 'Klinik',
+    dot: 'bg-blue-500',
+    activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
+    inactiveClass: 'bg-blue-50/60 hover:bg-blue-50 text-blue-800 border-blue-200/80',
+    badgeActive: 'bg-white/20 text-white',
+    badgeInactive: 'bg-blue-100/80 text-blue-700',
+  },
+  {
+    id: 'Pharmacy' as const,
+    shortLabel: 'Apotek',
+    fullLabel: 'Apotek',
+    dot: 'bg-emerald-500',
+    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
+    inactiveClass: 'bg-emerald-50/60 hover:bg-emerald-50 text-emerald-800 border-emerald-200/80',
+    badgeActive: 'bg-white/20 text-white',
+    badgeInactive: 'bg-emerald-100/80 text-emerald-700',
+  },
+];
+
+const MAP_STYLE_OPTIONS: { id: MapStyleKey; label: string }[] = [
+  { id: 'roadmap', label: 'Peta Jalan' },
+  { id: 'hybrid', label: 'Satelit' },
+  { id: 'terrain', label: 'Medan' },
+];
+
+// Deterministic numeric hash from Google Place ID so Facility.id stays compatible with numeric IDs
+function hashPlaceIdToNumber(placeId: string): number {
+  let hash = 5381;
+  for (let i = 0; i < placeId.length; i++) {
+    hash = ((hash << 5) + hash + placeId.charCodeAt(i)) >>> 0;
+  }
+  return 100000 + (hash % 900000000);
+}
+
+// Haversine geodesic distance in kilometers
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth radius in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -50,1196 +201,958 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
-const MAP_TILE_STYLES = {
-  standard: {
-    id: 'standard' as const,
-    label: 'Standar',
-    subtitle: 'OpenStreetMap',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  },
-  light: {
-    id: 'light' as const,
-    label: 'Terang Modern',
-    subtitle: 'CartoDB Positron',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  },
-  satellite: {
-    id: 'satellite' as const,
-    label: 'Satelit',
-    subtitle: 'Esri World Imagery',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
-  }
-};
+// Tier 2 Quota Error Detector (avoids false positives on empty results or generic network issues)
+function isGoogleMapsQuotaError(err: unknown): boolean {
+  if (!err) return false;
+  const status = (err as { status?: number | string; code?: number | string })?.status;
+  const code = (err as { code?: number | string })?.code;
+  const message = String(
+    (err as { message?: string })?.message || err
+  ).toUpperCase();
 
-// Fix for default Leaflet icon not showing in React correctly due to bundler
-// We're using standard icons from leaflet CDN as a fallback, or base64 inline them.
-// A simpler robust way is using direct URL to unpkg/cdnjs.
-const customIcon = (color: string) => {
-  return new L.Icon({
-    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-};
-
-// Ikon Khusus Host Hospital: RSUD Palembang BARI (Pusat Layanan PIOBARI) - Static high-contrast ring for 60fps panning
-const iconRSUDBari = new L.DivIcon({
-  html: `<div style="position: relative; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;">
-    <div style="position: absolute; width: 42px; height: 42px; background-color: rgba(225, 29, 72, 0.24); border: 2px solid rgba(225, 29, 72, 0.55); border-radius: 14px;"></div>
-    <div style="background: linear-gradient(135deg, #e11d48, #be123c); width: 34px; height: 34px; border-radius: 11px; border: 2.5px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(225, 29, 72, 0.45); z-index: 10;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="white">
-        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-      </svg>
-    </div>
-  </div>`,
-  className: '',
-  iconSize: [44, 44],
-  iconAnchor: [22, 22],
-  popupAnchor: [0, -22]
-});
-
-// Map Controller Component to smoothly flyTo target real coordinates
-function MapController({ targetCoords, zoom }: { targetCoords: [number, number] | null; zoom?: number }) {
-  const map = useMap();
-  useEffect(() => {
-    if (targetCoords) {
-      map.flyTo(targetCoords, zoom || 15, { animate: true, duration: 0.75 });
-    }
-  }, [targetCoords, zoom, map]);
-  return null;
+  return (
+    status === 429 ||
+    code === 429 ||
+    status === 'RESOURCE_EXHAUSTED' ||
+    status === 'OVER_QUERY_LIMIT' ||
+    message.includes('RESOURCE_EXHAUSTED') ||
+    message.includes('OVER_QUERY_LIMIT') ||
+    message.includes('QUOTA')
+  );
 }
 
-// Self-contained Map Coordinates HUD that updates only on moveend/zoomend without re-rendering parent MapFacilities
-function MapCoordinatesHud({ tileLabel }: { tileLabel: string }) {
+function classifyPlaceCategory(
+  name: string,
+  types: string[] | undefined,
+  fallback: FacilityCategory
+): FacilityCategory {
+  const lower = name.toLowerCase();
+  const typeSet = types || [];
+
+  if (lower.includes('puskesmas') || lower.includes('pusat kesehatan masyarakat') || lower.includes('pustu')) {
+    return 'Puskesmas';
+  }
+  if (lower.includes('apotek') || lower.includes('apotik') || lower.includes('kimia farma') || lower.includes('k-24') || typeSet.includes('pharmacy')) {
+    return 'Pharmacy';
+  }
+  if (
+    lower.includes('rumah sakit') ||
+    /\brs\b/.test(lower) ||
+    /\brsud\b/.test(lower) ||
+    /\brsup\b/.test(lower) ||
+    /\brsia\b/.test(lower) ||
+    /\brsu\b/.test(lower) ||
+    lower.includes('hospital')
+  ) {
+    return 'Hospital';
+  }
+  if (lower.includes('klinik') || lower.includes('clinic') || lower.includes('balai pengobatan')) {
+    return 'Clinic';
+  }
+  if (typeSet.includes('hospital')) return 'Hospital';
+  if (typeSet.includes('pharmacy')) return 'Pharmacy';
+  if (typeSet.includes('medical_clinic') || typeSet.includes('doctor')) return 'Clinic';
+
+  return fallback;
+}
+
+function getTypeLabel(type: string) {
+  switch (type) {
+    case 'Hospital':
+      return { label: 'Rumah Sakit', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' };
+    case 'Puskesmas':
+      return { label: 'Puskesmas', dot: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50' };
+    case 'Clinic':
+      return { label: 'Klinik', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50' };
+    case 'Pharmacy':
+      return { label: 'Apotek', dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
+    default:
+      return { label: type, dot: 'bg-slate-500', text: 'text-slate-700', bg: 'bg-slate-50' };
+  }
+}
+
+interface FacilityPinProps {
+  facility: Facility & { distanceKm: number };
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+const FacilityMarkerPin: React.FC<FacilityPinProps> = React.memo(({ facility, isSelected, onClick }) => {
+  const isRSUDBari = (facility.name || '').toUpperCase().includes('PALEMBANG BARI');
+  const bgColor = isRSUDBari
+    ? '#e11d48'
+    : facility.type === 'Hospital'
+    ? '#ef4444'
+    : facility.type === 'Puskesmas'
+    ? '#f97316'
+    : facility.type === 'Clinic'
+    ? '#3b82f6'
+    : '#10b981';
+
+  const size = isRSUDBari ? 38 : isSelected ? 36 : 30;
+  const borderRadius = isRSUDBari || facility.type === 'Hospital' ? '10px' : '9999px';
+
+  return (
+    <AdvancedMarker
+      position={{ lat: facility.lat, lng: facility.lng }}
+      title={facility.name}
+      zIndex={isRSUDBari ? 1000 : isSelected ? 800 : 100}
+      onClick={onClick}
+    >
+      <div
+        className="flex items-center justify-center transition-transform duration-150 cursor-pointer"
+        style={{
+          width: size,
+          height: size,
+          borderRadius,
+          backgroundColor: bgColor,
+          border: isSelected ? '3px solid #0f172a' : '2.5px solid #ffffff',
+          boxShadow: isSelected
+            ? '0 0 0 4px rgba(13, 148, 136, 0.35), 0 6px 14px rgba(15, 23, 42, 0.35)'
+            : '0 4px 10px rgba(15, 23, 42, 0.28)',
+          transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+        }}
+      >
+        {facility.type === 'Hospital' || isRSUDBari ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+          </svg>
+        ) : facility.type === 'Puskesmas' ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 4v16" />
+            <path d="M4 12h16" />
+          </svg>
+        ) : facility.type === 'Clinic' ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+            <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" />
+            <circle cx="20" cy="10" r="2" />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M10.5 20.5 19 12a4.95 4.95 0 1 0-7-7L3.5 13.5a4.95 4.95 0 1 0 7 7Z" />
+            <path d="m8.5 8.5 7 7" />
+          </svg>
+        )}
+      </div>
+    </AdvancedMarker>
+  );
+});
+
+interface MapCameraControllerProps {
+  targetCenter: { lat: number; lng: number } | null;
+  targetZoom: number;
+  cameraNonce: number;
+}
+
+const MapCameraController: React.FC<MapCameraControllerProps> = ({
+  targetCenter,
+  targetZoom,
+  cameraNonce,
+}) => {
   const map = useMap();
-  const [coords, setCoords] = useState<{ lat: number; lng: number; zoom: number }>(() => {
-    const c = map.getCenter();
-    return { lat: c.lat, lng: c.lng, zoom: map.getZoom() };
-  });
+  useEffect(() => {
+    if (!map || !targetCenter) return;
+    map.panTo(targetCenter);
+    map.setZoom(targetZoom);
+  }, [map, targetCenter, targetZoom, cameraNonce]);
+  return null;
+};
+
+interface MapCoordsHudProps {
+  mapStyleLabel: string;
+}
+
+const MapCoordsHud: React.FC<MapCoordsHudProps> = ({ mapStyleLabel }) => {
+  const map = useMap();
+  const [coords, setCoords] = useState({ lat: -2.9761, lng: 104.7754, zoom: 12 });
 
   useEffect(() => {
-    const handleMoveEnd = () => {
+    if (!map) return;
+    const listener = map.addListener('idle', () => {
       const c = map.getCenter();
-      setCoords({ lat: c.lat, lng: c.lng, zoom: map.getZoom() });
-    };
-    map.on('moveend', handleMoveEnd);
-    map.on('zoomend', handleMoveEnd);
+      const z = map.getZoom();
+      if (c) {
+        setCoords({ lat: c.lat(), lng: c.lng(), zoom: z ?? 12 });
+      }
+    });
     return () => {
-      map.off('moveend', handleMoveEnd);
-      map.off('zoomend', handleMoveEnd);
+      google.maps.event.removeListener(listener);
     };
   }, [map]);
 
   return (
-    <div className="hidden md:flex absolute bottom-3 right-3 z-[400] bg-slate-900/90 text-white px-3.5 py-1.5 rounded-xl border border-slate-700/80 shadow-md items-center gap-2.5 text-[11px] font-mono tabular-nums pointer-events-none">
+    <div className="hidden md:flex absolute bottom-3 right-14 z-20 bg-slate-900/90 text-white px-3.5 py-1.5 rounded-xl border border-slate-700/80 shadow-md items-center gap-2.5 text-[11px] font-mono tabular-nums pointer-events-none">
       <span>Lat: {coords.lat.toFixed(5)}</span>
       <span className="text-slate-500">·</span>
       <span>Lng: {coords.lng.toFixed(5)}</span>
       <span className="text-slate-500">·</span>
       <span className="text-teal-300 font-sans font-semibold text-[10px]">
-        {tileLabel} ({coords.zoom}x)
+        Google Maps · {mapStyleLabel} ({coords.zoom}x)
       </span>
     </div>
   );
+};
+
+interface SumselMapInnerProps {
+  isAdmin: boolean;
 }
 
-const iconHospital = new L.DivIcon({
-  html: `<div style="background-color: #ef4444; width: 32px; height: 32px; border-radius: 8px; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white">
-      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/>
-    </svg>
-  </div>`,
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16]
-});
-const iconClinic = new L.DivIcon({
-  html: `<div style="background-color: #3b82f6; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
-      <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
-      <circle cx="20" cy="10" r="2"/>
-    </svg>
-  </div>`,
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16]
-});
-const iconPharmacy = new L.DivIcon({
-  html: `<div style="background-color: #22c55e; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10.5 20.5 19 12a4.95 4.95 0 1 0-7-7L3.5 13.5a4.95 4.95 0 1 0 7 7Z"/>
-      <path d="m8.5 8.5 7 7"/>
-    </svg>
-  </div>`,
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16]
-});
-const iconPuskesmas = new L.DivIcon({
-  html: `<div style="background-color: #f97316; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 4v16"/><path d="M4 12h16"/>
-    </svg>
-  </div>`,
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16]
-});
-const iconUser = customIcon('violet');
+const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
+  const map = useMap();
+  const placesLib = useMapsLibrary('places');
+  const routesLib = useMapsLibrary('routes');
 
-
-
-const mockFacilities: Facility[] = [
-  {
-    "id": 101,
-    "name": "Charitas Hospital Kenten",
-    "type": "Hospital",
-    "address": "Jl. Betawi Raya No.1340, Lebong Gajah, Kec. Sematang Borang, Kota Palembang, Sumatera Selatan 30163",
-    "lat": -2.937275,
-    "lng": 104.794784,
-    "contact": "0711-817196",
-    "kelas": "D",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 102,
-    "name": "Charitas Hospital Palembang",
-    "type": "Hospital",
-    "address": "Jl. Jend. Sudirman No.1054, Sungai Pangeran, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30114",
-    "lat": -2.9750631,
-    "lng": 104.7526774,
-    "contact": "0711-353374",
-    "kelas": "B",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 105,
-    "name": "Rumah Sakit Islam Ar-Rasyid Palembang",
-    "type": "Hospital",
-    "address": "Jl. HM. Saleh No.2 KM.7, Sukarami, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9361687,
-    "lng": 104.7115559,
-    "contact": "07115610503",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 108,
-    "name": "RS Bhayangkara M. Hasan Palembang",
-    "type": "Hospital",
-    "address": "Jl. Jend. Sudirman No.km 4, RW.5, Ario Kemuning, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30128",
-    "lat": -2.959032,
-    "lng": 104.7269447,
-    "contact": "0711-414855",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 110,
-    "name": "RS Umum Bunda Palembang",
-    "type": "Hospital",
-    "address": "Jl. Demang Lebar Daun No 70 Palembang",
-    "lat": -2.9679297,
-    "lng": 104.7318648,
-    "contact": "0711-311866",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 111,
-    "name": "RS Bunda Medika Jakabaring",
-    "type": "Hospital",
-    "address": "Jl. Gubernur H. A Bastari, Sungai Kedukan, Kec. Rambutan, Kab. Banyuasin, Sumatera Selatan 30967",
-    "lat": -3.0498861,
-    "lng": 104.793065,
-    "contact": "0711-3037000",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 114,
-    "name": "RS Umum Pusat Dr. Mohammad Hoesin Palembang",
-    "type": "Hospital",
-    "address": "Jalan Jendral Sudirman KM.3,5, Sekip Jaya, Kemuning, Sekip Jaya, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30114",
-    "lat": -2.9672422,
-    "lng": 104.7481157,
-    "contact": "0711-354088",
-    "kelas": "A",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 115,
-    "name": "RS Jiwa Ernaldi Bahar Provinsi Sumatera Selatan",
-    "type": "Hospital",
-    "address": "Jalan Gubernur H. Muhammad Ali Amin, RT./RW/RW.20, 04, Alang Alang Lebar, Kec. Alang-Alang Lebar, Kota Palembang, Sumatera Selatan 30154",
-    "lat": -2.9233796,
-    "lng": 104.6802979,
-    "contact": "07115645126",
-    "kelas": "A",
-    "jenis": "RSK Jiwa",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 117,
-    "name": "RS Umum Graha Mandiri",
-    "type": "Hospital",
-    "address": "Jl. Kapten A. Anwar Arsyad No.12, Siring Agung, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.968516,
-    "lng": 104.7236938,
-    "contact": "0711-412354",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 118,
-    "name": "RS Hermina Palembang",
-    "type": "Hospital",
-    "address": "Jl. Jend. Basuki Rachmat No.897, Pahlawan, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30127",
-    "lat": -2.9557995,
-    "lng": 104.7457326,
-    "contact": "0711352525",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 119,
-    "name": "RS Hermina OPI Jakabaring",
-    "type": "Hospital",
-    "address": "Jl. Gubernur H. A Bastari, RT.010/RW.005, Kelurahan Jakabaring Selatan, Kec. Rambutan, Kab. Banyuasin, Sumatera Selatan 30257",
-    "lat": -3.0338765,
-    "lng": 104.788419,
-    "contact": "0711 3031520",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kabupaten Banyuasin"
-  },
-  {
-    "id": 120,
-    "name": "RS Khusus Gigi dan Mulut Provinsi Sumatera Selatan",
-    "type": "Hospital",
-    "address": "Jl. Suka Jaya No.316, Suka Bangun, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.949328,
-    "lng": 104.7320669,
-    "contact": "0711-5610494",
-    "kelas": "C",
-    "jenis": "RSK GM",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 122,
-    "name": "RS Musi Medika Cendikia",
-    "type": "Hospital",
-    "address": "Jl. Demang Lebar Daun, Demang Lebar Daun, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.9799252,
-    "lng": 104.7214043,
-    "contact": "0711 - 446272",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 124,
-    "name": "RS Muhammadiyah Palembang",
-    "type": "Hospital",
-    "address": "Jl. Jenderal Ahmad Yani Jl. Silaberanti No.13, 13 Ulu, Kec. Seberang Ulu II, Kota Palembang, Sumatera Selatan 30263",
-    "lat": -2.9963576,
-    "lng": 104.7741142,
-    "contact": "08117441446",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 125,
-    "name": "RS Pelabuhan Palembang",
-    "type": "Hospital",
-    "address": "Jl. Mayor Memet Sastra Wirya No.1, Lawang Kidul, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30163",
-    "lat": -2.9783177,
-    "lng": 104.7714601,
-    "contact": "(0711) 711843",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 126,
-    "name": "RS Permata Palembang",
-    "type": "Hospital",
-    "address": "Jl. Soekarno Hatta, Bukit Baru, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30139",
-    "lat": -2.9857883,
-    "lng": 104.7160428,
-    "contact": "0711-5260000",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 127,
-    "name": "RS Umum Pertamina Palembang",
-    "type": "Hospital",
-    "address": "Komplek Pertamina UP III, Jl. Pengantingan No.1, Komperta, Kec. Plaju, Kota Palembang, Sumatera Selatan 30967",
-    "lat": -2.9944983,
-    "lng": 104.8221109,
-    "contact": "081515150442",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 131,
-    "name": "RS Umum Pusri Palembang",
-    "type": "Hospital",
-    "address": "Komp. PT PUSRI, Jl. May Zen, Sei Selayur, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30118",
-    "lat": -2.9702722,
-    "lng": 104.7987858,
-    "contact": "0711-721313",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 132,
-    "name": "RS Siloam Sriwijaya Palembang",
-    "type": "Hospital",
-    "address": "Jl. POM IX, Lorok Pakjo, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30137",
-    "lat": -2.9777647,
-    "lng": 104.7397584,
-    "contact": "1500911",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 133,
-    "name": "RS Umum Sriwijaya",
-    "type": "Hospital",
-    "address": "Jalan Jenderal Sudirman KM.4.5 No.502, 20 Ilir D. IV, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30138",
-    "lat": -2.9596254,
-    "lng": 104.7344336,
-    "contact": "0711-419680",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 135,
-    "name": "RS Umum dr. AK. Gani Kota Palembang",
-    "type": "Hospital",
-    "address": "Jl. Dr. Ak. Gani No.1, 16 Ilir, Kec. Bukit Kecil, Kota Palembang, Sumatera Selatan 30113",
-    "lat": -2.9903228,
-    "lng": 104.7575673,
-    "contact": "0711-354691",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 136,
-    "name": "RSU YK Madira",
-    "type": "Hospital",
-    "address": "Jl. Jend. Sudirman No.1051, 20 Ilir D. I, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30114",
-    "lat": -2.9727942,
-    "lng": 104.7497437,
-    "contact": "(0711) 364954",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 139,
-    "name": "RS Islam Siti Khadijah",
-    "type": "Hospital",
-    "address": "Jl. Demang Lebar Daun, Lorok Pakjo, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30137",
-    "lat": -2.9716447,
-    "lng": 104.7288348,
-    "contact": "0711-356008",
-    "kelas": "B",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 140,
-    "name": "Rumah Sakit Ibu dan Anak Az-Zahra Palembang",
-    "type": "Hospital",
-    "address": "Jalan Brigadir jenderal Hasan Khasim Nomor 1-2 Kelurahan, Bukit Sangkal, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30114",
-    "lat": -2.9422792,
-    "lng": 104.7815347,
-    "contact": "07113038799",
-    "kelas": "C",
-    "jenis": "Rumah Sakit Khusus Ibu dan Anak",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 141,
-    "name": "RSIA Bunda Noni",
-    "type": "Hospital",
-    "address": "Jl. Srijaya Negara No.1, Bukit Lama, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30121",
-    "lat": -2.992938,
-    "lng": 104.7238865,
-    "contact": "0711441952",
-    "kelas": "C",
-    "jenis": "Rumah Sakit Khusus Ibu dan Anak",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 143,
-    "name": "RS Ibu dan Anak Mama",
-    "type": "Hospital",
-    "address": "Jl. Lembing Kampus No.15, Jl. Lembing Kampus No.15 Blok f, Lorok Pakjo, Ilir Barat I, Palembang City, South Sumatra 30121",
-    "lat": -2.9754798,
-    "lng": 104.7381606,
-    "contact": "0711 357351",
-    "kelas": "C",
-    "jenis": "Rumah Sakit Khusus Ibu dan Anak",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 144,
-    "name": "Rumah Sakit Ibu Dan Anak Marissa",
-    "type": "Hospital",
-    "address": "Jl. Kapten Abdullah No.1212, RT.18, Plaju Ilir, Kec. Plaju, Kota Palembang, Sumatera Selatan 30119",
-    "lat": -3.0057439,
-    "lng": 104.815503,
-    "contact": "082280841273",
-    "kelas": "C",
-    "jenis": "Rumah Sakit Khusus Ibu dan Anak",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 153,
-    "name": "RS Umum Daerah Gandus Palembang",
-    "type": "Hospital",
-    "address": "Gandus, Kec. Gandus, Kota Palembang, Sumatera Selatan 30149",
-    "lat": -3.0148165,
-    "lng": 104.68721,
-    "contact": "081379179785",
-    "kelas": "D",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 165,
-    "name": "RSUD Palembang BARI",
-    "type": "Hospital",
-    "address": "Jl. Panca Usaha No.1, 5 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30254",
-    "lat": -3.010222,
-    "lng": 104.768972,
-    "contact": "0711-519211",
-    "kelas": "B",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 169,
-    "name": "RSUD Siti Fatimah Provinsi Sumatera Selatan",
-    "type": "Hospital",
-    "address": "Jl. Kolonel H. Barlian, Suka Bangun, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.9482292,
-    "lng": 104.7319755,
-    "contact": "07115178883",
-    "kelas": "A",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 175,
-    "name": "RS Umum Pusat Dr. Rivai Abdullah",
-    "type": "Hospital",
-    "address": "RSUP Dr. Rivai Abdullah, Jl. Sungai Kundur No.Kelurahan, Mariana, Kec. Banyuasin I, Kab. Banyuasin, Sumatera Selatan 30963",
-    "lat": -2.9800618,
-    "lng": 104.8615871,
-    "contact": "0711-7537201",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kabupaten Banyuasin"
-  },
-  {
-    "id": 199,
-    "name": "RSIA Trinanda",
-    "type": "Hospital",
-    "address": "Jl. R. E. Martadinata No.6A, Sei Buah, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30118",
-    "lat": -2.970158,
-    "lng": 104.782502,
-    "contact": "0711716643",
-    "kelas": "C",
-    "jenis": "Rumah Sakit Khusus Ibu dan Anak",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 999,
-    "name": "Charitas Hospital KM. 7",
-    "type": "Hospital",
-    "address": "Jl. Kolonel H. Barlian No.228, Sukarami, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.941132,
-    "lng": 104.7235104,
-    "contact": "0711-411610",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 1000,
-    "name": "Rumah Sakit Namira Palembang",
-    "type": "Hospital",
-    "address": "Lorong Foker Jl. Letjen Harun Sohar, Kebun Bunga, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30152",
-    "lat": -2.9108146,
-    "lng": 104.7110562,
-    "contact": "08136011994",
-    "kelas": "C",
-    "jenis": "RSU",
-    "city": "Kota Palembang"
-  },
-  {
-    "id": 2001,
-    "name": "Puskesmas 1 Ulu",
-    "type": "Puskesmas",
-    "address": "Jl. H Faqih Usman No.2329, 1 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30256",
-    "lat": -3.0114406,
-    "lng": 104.7493961,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2002,
-    "name": "Puskesmas 11 Ilir",
-    "type": "Puskesmas",
-    "address": "Jl. Slamet Riady No.455, 11 Ilir, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30112",
-    "lat": -2.9812056,
-    "lng": 104.7648357,
-    "contact": "0711364125",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2003,
-    "name": "Puskesmas 23 Ilir",
-    "type": "Puskesmas",
-    "address": "Jl. Datuk Moh. Akib No.100, 23 Ilir, Kec. Bukit Kecil, Kota Palembang, Sumatera Selatan 30113",
-    "lat": -2.9878873,
-    "lng": 104.7523147,
-    "contact": "08117111926",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2004,
-    "name": "Puskesmas 4 Ulu",
-    "type": "Puskesmas",
-    "address": "Jalan Kyai Haji Asyik No.1484, 3-4 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30122",
-    "lat": -3.0069627,
-    "lng": 104.7583844,
-    "contact": "0711511373",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2005,
-    "name": "Puskesmas 5 Ilir",
-    "type": "Puskesmas",
-    "address": "Jalan Jendral Jalan Bambang Utoyo No.1095, 5 Ilir, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30111",
-    "lat": -2.9650764,
-    "lng": 104.7701258,
-    "contact": "07115625790",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2006,
-    "name": "Puskesmas 7 Ulu",
-    "type": "Puskesmas",
-    "address": "Jl. KH. Azhari, 7 Ulu, Kecamatan Seberang Ulu I, Kota Palembang, Sumatera Selatan 30253",
-    "lat": -2.9967198,
-    "lng": 104.7613694,
-    "contact": "08117846767",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2007,
-    "name": "Puskesmas Alang Alang Lebar",
-    "type": "Puskesmas",
-    "address": "Jl. Bypass Alang-Alang Lebar, Talang Klp., Kec. Alang-Alang Lebar, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9315366,
-    "lng": 104.6881571,
-    "contact": "08117111699",
-    "kelas": "Rawat Inap",
-    "jenis": "Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2008,
-    "name": "Puskesmas Ariodillah",
-    "type": "Puskesmas",
-    "address": "Jl. Ariodillah 1 No.2102, 20 Ilir D. III, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.964005,
-    "lng": 104.7400458,
-    "contact": "0711317308",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2009,
-    "name": "Puskesmas Basuki Rahmat",
-    "type": "Puskesmas",
-    "address": "Jl. Sersan Sani No.1305, Talang Aman, Kec. Kemuning, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9481797,
-    "lng": 104.7464607,
-    "contact": "0711814470",
-    "kelas": "Rawat Inap",
-    "jenis": "Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2010,
-    "name": "Puskesmas Boom Baru",
-    "type": "Puskesmas",
-    "address": "Jl. Penyaringan No.8, 3 Ilir, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30111",
-    "lat": -2.9752538,
-    "lng": 104.7798426,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2011,
-    "name": "Puskesmas Bukit Sangkal",
-    "type": "Puskesmas",
-    "address": "Jl. Tj. Sari II No.46, Bukit Sangkal, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9376557,
-    "lng": 104.7779766,
-    "contact": "085369555755",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2012,
-    "name": "Puskesmas Dempo",
-    "type": "Puskesmas",
-    "address": "Jl. Kolonel Atmo No.861, 17 Ilir, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30125",
-    "lat": -2.9818032,
-    "lng": 104.7563211,
-    "contact": "08117182222",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2013,
-    "name": "Puskesmas Gandus",
-    "type": "Puskesmas",
-    "address": "Jl. Tp Husin Damar Jaya Sungai Tenang, RT.19/RW.02, Pulo Kerto, Kec. Gandus, Kota Palembang, Sumatera Selatan 30149",
-    "lat": -3.018992,
-    "lng": 104.6745262,
-    "contact": "081288224040",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2014,
-    "name": "Puskesmas Jakabaring",
-    "type": "Puskesmas",
-    "address": "Plaju Darat, Kec. Plaju, Kota Palembang, Sumatera Selatan 30967",
-    "lat": -3.0317825,
-    "lng": 104.7970437,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2015,
-    "name": "Puskesmas Kalidoni",
-    "type": "Puskesmas",
-    "address": "Jl. Talang Gading No.RT 07, Kalidoni, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30163",
-    "lat": -2.9606593,
-    "lng": 104.7966831,
-    "contact": "0711712938",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2016,
-    "name": "Puskesmas Kampus",
-    "type": "Puskesmas",
-    "address": "Jl. Golf No.5 Blok G, Lorok Pakjo, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30126",
-    "lat": -2.975502,
-    "lng": 104.7357682,
-    "contact": "082279529534",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2017,
-    "name": "Puskesmas Karya Jaya",
-    "type": "Puskesmas",
-    "address": "Jl. Musi, Keramasan, Kec. Kertapati, Kota Palembang, Sumatera Selatan 30259",
-    "lat": -3.0408233,
-    "lng": 104.7235448,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2018,
-    "name": "Puskesmas Kenten",
-    "type": "Puskesmas",
-    "address": "Jl. MP. Mangkunegara No.1, Bukit Sangkal, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9404871,
-    "lng": 104.7648187,
-    "contact": "081279878741",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2019,
-    "name": "Puskesmas Keramasan",
-    "type": "Puskesmas",
-    "address": "Jl. Gotong Royong No.466, Kemang Agung, Kec. Kertapati, Kota Palembang, Sumatera Selatan 30145",
-    "lat": -3.0277071,
-    "lng": 104.7432487,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2020,
-    "name": "Puskesmas Kertapati",
-    "type": "Puskesmas",
-    "address": "Jl. Abi Kusno Cokro Suyoso No.335, Kemang Agung, Kec. Kertapati, Kota Palembang, Sumatera Selatan 30145",
-    "lat": -3.0256198,
-    "lng": 104.7444493,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2021,
-    "name": "Puskesmas Makrayu",
-    "type": "Puskesmas",
-    "address": "Jl. Makrayu No.960, 32 Ilir, Kec. Ilir Bar. II, Kota Palembang, Sumatera Selatan 30129",
-    "lat": -3.0000265,
-    "lng": 104.7417205,
-    "contact": "0711318400",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2022,
-    "name": "Puskesmas Merdeka",
-    "type": "Puskesmas",
-    "address": "Jl. Merdeka No.66, Talang Semut, Kec. Bukit Kecil, Kota Palembang, Sumatera Selatan 30136",
-    "lat": -2.9905595,
-    "lng": 104.7502104,
-    "contact": "0711317303",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2023,
-    "name": "Puskesmas Multiwahana",
-    "type": "Puskesmas",
-    "address": "Jl. Musi Raya Komplek Perkantoran No.1, Sako, Kec. Sako, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9286993,
-    "lng": 104.7779542,
-    "contact": "082175338955",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2024,
-    "name": "Puskesmas Naga Swidak",
-    "type": "Puskesmas",
-    "address": "Gg. Bangdes, 14 Ulu, Kec. Seberang Ulu II, Kota Palembang, Sumatera Selatan 30111",
-    "lat": -2.9915556,
-    "lng": 104.7801198,
-    "contact": "081977873700",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2025,
-    "name": "Puskesmas Ogan Permata Indah",
-    "type": "Puskesmas",
-    "address": "Jl. Opi Raya, Sungai Kedukan, Kec. Rambutan, Kab. Banyuasin, Sumatera Selatan 30257",
-    "lat": -3.0485046,
-    "lng": 104.7822671,
-    "contact": "08117877668",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2026,
-    "name": "Puskesmas Padang Selasa",
-    "type": "Puskesmas",
-    "address": "Jl. Padang Selasa, Bukit Lama, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30139",
-    "lat": -2.9901656,
-    "lng": 104.731724,
-    "contact": "082279529534",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2027,
-    "name": "Puskesmas Pakjo",
-    "type": "Puskesmas",
-    "address": "Jl. Inspektur Marzuki Lorong Bambu Kuning No.2240, Demang Lebar Daun, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.9635757,
-    "lng": 104.7318695,
-    "contact": "07115613007",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2028,
-    "name": "Puskesmas Pembina",
-    "type": "Puskesmas",
-    "address": "Jl. Jenderal Ahmad Yani No.62A, Silaberanti, Kecamatan Jakabaring, Kota Palembang, Sumatera Selatan 30252",
-    "lat": -2.9968641,
-    "lng": 104.7727409,
-    "contact": "0711510203",
-    "kelas": "Rawat Inap",
-    "jenis": "Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2029,
-    "name": "Puskesmas Plaju",
-    "type": "Puskesmas",
-    "address": "Jl. D.I. Panjaitan No.40, Plaju Ulu, Kec. Plaju, Kota Palembang, Sumatera Selatan 30268",
-    "lat": -2.9957247,
-    "lng": 104.8111146,
-    "contact": "0711541212",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2030,
-    "name": "Puskesmas Punti Kayu",
-    "type": "Puskesmas",
-    "address": "Komplek Pemda, Jl. Srijaya No.5,5, Srijaya, Kec. Alang-Alang Lebar, Kota Palembang, Sumatera Selatan 30151",
-    "lat": -2.9498248,
-    "lng": 104.7238623,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2031,
-    "name": "Puskesmas Sabokingking",
-    "type": "Puskesmas",
-    "address": "Sei Buah, Kec. Ilir Tim. II, Kota Palembang, Sumatera Selatan 30111",
-    "lat": -2.9737327,
-    "lng": 104.7889828,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2032,
-    "name": "Puskesmas Sako",
-    "type": "Puskesmas",
-    "address": "Jl. Sematang Borang No.765, RT.14/RW.06, Sako Baru, Kec. Sako, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9211914,
-    "lng": 104.7895145,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2033,
-    "name": "Puskesmas Sei Baung",
-    "type": "Puskesmas",
-    "address": "Jl. Pertiwi No.RT.10, Demang Lebar Daun, Kec. Ilir Bar. I, Kota Palembang, Sumatera Selatan 30121",
-    "lat": -2.9732879,
-    "lng": 104.7405414,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2034,
-    "name": "Puskesmas Sei Selincah",
-    "type": "Puskesmas",
-    "address": "Jl. May Zen No.3, Sei Selincah, Kec. Kalidoni, Kota Palembang, Sumatera Selatan 30161",
-    "lat": -2.9682963,
-    "lng": 104.8191075,
-    "contact": "0711718374",
-    "kelas": "Rawat Inap",
-    "jenis": "Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2035,
-    "name": "Puskesmas Sekip",
-    "type": "Puskesmas",
-    "address": "20 Ilir D II, Kec. Kemuning, Kota Palembang, Sumatera Selatan",
-    "lat": -2.957851,
-    "lng": 104.7511441,
-    "contact": "08117105145",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2036,
-    "name": "Puskesmas Sematang Borang",
-    "type": "Puskesmas",
-    "address": "Jl. Lematang Raya No.16, Sialang, Kec. Sako, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9340606,
-    "lng": 104.7879162,
-    "contact": "0711824770",
-    "kelas": "Rawat Inap",
-    "jenis": "Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2037,
-    "name": "Puskesmas Sosial",
-    "type": "Puskesmas",
-    "address": "Lorong Mekar I, RT.033/RW.005, Suka Bangun, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9463286,
-    "lng": 104.7388928,
-    "contact": "085268184440",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2038,
-    "name": "Puskesmas Sukarami",
-    "type": "Puskesmas",
-    "address": "Jl. Kebun Bunga, RT.37/RW.05, Kebun Bunga, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.9204236,
-    "lng": 104.7144485,
-    "contact": "088286531911",
-    "kelas": "Rawat Inap",
-    "jenis": "Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2039,
-    "name": "Puskesmas Talang Betutu",
-    "type": "Puskesmas",
-    "address": "Palembang, Sumatera, Jalan Selatan, Talang Putri, Kota Palembang, Sumatera, Selatan, Talang Betutu, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.8888877,
-    "lng": 104.6843079,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2040,
-    "name": "Puskesmas Talang Jambe",
-    "type": "Puskesmas",
-    "address": "Jl. AMD, Talang Jambe, Kec. Sukarami, Kota Palembang, Sumatera Selatan 30961",
-    "lat": -2.8897467,
-    "lng": 104.7155045,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2041,
-    "name": "Puskesmas Talang Ratu",
-    "type": "Puskesmas",
-    "address": "Jl. Letnan Murod No.986, RT.13, 20 Ilir D. IV, Kec. Ilir Tim. I, Kota Palembang, Sumatera Selatan 30128",
-    "lat": -2.9540056,
-    "lng": 104.7295172,
-    "contact": "0711353259",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2042,
-    "name": "Puskesmas Taman Bacaan",
-    "type": "Puskesmas",
-    "address": "Lorong Taman Bacaan, Tangga Takat, Kec. Seberang Ulu II, Kota Palembang, Sumatera Selatan 30164",
-    "lat": -2.9864392,
-    "lng": 104.7809528,
-    "contact": "0711514482",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  },
-  {
-    "id": 2043,
-    "name": "Puskesmas Tegal Binangun",
-    "type": "Puskesmas",
-    "address": "Lorong Jambu, Plaju Darat, Kec. Plaju, Kota Palembang, Sumatera Selatan 30267",
-    "lat": -3.0139221,
-    "lng": 104.8090331,
-    "contact": "-",
-    "kelas": "Non Rawat Inap",
-    "jenis": "Non Rawat Inap",
-    "city": "Palembang"
-  }
-];
-
-interface MapFacilitiesProps {
-  isAdmin?: boolean;
-}
-
-export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false }) => {
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [csvError, setCsvError] = useState("");
-
-  // Koordinat Real RSUD Palembang BARI (Pusat Layanan PIOBARI) & Kota Palembang
-  const RSUD_BARI_COORDS: [number, number] = [-3.010222, 104.768972];
-  const PALEMBANG_CENTER: [number, number] = [-2.9900, 104.7600];
-
-  const center: [number, number] = RSUD_BARI_COORDS;
-  const [targetCoords, setTargetCoords] = useState<[number, number] | null>(RSUD_BARI_COORDS);
-  const [targetZoom, setTargetZoom] = useState<number>(14);
-  const [copiedCoordsId, setCopiedCoordsId] = useState<number | null>(null);
+  // Selected Sumatera Selatan administrative region ('all-loaded' or one of 17 region IDs)
+  const [selectedRegionId, setSelectedRegionId] = useState<string>('kota-palembang');
+  const [typeFilter, setTypeFilter] = useState<FilterCategory>('Semua');
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [sortBy, setSortBy] = useState<'distance' | 'name' | 'rating'>('distance');
+  const [mapStyle, setMapStyle] = useState<MapStyleKey>('roadmap');
+  const [panelTab, setPanelTab] = useState<'list' | 'regions' | 'stats'>('list');
+  const [isDesktopPanelOpen, setIsDesktopPanelOpen] = useState(true);
+  const [mobileDrawerState, setMobileDrawerState] = useState<'minimized' | 'half' | 'expanded'>('half');
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
-    typeof window !== "undefined" ? window.innerWidth < 768 : false
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
 
+  // In-memory session cache of live Google Maps Places results keyed by `${regionId}:${category}`
+  // (No persistent scraping/storage of Google Maps data; compliant with GMP ToS)
+  const [googlePlacesCache, setGooglePlacesCache] = useState<Record<string, Facility[]>>({});
+  // Custom keyword search results from Google Maps Places API (New)
+  const [customSearchResults, setCustomSearchResults] = useState<Facility[]>([]);
+  const [activeCustomSearchLabel, setActiveCustomSearchLabel] = useState<string>('');
+  // On-demand Place Details cache (phone, opening hours, website) keyed by placeId
+  const [placeDetailsCache, setPlaceDetailsCache] = useState<
+    Record<string, { contact?: string; openingHours?: string[]; websiteUri?: string }>
+  >({});
+  const [loadingDetailsPlaceId, setLoadingDetailsPlaceId] = useState<string | null>(null);
+
+  // Admin-imported custom institutional facilities (optional supplement)
+  const [adminFacilities, setAdminFacilities] = useState<Facility[]>([]);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvError, setCsvError] = useState('');
+
+  // Loading & feedback states
+  const [isFetchingPlaces, setIsFetchingPlaces] = useState(false);
+  const [fetchStatusText, setFetchStatusText] = useState('');
+  const [fetchError, setFetchError] = useState('');
+  const inFlightKeysRef = useRef<Record<string, boolean>>({});
+
+  // Camera state
+  const [targetCenter, setTargetCenter] = useState<{ lat: number; lng: number } | null>(
+    SUMSEL_REGIONS[0].center
+  );
+  const [targetZoom, setTargetZoom] = useState<number>(SUMSEL_REGIONS[0].zoom);
+  const [cameraNonce, setCameraNonce] = useState(0);
+
+  // Selected facility & InfoWindow state
+  const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(null);
+  const [infoWindowFacilityId, setInfoWindowFacilityId] = useState<number | null>(null);
+  const [copiedCoordsId, setCopiedCoordsId] = useState<number | null>(null);
+
+  // Explicit, revocable GPS & Routes API states
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [isRouting, setIsRouting] = useState(false);
+  const [routingError, setRoutingError] = useState('');
+  const [routeInfo, setRouteInfo] = useState<{
+    distanceMeters: number;
+    durationMillis: number;
+    destinationName: string;
+    originLabel: string;
+  } | null>(null);
+  const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 767px)");
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
     const handler = (e: MediaQueryListEvent) => setIsMobileViewport(e.matches);
     setIsMobileViewport(mq.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const deferredSearchQuery = useDeferredValue(searchQuery);
-  const [cityFilter, setCityFilter] = useState("Semua");
-  const [facilities, setFacilities] = useState<Facility[]>(() => {
-    try {
-      const saved = localStorage.getItem("faskes_facilities_v5");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error("Error reading facilities from localStorage:", e);
-    }
-    return mockFacilities.map(f => ({ ...f, locked: false }));
-  });
-  const [isLoadingData, setIsLoadingData] = useState(false);
-
-  // Deteksi GPS otomatis pada saat awal membuka menu peta jika diizinkan browser
+  // Cleanup route polylines on unmount
   useEffect(() => {
-    if ("geolocation" in navigator) {
+    return () => {
+      routePolylinesRef.current.forEach((p) => p.setMap(null));
+      routePolylinesRef.current = [];
+    };
+  }, []);
+
+  // Optionally load admin-uploaded custom facilities from Firestore (non-blocking)
+  useEffect(() => {
+    let active = true;
+    getFacilitiesFromDb()
+      .then((rows) => {
+        if (active && Array.isArray(rows) && rows.length > 0) {
+          setAdminFacilities(rows.map((r) => ({ ...r, source: 'admin' })));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const flyToLocation = useCallback((lat: number, lng: number, zoom: number) => {
+    setTargetCenter({ lat, lng });
+    setTargetZoom(zoom);
+    setCameraNonce((n) => n + 1);
+  }, []);
+
+  // Fetch a single category for a specific Kota/Kabupaten via Google Maps Places API (New)
+  const fetchRegionCategoriesFromGoogleMaps = useCallback(
+    async (region: SumselRegion, categories: FacilityCategory[], forceRefresh = false) => {
+      if (!placesLib) return;
+
+      const missingCategories = categories.filter((cat) => {
+        const cacheKey = `${region.id}:${cat}`;
+        if (!forceRefresh && googlePlacesCache[cacheKey]) return false;
+        if (inFlightKeysRef.current[cacheKey]) return false;
+        return true;
+      });
+
+      if (missingCategories.length === 0) return;
+
+      missingCategories.forEach((cat) => {
+        inFlightKeysRef.current[`${region.id}:${cat}`] = true;
+      });
+
+      setIsFetchingPlaces(true);
+      setFetchError('');
+      setFetchStatusText(
+        `Mengambil data ${missingCategories.map((c) => CATEGORY_QUERY_CONFIG[c].shortLabel).join(', ')} di ${region.name} dari Google Maps...`
+      );
+
+      const bounds = getRegionBoundsLiteral(region);
+      const updates: Record<string, Facility[]> = {};
+      let encounteredError = '';
+
+      await Promise.all(
+        missingCategories.map(async (cat) => {
+          const cfg = CATEGORY_QUERY_CONFIG[cat];
+          const cacheKey = `${region.id}:${cat}`;
+          try {
+            const request: google.maps.places.SearchByTextRequest & {
+              internalUsageAttributionIds?: string[];
+            } = {
+              textQuery: `${cfg.queryPrefix} ${region.searchLabel}`,
+              fields: [
+                'id',
+                'displayName',
+                'formattedAddress',
+                'location',
+                'businessStatus',
+                'googleMapsURI',
+                'rating',
+                'userRatingCount',
+                'types',
+              ],
+              locationBias: bounds,
+              language: 'id',
+              region: 'ID',
+              maxResultCount: 20,
+              ...(cfg.includedType
+                ? { includedType: cfg.includedType, useStrictTypeFiltering: false }
+                : {}),
+              internalUsageAttributionIds: GMP_ATTRIBUTION_IDS,
+            };
+
+            const { places } = await placesLib.Place.searchByText(request);
+            const mapped: Facility[] = (places || [])
+              .filter((p) => p && p.location && p.displayName)
+              .map((p) => {
+                const lat = typeof p.location!.lat === 'function' ? p.location!.lat() : Number(p.location!.lat);
+                const lng = typeof p.location!.lng === 'function' ? p.location!.lng() : Number(p.location!.lng);
+                const placeId = p.id || `${region.id}_${cat}_${lat}_${lng}`;
+                const displayName = p.displayName || 'Fasilitas Kesehatan';
+                const detectedType = classifyPlaceCategory(displayName, p.types, cat);
+                return {
+                  id: hashPlaceIdToNumber(placeId),
+                  placeId,
+                  name: displayName,
+                  type: detectedType,
+                  address: p.formattedAddress || region.searchLabel,
+                  lat,
+                  lng,
+                  city: region.name,
+                  regionId: region.id,
+                  rating: typeof p.rating === 'number' ? p.rating : undefined,
+                  userRatingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : undefined,
+                  businessStatus: p.businessStatus || undefined,
+                  googleMapsUri: p.googleMapsURI || undefined,
+                  source: 'google_maps',
+                };
+              });
+
+            updates[cacheKey] = mapped;
+          } catch (err) {
+            if (isGoogleMapsQuotaError(err)) {
+              window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+              encounteredError =
+                'Batas kuota Google Maps Platform tercapai untuk saat ini. Data wilayah yang sudah dimuat tetap dapat dilihat.';
+            } else {
+              console.warn(`Places searchByText failed for ${region.name} (${cat}):`, err);
+              encounteredError = `Sebagian data Google Maps di ${region.name} gagal dimuat. Silakan coba muat ulang.`;
+            }
+          } finally {
+            delete inFlightKeysRef.current[cacheKey];
+          }
+        })
+      );
+
+      if (Object.keys(updates).length > 0) {
+        setGooglePlacesCache((prev) => ({ ...prev, ...updates }));
+      }
+      if (encounteredError) {
+        setFetchError(encounteredError);
+      }
+      setIsFetchingPlaces(false);
+      setFetchStatusText('');
+    },
+    [placesLib, googlePlacesCache]
+  );
+
+  // Automatically fetch live Google Maps Places for the selected Sumatera Selatan region & active category
+  useEffect(() => {
+    if (!placesLib) return;
+    if (selectedRegionId === 'all-loaded') return;
+    const region = getSumselRegionById(selectedRegionId);
+    if (!region) return;
+
+    const categoriesToLoad: FacilityCategory[] =
+      typeFilter === 'Semua' ? ALL_CATEGORIES : [typeFilter];
+
+    fetchRegionCategoriesFromGoogleMaps(region, categoriesToLoad, false);
+  }, [placesLib, selectedRegionId, typeFilter, fetchRegionCategoriesFromGoogleMaps]);
+
+  // Live Google Maps keyword search scoped to active Kota/Kabupaten or seluruh Sumatera Selatan
+  const handleLiveGoogleMapsSearch = useCallback(async () => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || !placesLib) return;
+
+    const activeRegion =
+      selectedRegionId !== 'all-loaded' ? getSumselRegionById(selectedRegionId) : undefined;
+    const scopeLabel = activeRegion ? activeRegion.searchLabel : 'Sumatera Selatan';
+    const typeHint =
+      typeFilter !== 'Semua' ? `${CATEGORY_QUERY_CONFIG[typeFilter].shortLabel} ` : '';
+
+    setIsFetchingPlaces(true);
+    setFetchError('');
+    setFetchStatusText(`Mencari "${trimmed}" di ${scopeLabel} melalui Google Maps...`);
+
+    try {
+      const request: google.maps.places.SearchByTextRequest & {
+        internalUsageAttributionIds?: string[];
+      } = {
+        textQuery: `${typeHint}${trimmed} ${scopeLabel}`,
+        fields: [
+          'id',
+          'displayName',
+          'formattedAddress',
+          'location',
+          'businessStatus',
+          'googleMapsURI',
+          'rating',
+          'userRatingCount',
+          'types',
+        ],
+        locationBias: activeRegion
+          ? getRegionBoundsLiteral(activeRegion)
+          : { north: -1.6, south: -4.95, east: 106.2, west: 102.05 },
+        language: 'id',
+        region: 'ID',
+        maxResultCount: 20,
+        internalUsageAttributionIds: GMP_ATTRIBUTION_IDS,
+      };
+
+      const { places } = await placesLib.Place.searchByText(request);
+      const fallbackCat: FacilityCategory = typeFilter === 'Semua' ? 'Hospital' : typeFilter;
+
+      const mapped: Facility[] = (places || [])
+        .filter((p) => p && p.location && p.displayName)
+        .map((p) => {
+          const lat = typeof p.location!.lat === 'function' ? p.location!.lat() : Number(p.location!.lat);
+          const lng = typeof p.location!.lng === 'function' ? p.location!.lng() : Number(p.location!.lng);
+          const placeId = p.id || `search_${lat}_${lng}`;
+          const displayName = p.displayName || trimmed;
+          const address = p.formattedAddress || scopeLabel;
+          // Try inferring region from formattedAddress if searching province-wide
+          const matchedRegion =
+            activeRegion ||
+            SUMSEL_REGIONS.find(
+              (r) =>
+                address.toLowerCase().includes(r.shortName.toLowerCase()) ||
+                address.toLowerCase().includes(r.capital.toLowerCase())
+            );
+
+          return {
+            id: hashPlaceIdToNumber(placeId),
+            placeId,
+            name: displayName,
+            type: classifyPlaceCategory(displayName, p.types, fallbackCat),
+            address,
+            lat,
+            lng,
+            city: matchedRegion?.name || 'Sumatera Selatan',
+            regionId: matchedRegion?.id,
+            rating: typeof p.rating === 'number' ? p.rating : undefined,
+            userRatingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : undefined,
+            businessStatus: p.businessStatus || undefined,
+            googleMapsUri: p.googleMapsURI || undefined,
+            source: 'google_maps',
+          };
+        });
+
+      setCustomSearchResults(mapped);
+      setActiveCustomSearchLabel(`Hasil Google Maps: "${trimmed}" (${mapped.length})`);
+
+      if (mapped.length > 0) {
+        flyToLocation(mapped[0].lat, mapped[0].lng, 13);
+        setSelectedFacilityId(mapped[0].id);
+        setInfoWindowFacilityId(mapped[0].id);
+      }
+    } catch (err) {
+      if (isGoogleMapsQuotaError(err)) {
+        window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+        setFetchError('Batas kuota pencarian Google Maps tercapai.');
+      } else {
+        setFetchError('Gagal melakukan pencarian langsung di Google Maps. Periksa koneksi Anda.');
+      }
+    } finally {
+      setIsFetchingPlaces(false);
+      setFetchStatusText('');
+    }
+  }, [searchQuery, placesLib, selectedRegionId, typeFilter, flyToLocation]);
+
+  // On-demand Place Details (phone, opening hours, website) when user inspects a specific place
+  const loadOnDemandPlaceDetails = useCallback(
+    async (facility: Facility) => {
+      if (!placesLib || !facility.placeId) return;
+      if (placeDetailsCache[facility.placeId]) return;
+
+      setLoadingDetailsPlaceId(facility.placeId);
+      try {
+        const place = new placesLib.Place({ id: facility.placeId });
+        await place.fetchFields({
+          fields: ['nationalPhoneNumber', 'regularOpeningHours', 'websiteURI'],
+        });
+        const details = {
+          contact: place.nationalPhoneNumber || undefined,
+          openingHours: place.regularOpeningHours?.weekdayDescriptions || undefined,
+          websiteUri: place.websiteURI || undefined,
+        };
+        setPlaceDetailsCache((prev) => ({
+          ...prev,
+          [facility.placeId!]: details,
+        }));
+      } catch (err) {
+        if (isGoogleMapsQuotaError(err)) {
+          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+        }
+      } finally {
+        setLoadingDetailsPlaceId(null);
+      }
+    },
+    [placesLib, placeDetailsCache]
+  );
+
+  // Select region handler: pans map smoothly to chosen Kota/Kabupaten
+  const handleSelectRegion = useCallback(
+    (regionId: string) => {
+      setSelectedRegionId(regionId);
+      setCustomSearchResults([]);
+      setActiveCustomSearchLabel('');
+      setSelectedFacilityId(null);
+      setInfoWindowFacilityId(null);
+
+      if (regionId === 'all-loaded') {
+        flyToLocation(SUMSEL_PROVINCE_CENTER.lat, SUMSEL_PROVINCE_CENTER.lng, 8);
+        return;
+      }
+      const region = getSumselRegionById(regionId);
+      if (region) {
+        flyToLocation(region.center.lat, region.center.lng, region.zoom);
+      }
+    },
+    [flyToLocation]
+  );
+
+  // Deduplicated pool of facilities for the currently selected region (or all loaded regions)
+  const regionFacilities = useMemo(() => {
+    const dedupRecord: Record<string, Facility> = {};
+
+    const addItem = (item: Facility) => {
+      const key = item.placeId || `id_${item.id}`;
+      const detail = item.placeId ? placeDetailsCache[item.placeId] : undefined;
+      dedupRecord[key] = detail
+        ? {
+            ...item,
+            contact: detail.contact || item.contact,
+            openingHours: detail.openingHours || item.openingHours,
+            websiteUri: detail.websiteUri || item.websiteUri,
+          }
+        : item;
+    };
+
+    if (customSearchResults.length > 0 && activeCustomSearchLabel) {
+      customSearchResults.forEach(addItem);
+    } else {
+      Object.entries(googlePlacesCache).forEach(([cacheKey, list]) => {
+        const regionIdFromKey = cacheKey.split(':')[0];
+        if (selectedRegionId === 'all-loaded' || regionIdFromKey === selectedRegionId) {
+          list.forEach(addItem);
+        }
+      });
+
+      // Also include any admin-uploaded custom facilities matching selected region
+      adminFacilities.forEach((f) => {
+        if (
+          selectedRegionId === 'all-loaded' ||
+          f.regionId === selectedRegionId ||
+          (f.city &&
+            getSumselRegionById(selectedRegionId)?.shortName &&
+            f.city.toLowerCase().includes(getSumselRegionById(selectedRegionId)!.shortName.toLowerCase()))
+        ) {
+          addItem(f);
+        }
+      });
+    }
+
+    return Object.values(dedupRecord);
+  }, [
+    googlePlacesCache,
+    customSearchResults,
+    activeCustomSearchLabel,
+    selectedRegionId,
+    placeDetailsCache,
+    adminFacilities,
+  ]);
+
+  // All facilities loaded across the entire province so far (for regional breakdown & badges)
+  const allLoadedProvinceFacilities = useMemo(() => {
+    const dedup: Record<string, Facility> = {};
+    Object.values(googlePlacesCache).forEach((list) => {
+      list.forEach((f) => {
+        dedup[f.placeId || `id_${f.id}`] = f;
+      });
+    });
+    return Object.values(dedup);
+  }, [googlePlacesCache]);
+
+  const loadedCountByRegion = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const seenByRegion: Record<string, Record<string, boolean>> = {};
+    Object.entries(googlePlacesCache).forEach(([cacheKey, list]) => {
+      const regionId = cacheKey.split(':')[0];
+      if (!seenByRegion[regionId]) seenByRegion[regionId] = {};
+      list.forEach((f) => {
+        seenByRegion[regionId][f.placeId || String(f.id)] = true;
+      });
+    });
+    Object.entries(seenByRegion).forEach(([rId, idMap]) => {
+      counts[rId] = Object.keys(idMap).length;
+    });
+    return counts;
+  }, [googlePlacesCache]);
+
+  const activeRegionObj = useMemo(
+    () => (selectedRegionId === 'all-loaded' ? null : getSumselRegionById(selectedRegionId) || null),
+    [selectedRegionId]
+  );
+
+  const referenceCoords = useMemo(() => {
+    if (userLocation) return userLocation;
+    if (activeRegionObj) return activeRegionObj.center;
+    return RSUD_BARI_COORDS;
+  }, [userLocation, activeRegionObj]);
+
+  // Local text filter on top of loaded Google Maps places
+  const searchFilteredFacilities = useMemo(() => {
+    const q = (deferredSearchQuery || '').trim().toLowerCase();
+    if (!q || activeCustomSearchLabel) return regionFacilities;
+    return regionFacilities.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.address.toLowerCase().includes(q) ||
+        (f.city || '').toLowerCase().includes(q)
+    );
+  }, [regionFacilities, deferredSearchQuery, activeCustomSearchLabel]);
+
+  const categoryCounts = useMemo(
+    () => ({
+      Semua: searchFilteredFacilities.length,
+      Hospital: searchFilteredFacilities.filter((f) => f.type === 'Hospital').length,
+      Puskesmas: searchFilteredFacilities.filter((f) => f.type === 'Puskesmas').length,
+      Clinic: searchFilteredFacilities.filter((f) => f.type === 'Clinic').length,
+      Pharmacy: searchFilteredFacilities.filter((f) => f.type === 'Pharmacy').length,
+    }),
+    [searchFilteredFacilities]
+  );
+
+  const filteredFacilities = useMemo(() => {
+    const list = searchFilteredFacilities
+      .filter((f) => (typeFilter === 'Semua' ? true : f.type === typeFilter))
+      .map((f) => ({
+        ...f,
+        distanceKm: calculateDistanceKm(referenceCoords.lat, referenceCoords.lng, f.lat, f.lng),
+      }));
+
+    return list.sort((a, b) => {
+      if (sortBy === 'rating') {
+        return (b.rating || 0) - (a.rating || 0);
+      }
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      return a.distanceKm - b.distanceKm;
+    });
+  }, [searchFilteredFacilities, typeFilter, referenceCoords, sortBy]);
+
+  const selectedFacility = useMemo(() => {
+    if (selectedFacilityId === null) return null;
+    const found = filteredFacilities.find((f) => f.id === selectedFacilityId);
+    if (found) return found;
+    const fallback = regionFacilities.find((f) => f.id === selectedFacilityId);
+    if (!fallback) return null;
+    return {
+      ...fallback,
+      distanceKm: calculateDistanceKm(
+        referenceCoords.lat,
+        referenceCoords.lng,
+        fallback.lat,
+        fallback.lng
+      ),
+    };
+  }, [filteredFacilities, regionFacilities, selectedFacilityId, referenceCoords]);
+
+  const infoWindowFacility = useMemo(() => {
+    if (infoWindowFacilityId === null) return null;
+    return filteredFacilities.find((f) => f.id === infoWindowFacilityId) || null;
+  }, [filteredFacilities, infoWindowFacilityId]);
+
+  // Charts Data
+  const pieDataCategory = useMemo(
+    () =>
+      [
+        { name: 'Rumah Sakit', value: categoryCounts.Hospital, color: '#ef4444' },
+        { name: 'Puskesmas', value: categoryCounts.Puskesmas, color: '#f97316' },
+        { name: 'Klinik', value: categoryCounts.Clinic, color: '#3b82f6' },
+        { name: 'Apotek', value: categoryCounts.Pharmacy, color: '#10b981' },
+      ].filter((d) => d.value > 0),
+    [categoryCounts]
+  );
+
+  const barDataByRegion = useMemo(() => {
+    return SUMSEL_REGIONS.map((r) => ({
+      name: r.shortName,
+      value: loadedCountByRegion[r.id] || 0,
+    }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [loadedCountByRegion]);
+
+  // Explicit, user-initiated GPS detection (revocable consent)
+  const locateUser = () => {
+    setIsLocating(true);
+    setRoutingError('');
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setUserLocation([lat, lng]);
-          setTargetCoords([lat, lng]);
-          setTargetZoom(15);
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setUserLocation(coords);
+          flyToLocation(coords.lat, coords.lng, 15);
+          setIsLocating(false);
         },
         () => {
-          // Default tetap fokus pada RSUD Palembang BARI
-          setTargetCoords(RSUD_BARI_COORDS);
-          setTargetZoom(14);
+          setIsLocating(false);
+          setRoutingError('Gagal mengakses GPS. Pastikan izin lokasi aktif di browser Anda.');
         },
-        { enableHighAccuracy: true, timeout: 6000 }
+        { enableHighAccuracy: true, timeout: 10000 }
       );
+    } else {
+      setIsLocating(false);
+      setRoutingError('Geolokasi tidak didukung oleh perangkat ini.');
     }
+  };
+
+  const clearRoute = useCallback(() => {
+    routePolylinesRef.current.forEach((p) => p.setMap(null));
+    routePolylinesRef.current = [];
+    setRouteInfo(null);
+    setRoutingError('');
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        const data = await getFacilitiesFromDb();
-        if (isMounted && data && data.length > 0) {
-          const sorted = data.map(f => ({ ...f, locked: false })).sort((a, b) => a.id - b.id);
-          setFacilities(sorted);
-          try {
-            localStorage.setItem("faskes_facilities_v5", JSON.stringify(sorted));
-          } catch (e) {}
-        } else if (isMounted) {
-          try {
-            const saved = localStorage.getItem("faskes_facilities_v5");
-            if (!saved) {
-              localStorage.setItem("faskes_facilities_v5", JSON.stringify(mockFacilities.map(f => ({ ...f, locked: false }))));
-            }
-          } catch (e) {}
-        }
-      } catch (e) {
-        console.warn("Failed to load from DB, using local data", e);
-      } finally {
-        if (isMounted) {
-          setIsLoadingData(false);
-        }
+  // Modern Google Maps Routes API (`Route.computeRoutes`) via `useMapsLibrary('routes')`
+  const computeRouteToFacility = useCallback(
+    async (destination: { lat: number; lng: number }, facilityName: string) => {
+      if (!routesLib || !map) {
+        setRoutingError('Layanan rute Google Maps sedang dimuat. Silakan coba sesaat lagi.');
+        return;
       }
-    };
-    loadData();
-    return () => { isMounted = false; };
-  }, []);
 
-  const saveToDb = async (data: Facility[]) => {
-    try {
-      await saveFacilitiesToDb(data);
-    } catch (e) {
-      console.error("Failed to save to DB", e);
-      alert("Gagal menyimpan data ke database");
+      const origin = userLocation || RSUD_BARI_COORDS;
+      const originLabel = userLocation ? 'Lokasi GPS Anda' : 'RSUD Palembang BARI';
+
+      clearRoute();
+      setIsRouting(true);
+
+      try {
+        const request = {
+          origin,
+          destination,
+          travelMode: 'DRIVING',
+          fields: ['path', 'distanceMeters', 'durationMillis', 'viewport', 'legs'],
+        };
+
+        const response = await (routesLib.Route as any).computeRoutes(request);
+        const routes = response?.routes;
+
+        if (!routes || routes.length === 0) {
+          setRoutingError('Rute jalan tidak ditemukan menuju faskes ini.');
+          return;
+        }
+
+        const primaryRoute = routes[0];
+        const polylines: google.maps.Polyline[] = primaryRoute.createPolylines();
+        polylines.forEach((poly) => {
+          poly.setOptions({
+            strokeColor: '#0d9488',
+            strokeWeight: 6,
+            strokeOpacity: 0.9,
+          });
+          poly.setMap(map);
+        });
+        routePolylinesRef.current = polylines;
+
+        if (primaryRoute.viewport) {
+          map.fitBounds(primaryRoute.viewport);
+        }
+
+        setRouteInfo({
+          distanceMeters: primaryRoute.distanceMeters ?? 0,
+          durationMillis: primaryRoute.durationMillis ?? 0,
+          destinationName: facilityName,
+          originLabel,
+        });
+      } catch (err) {
+        if (isGoogleMapsQuotaError(err)) {
+          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+          setRoutingError('Kuota Routes API Google Maps tercapai. Gunakan tombol "Google Maps" untuk navigasi eksternal.');
+        } else {
+          console.error('Error computing Google Maps route:', err);
+          setRoutingError('Gagal menghitung rute melalui Google Maps Routes API.');
+        }
+      } finally {
+        setIsRouting(false);
+      }
+    },
+    [routesLib, map, userLocation, clearRoute]
+  );
+
+  const handleSelectFacility = useCallback(
+    (facility: Facility & { distanceKm: number }, shouldFly = true) => {
+      setSelectedFacilityId(facility.id);
+      setInfoWindowFacilityId(facility.id);
+      setPanelTab('list');
+      setIsDesktopPanelOpen(true);
+      setMobileDrawerState((prev) => (prev === 'minimized' ? 'half' : prev));
+      if (shouldFly) {
+        flyToLocation(facility.lat, facility.lng, 16);
+      }
+      if (facility.placeId) {
+        void loadOnDemandPlaceDetails(facility);
+      }
+    },
+    [flyToLocation, loadOnDemandPlaceDetails]
+  );
+
+  const handleCopyCoords = (lat: number, lng: number, id: number) => {
+    navigator.clipboard?.writeText(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    setCopiedCoordsId(id);
+    setTimeout(() => setCopiedCoordsId(null), 2000);
+  };
+
+  const handleToggleCategoryChip = (categoryId: FilterCategory) => {
+    setTypeFilter((prev) => (prev === categoryId && categoryId !== 'Semua' ? 'Semua' : categoryId));
+  };
+
+  // Admin optional CSV/Excel import handlers
+  const handleDownloadTemplate = () => {
+    const template = [
+      {
+        id: 101,
+        name: 'Contoh RS Daerah',
+        type: 'Hospital',
+        address: 'Jl. Contoh No. 1, Palembang, Sumatera Selatan',
+        lat: -2.9761,
+        lng: 104.7754,
+        contact: '0711-000000',
+        city: 'Kota Palembang',
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template_Faskes_Sumsel');
+    XLSX.writeFile(wb, 'Template_Faskes_Sumsel.xlsx');
+  };
+
+  const validateAndSetAdminData = async (parsed: any[]) => {
+    if (parsed.length > 0 && parsed[0].id !== undefined && parsed[0].name !== undefined) {
+      const newData: Facility[] = parsed.map((item) => ({ ...item, source: 'admin', locked: false }));
+      setAdminFacilities((prev) => {
+        const filtered = prev.filter((p) => !newData.some((n) => n.id === p.id));
+        return [...filtered, ...newData];
+      });
+      setIsUpdateModalOpen(false);
+      setCsvError('');
+      setCsvFile(null);
+      await saveFacilitiesToDb(newData);
+    } else {
+      setCsvError('Format file tidak valid. Pastikan baris pertama berisi kolom id, name, type, address, lat, lng.');
     }
   };
 
   const handleUpdateData = async () => {
     if (!csvFile) {
-      setCsvError("Silakan pilih file CSV/Excel terlebih dahulu.");
+      setCsvError('Silakan pilih file CSV/Excel terlebih dahulu.');
       return;
     }
     const fileExt = csvFile.name.split('.').pop()?.toLowerCase();
@@ -1248,1242 +1161,906 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
         header: true,
         skipEmptyLines: true,
         dynamicTyping: true,
-        complete: (results) => {
-          validateAndSetData(results.data);
-        },
-        error: (error) => {
-          setCsvError("Gagal membaca file CSV: " + error.message);
-        }
+        complete: (results) => void validateAndSetAdminData(results.data),
+        error: (error) => setCsvError('Gagal membaca file CSV: ' + error.message),
       });
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
         const data = await csvFile.arrayBuffer();
         const workbook = XLSX.read(data);
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const parsed = XLSX.utils.sheet_to_json(worksheet);
-        validateAndSetData(parsed);
+        await validateAndSetAdminData(parsed);
       } catch (err: any) {
-        setCsvError("Gagal membaca file Excel: " + err.message);
+        setCsvError('Gagal membaca file Excel: ' + err.message);
       }
     } else {
-      setCsvError("Format file tidak didukung. Gunakan CSV atau Excel (.xlsx)");
+      setCsvError('Format file tidak didukung. Gunakan CSV atau Excel (.xlsx)');
     }
   };
 
-  const validateAndSetData = async (parsed: any[]) => {
-    if (parsed.length > 0 && parsed[0].id !== undefined && parsed[0].name !== undefined) {
-      const newData = parsed.map(item => ({...item, locked: false}));
-      let combined: Facility[] = [];
-      setFacilities(prev => {
-        const prevFiltered = prev.filter(p => !newData.some(n => n.id === p.id));
-        combined = [...prevFiltered, ...newData].sort((a, b) => a.id - b.id);
-        return combined;
-      });
-      setIsUpdateModalOpen(false);
-      setCsvError("");
-      setCsvFile(null);
-      await saveToDb(newData);
-    } else {
-      setCsvError("Format file tidak valid. Pastikan baris pertama berisi header yang tepat.");
-    }
-  };
+  const currentMapStyleLabel =
+    MAP_STYLE_OPTIONS.find((s) => s.id === mapStyle)?.label || 'Peta Jalan';
 
-  const handleDownloadTemplate = () => {
-    const template = [{ id: 101, name: "Charitas Hospital Kenten", type: "Hospital", address: "Jalan Betawi Raya No 1340 RT 22 RW 06", lat: -2.937483, lng: 104.794836, contact: "0711-817196", kelas: "D", jenis: "RSU", city: "Palembang" }];
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template_Peta_Faskes");
-    XLSX.writeFile(wb, "Template_Peta_Faskes.xlsx");
-  };
+  const loadedRegionsCount = Object.keys(loadedCountByRegion).length;
 
-  const cities = ["Semua", ...Array.from(new Set(facilities.map(f => f.city).filter(Boolean)))];
-  
-  // Routing States
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
-  const [isLocating, setIsLocating] = useState(false);
-  const [isRouting, setIsRouting] = useState(false);
-  const [routingError, setRoutingError] = useState("");
-  const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number, destinationName: string} | null>(null);
-
-  const locateUser = () => {
-    setIsLocating(true);
-    setRoutingError("");
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setUserLocation([lat, lng]);
-          setTargetCoords([lat, lng]);
-          setTargetZoom(16);
-          setIsLocating(false);
-        },
-        (error) => {
-          setIsLocating(false);
-          setRoutingError("Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif pada peramban Anda.");
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    } else {
-      setIsLocating(false);
-      setRoutingError("Geolokasi tidak didukung oleh perangkat ini.");
-    }
-  };
-
-  const focusRSUDBari = () => {
-    setTargetCoords(RSUD_BARI_COORDS);
-    setTargetZoom(16);
-  };
-
-  const focusPalembang = () => {
-    setTargetCoords(PALEMBANG_CENTER);
-    setTargetZoom(12);
-  };
-
-  const handleCopyCoords = (lat: number, lng: number, id: number) => {
-    const text = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    navigator.clipboard?.writeText(text);
-    setCopiedCoordsId(id);
-    setTimeout(() => setCopiedCoordsId(null), 2000);
-  };
-
-  const getRouteTo = async (destination: [number, number], facilityName: string) => {
-    if (!userLocation) {
-      setRoutingError("Silakan aktifkan 'Lokasi Saya' terlebih dahulu.");
-      return;
-    }
-    
-    setIsRouting(true);
-    setRoutingError("");
-    setRouteCoordinates([]);
-    setRouteInfo(null);
-    
-    try {
-      // OSRM API expects lon,lat
-      const start = `${userLocation[1]},${userLocation[0]}`;
-      const end = `${destination[1]},${destination[0]}`;
-      const url = `https://router.project-osrm.org/route/v1/driving/${start};${end}?overview=full&geometries=geojson`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const coordinates = route.geometry.coordinates;
-        // GeoJSON uses [lon, lat], Leaflet Polyline expects [lat, lon]
-        const latLngs = coordinates.map((c: [number, number]) => [c[1], c[0]]);
-        setRouteCoordinates(latLngs);
-        setRouteInfo({
-          distance: route.distance, // in meters
-          duration: route.duration, // in seconds
-          destinationName: facilityName
-        });
-      } else {
-        setRoutingError("Rute jalan tidak ditemukan oleh server navigasi.");
-      }
-    } catch (err) {
-      setRoutingError("Gagal terhubung ke server navigasi OSRM.");
-    } finally {
-      setIsRouting(false);
-    }
-  };
-
-  const [hoveredKelas, setHoveredKelas] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"Semua" | "Hospital" | "Puskesmas" | "Clinic" | "Pharmacy">("Semua");
-  const [sortBy, setSortBy] = useState<"distance" | "name">("distance");
-  const [mapStyle, setMapStyle] = useState<"standard" | "light" | "satellite">("standard");
-  const [panelTab, setPanelTab] = useState<"list" | "stats">("list");
-  const [isDesktopPanelOpen, setIsDesktopPanelOpen] = useState<boolean>(true);
-  const [mobileDrawerState, setMobileDrawerState] = useState<"minimized" | "half" | "expanded">("half");
-  const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(165);
-  const [isDetailCardOpen, setIsDetailCardOpen] = useState<boolean>(true);
-
-  // Reference point for distance calculation: User GPS if available, otherwise RSUD Palembang BARI
-  const referenceCoords: [number, number] = userLocation || RSUD_BARI_COORDS;
-
-  // Base filtered by city and deferred search query (used for category pill counts without blocking typing)
-  const searchAndCityFiltered = useMemo(() => {
-    const q = (deferredSearchQuery || "").toLowerCase().trim();
-    return facilities.filter(facility =>
-      facility &&
-      (cityFilter === "Semua" || facility.city === cityFilter || !facility.city) &&
-      (!q ||
-        (facility.name || "").toLowerCase().includes(q) ||
-        (facility.address || "").toLowerCase().includes(q) ||
-        (facility.jenis && facility.jenis.toLowerCase().includes(q)) ||
-        (facility.kelas && `kelas ${facility.kelas.toLowerCase()}`.includes(q)))
-    );
-  }, [facilities, cityFilter, deferredSearchQuery]);
-
-  // Filtered by category typeFilter as well
-  const baseFilteredFacilities = useMemo(() => {
-    return searchAndCityFiltered.filter(facility =>
-      typeFilter === "Semua" ? true : facility.type === typeFilter
-    );
-  }, [searchAndCityFiltered, typeFilter]);
-
-  // Enriched with real-time geodesic distance and sorted
-  const filteredFacilities = useMemo(() => {
-    const list = baseFilteredFacilities
-      .filter(facility => {
-        if (hoveredKelas === null) return true;
-        if (hoveredKelas === "Lainnya") return facility.type === "Hospital" && !facility.kelas;
-        return facility.kelas === hoveredKelas.replace("Kelas ", "");
-      })
-      .map(facility => {
-        const distanceKm = calculateDistanceKm(
-          referenceCoords[0],
-          referenceCoords[1],
-          facility.lat,
-          facility.lng
-        );
-        return { ...facility, distanceKm };
-      });
-
-    return list.sort((a, b) => {
-      if (sortBy === "distance") {
-        return a.distanceKm - b.distanceKm;
-      }
-      return (a.name || "").localeCompare(b.name || "");
-    });
-  }, [baseFilteredFacilities, hoveredKelas, referenceCoords, sortBy]);
-
-  const categoryCounts = useMemo(() => ({
-    Semua: searchAndCityFiltered.length,
-    Hospital: searchAndCityFiltered.filter(f => f.type === "Hospital").length,
-    Puskesmas: searchAndCityFiltered.filter(f => f.type === "Puskesmas").length,
-    Clinic: searchAndCityFiltered.filter(f => f.type === "Clinic").length,
-    Pharmacy: searchAndCityFiltered.filter(f => f.type === "Pharmacy").length,
-  }), [searchAndCityFiltered]);
-
-  const stats = {
-    rsKelasA: baseFilteredFacilities.filter(f => f.kelas === "A").length,
-    rsKelasB: baseFilteredFacilities.filter(f => f.kelas === "B").length,
-    rsKelasC: baseFilteredFacilities.filter(f => f.kelas === "C").length,
-    rsKelasD: baseFilteredFacilities.filter(f => f.kelas === "D").length,
-    rsUnclassified: baseFilteredFacilities.filter(f => f.type === "Hospital" && !f.kelas).length,
-    totalRs: baseFilteredFacilities.filter(f => f.type === "Hospital").length,
-    totalApotek: baseFilteredFacilities.filter(f => f.type === "Pharmacy").length,
-    totalKlinik: baseFilteredFacilities.filter(f => f.type === "Clinic").length,
-    totalPuskesmas: baseFilteredFacilities.filter(f => f.type === "Puskesmas").length,
-    puskesmasRawatInap: baseFilteredFacilities.filter(f => f.type === "Puskesmas" && f.kelas === "Rawat Inap").length,
-    puskesmasNonRawatInap: baseFilteredFacilities.filter(f => f.type === "Puskesmas" && f.kelas === "Non Rawat Inap").length,
-  };
-
-  const pieDataPuskesmas = [
-    { name: "Rawat Inap", value: stats.puskesmasRawatInap, color: "#f97316" },
-    { name: "Non Rawat Inap", value: stats.puskesmasNonRawatInap, color: "#8b5cf6" },
-  ].filter(d => d.value > 0);
-
-  const pieDataKelas = [
-    { name: "Kelas A", value: stats.rsKelasA, color: "#ef4444" },
-    { name: "Kelas B", value: stats.rsKelasB, color: "#f97316" },
-    { name: "Kelas C", value: stats.rsKelasC, color: "#10b981" },
-    { name: "Kelas D", value: stats.rsKelasD, color: "#3b82f6" },
-  ].filter(d => d.value > 0);
-  if (stats.rsUnclassified > 0) {
-    pieDataKelas.push({ name: "Lainnya", value: stats.rsUnclassified, color: "#94a3b8" });
-  }
-
-  const hospitalJenisCounts = baseFilteredFacilities
-    .filter(f => f.type === "Hospital")
-    .reduce((acc, f) => {
-      const jenis = f.jenis || "Lainnya";
-      acc[jenis] = (acc[jenis] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-  const barDataJenis = Object.entries(hospitalJenisCounts)
-    .map(([name, value]) => ({ name, value, color: "#0d9488" }))
-    .sort((a, b) => b.value - a.value);
-
-  // Selected facility object enriched with geodesic distance from referenceCoords
-  const selectedFacility = useMemo(() => {
-    if (selectedFacilityId === null) return null;
-    const found = facilities.find(f => f && f.id === selectedFacilityId);
-    if (!found) return null;
-    const distanceKm = calculateDistanceKm(
-      referenceCoords[0],
-      referenceCoords[1],
-      found.lat,
-      found.lng
-    );
-    return { ...found, distanceKm };
-  }, [facilities, selectedFacilityId, referenceCoords]);
-
-  const getFacilityOperationalMeta = (facility: Facility) => {
-    const isRSUDBari = facility.id === 165 || (facility.name || "").toUpperCase().includes("BARI");
-    if (facility.type === "Hospital") {
-      return {
-        operatingHours: "IGD & Rawat Inap 24 Jam • Poliklinik 07.30 – 14.00 WIB",
-        emergencyBadge: "IGD & Farmasi 24 Jam",
-        bpjsStatus: "Melayani Pasien Umum & JKN-BPJS Kesehatan",
-        services: isRSUDBari
-          ? ["IGD Terpadu 24 Jam", "Pusat Informasi Obat (PIOBARI)", "Instalasi Farmasi 24 Jam", "Rawat Inap & ICU", "Poliklinik Spesialis"]
-          : ["IGD 24 Jam", "Instalasi Farmasi RS", "Rawat Inap", "Poliklinik Spesialis", "Laboratorium & Penunjang"],
-        contactPhone: facility.contact || "(0711) 350068 / 119",
-        contactNote: facility.contact ? "Nomor Telepon Resmi Faskes" : "PSC 119 / Layanan Darurat Kesehatan Palembang",
-      };
-    }
-    if (facility.type === "Puskesmas") {
-      const isRawatInap = facility.kelas === "Rawat Inap";
-      return {
-        operatingHours: isRawatInap
-          ? "UGD & Rawat Inap 24 Jam • Poli Rawat Jalan 07.30 – 14.30 WIB"
-          : "Senin–Kamis 07.30–14.00 • Jumat 07.30–11.30 • Sabtu 07.30–13.00 WIB",
-        emergencyBadge: isRawatInap ? "UGD & Persalinan 24 Jam" : "FKTP Layanan Primer",
-        bpjsStatus: "FKTP Resmi JKN-BPJS Kesehatan & Pasien Umum",
-        services: isRawatInap
-          ? ["UGD 24 Jam", "Rawat Inap & Persalinan", "Poli Umum & Lansia", "KIA / Imunisasi", "Ruang Farmasi Puskesmas"]
-          : ["Poli Umum", "Poli Gigi", "KIA / KB & Imunisasi", "Laboratorium Dasar", "Ruang Farmasi Puskesmas"],
-        contactPhone: facility.contact || "(0711) 350068",
-        contactNote: facility.contact ? "Kontak Layanan Puskesmas" : "Pusat Informasi Dinkes Kota Palembang",
-      };
-    }
-    if (facility.type === "Clinic") {
-      return {
-        operatingHours: "Senin – Sabtu 08.00 – 21.00 WIB",
-        emergencyBadge: "Klinik Pratama / Utama",
-        bpjsStatus: "Melayani Pasien Umum & Mitra Asuransi",
-        services: ["Praktek Dokter", "Tindakan Medis Dasar", "Pemeriksaan Kesehatan", "Instalasi Farmasi Klinik"],
-        contactPhone: facility.contact || "(0711) 350068",
-        contactNote: facility.contact ? "Nomor Kontak Klinik" : "Informasi Faskes Kota Palembang",
-      };
-    }
-    return {
-      operatingHours: "Setiap Hari 08.00 – 22.00 WIB",
-      emergencyBadge: "Pelayanan Kefarmasian",
-      bpjsStatus: "Pelayanan Resep Dokter, OTC & Alat Kesehatan",
-      services: ["Teus Resep Dokter", "Obat Bebas & Alkes", "Konseling Apoteker", "Informasi Dosis & Cara Pakai"],
-      contactPhone: facility.contact || "(0711) 511650",
-      contactNote: facility.contact ? "Kontak Apotek" : "Referensi Pusat Informasi Obat (PIOBARI)",
-    };
-  };
-
-  const handleSelectFacilityFromList = useCallback((facility: Facility & { distanceKm?: number }) => {
-    setSelectedFacilityId(facility.id);
-    setIsDetailCardOpen(true);
-    setPanelTab("list");
-    setIsDesktopPanelOpen(true);
-    setTargetCoords([facility.lat, facility.lng]);
-    setTargetZoom(16);
-    setMobileDrawerState(prev => (prev === "minimized" ? "half" : prev));
-  }, []);
-
-  const handleMarkerPinClick = useCallback((facility: Facility & { distanceKm?: number }) => {
-    setSelectedFacilityId(facility.id);
-    setIsDetailCardOpen(true);
-    setPanelTab("list");
-    setIsDesktopPanelOpen(true);
-    setMobileDrawerState(prev => (prev === "minimized" ? "half" : prev));
-  }, []);
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "Hospital": return { label: "Rumah Sakit", dot: "bg-red-500", text: "text-red-700", bg: "bg-red-50" };
-      case "Puskesmas": return { label: "Puskesmas", dot: "bg-orange-500", text: "text-orange-700", bg: "bg-orange-50" };
-      case "Clinic": return { label: "Klinik", dot: "bg-blue-500", text: "text-blue-700", bg: "bg-blue-50" };
-      case "Pharmacy": return { label: "Apotek", dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50" };
-      default: return { label: type, dot: "bg-slate-500", text: "text-slate-700", bg: "bg-slate-50" };
-    }
-  };
-
-  const QUICK_CATEGORY_CHIPS = [
-    {
-      id: "Semua",
-      shortLabel: "Semua",
-      fullLabel: "Semua Faskes",
-      dot: "bg-teal-500",
-      activeClass: "bg-slate-900 text-white border-slate-900 shadow-xs",
-      inactiveClass: "bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90",
-      badgeActive: "bg-white/20 text-white",
-      badgeInactive: "bg-slate-100 text-slate-600",
-    },
-    {
-      id: "Hospital",
-      shortLabel: "RS",
-      fullLabel: "Rumah Sakit (RS)",
-      dot: "bg-red-500",
-      activeClass: "bg-red-600 text-white border-red-600 shadow-xs",
-      inactiveClass: "bg-red-50/60 hover:bg-red-50 text-red-800 border-red-200/80",
-      badgeActive: "bg-white/20 text-white",
-      badgeInactive: "bg-red-100/80 text-red-700",
-    },
-    {
-      id: "Puskesmas",
-      shortLabel: "Puskesmas",
-      fullLabel: "Puskesmas",
-      dot: "bg-orange-500",
-      activeClass: "bg-orange-500 text-white border-orange-500 shadow-xs",
-      inactiveClass: "bg-orange-50/60 hover:bg-orange-50 text-orange-800 border-orange-200/80",
-      badgeActive: "bg-white/20 text-white",
-      badgeInactive: "bg-orange-100/80 text-orange-700",
-    },
-    {
-      id: "Clinic",
-      shortLabel: "Klinik",
-      fullLabel: "Klinik",
-      dot: "bg-blue-500",
-      activeClass: "bg-blue-600 text-white border-blue-600 shadow-xs",
-      inactiveClass: "bg-blue-50/60 hover:bg-blue-50 text-blue-800 border-blue-200/80",
-      badgeActive: "bg-white/20 text-white",
-      badgeInactive: "bg-blue-100/80 text-blue-700",
-    },
-    {
-      id: "Pharmacy",
-      shortLabel: "Apotek",
-      fullLabel: "Apotek",
-      dot: "bg-emerald-500",
-      activeClass: "bg-emerald-600 text-white border-emerald-600 shadow-xs",
-      inactiveClass: "bg-emerald-50/60 hover:bg-emerald-50 text-emerald-800 border-emerald-200/80",
-      badgeActive: "bg-white/20 text-white",
-      badgeInactive: "bg-emerald-100/80 text-emerald-700",
-    },
-  ] as const;
-
-  const handleToggleCategoryChip = (categoryId: "Semua" | "Hospital" | "Puskesmas" | "Clinic" | "Pharmacy") => {
-    setTypeFilter((prev) => (prev === categoryId && categoryId !== "Semua" ? "Semua" : categoryId));
-  };
-
-  // Shared inner content for both Desktop Floating Panel and Mobile Drawer
   const renderPanelContent = () => (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Sub-navigation Tabs: Daftar Terdekat vs Statistik */}
-      <div className="px-3.5 pt-2.5 pb-2 border-b border-slate-200/80 bg-white/80 shrink-0 flex flex-col gap-2.5">
-        <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl w-full">
+      {/* Sub-navigation Tabs */}
+      <div className="px-3.5 pt-2.5 pb-2 border-b border-slate-200/80 bg-white/90 shrink-0 flex flex-col gap-2">
+        <div className="grid grid-cols-3 p-1 bg-slate-100 rounded-xl w-full gap-0.5">
           <button
             type="button"
-            onClick={() => setPanelTab("list")}
-            className={`min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              panelTab === "list"
-                ? "bg-white text-slate-900 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
+            onClick={() => setPanelTab('list')}
+            className={`min-h-[34px] px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
+              panelTab === 'list'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <ListFilter className="w-3.5 h-3.5 text-teal-600" />
-            <span>Daftar Faskes ({filteredFacilities.length})</span>
+            <ListFilter className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span>Faskes ({filteredFacilities.length})</span>
           </button>
           <button
             type="button"
-            onClick={() => setPanelTab("stats")}
-            className={`min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              panelTab === "stats"
-                ? "bg-white text-slate-900 shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
+            onClick={() => setPanelTab('regions')}
+            className={`min-h-[34px] px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
+              panelTab === 'regions'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
-            <span>Statistik Sebaran</span>
+            <MapPinned className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span>17 Wilayah</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPanelTab('stats')}
+            className={`min-h-[34px] px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
+              panelTab === 'stats'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span>Statistik</span>
           </button>
         </div>
 
-        {/* Quick Filter Chips inside Map Panel: Semua, RS, Puskesmas, Klinik, Apotek */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 px-0.5">
-            <span>Filter Cepat Kategori</span>
-            {typeFilter !== "Semua" && (
-              <button
-                type="button"
-                onClick={() => setTypeFilter("Semua")}
-                className="text-teal-600 hover:text-teal-700 font-bold normal-case tracking-normal cursor-pointer"
-              >
-                Reset
-              </button>
-            )}
+        {/* Active Region Banner inside panel */}
+        <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-teal-50/80 border border-teal-200/70 rounded-xl">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block leading-none">
+              Wilayah Aktif · Google Maps Live
+            </span>
+            <span className="text-xs font-extrabold text-slate-900 truncate block mt-0.5">
+              {activeRegionObj
+                ? `${activeRegionObj.name} (${activeRegionObj.capital})`
+                : `Sumatera Selatan (${loadedRegionsCount}/17 Wilayah Dimuat)`}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            {QUICK_CATEGORY_CHIPS.map((chip) => {
-              const isActive = typeFilter === chip.id;
-              const count = categoryCounts[chip.id];
-              return (
-                <button
-                  key={chip.id}
-                  type="button"
-                  onClick={() => handleToggleCategoryChip(chip.id)}
-                  title={`Saring kategori: ${chip.fullLabel}`}
-                  className={`min-h-[32px] px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
-                    isActive ? chip.activeClass : chip.inactiveClass
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "bg-white" : chip.dot}`} />
-                  <span>{chip.shortLabel}</span>
-                  <span
-                    className={`font-mono tabular-nums text-[10px] px-1.5 py-0.2 rounded-md font-extrabold ${
-                      isActive ? chip.badgeActive : chip.badgeInactive
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {activeRegionObj && (
+            <button
+              type="button"
+              onClick={() =>
+                fetchRegionCategoriesFromGoogleMaps(
+                  activeRegionObj,
+                  typeFilter === 'Semua' ? ALL_CATEGORIES : [typeFilter],
+                  true
+                )
+              }
+              disabled={isFetchingPlaces}
+              className="p-1.5 rounded-lg bg-white hover:bg-teal-100 text-teal-700 border border-teal-200 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+              title={`Muat ulang data Google Maps untuk ${activeRegionObj.name}`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetchingPlaces ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
-      {panelTab === "list" ? (
-        <motion.div
-          key="panel-list"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="flex flex-col flex-1 min-h-0"
-        >
-          {/* Distance Sort Bar */}
-          <div className="px-4 py-2 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-            <span className="truncate">
-              Acuan Jarak: <strong className="text-slate-700">{userLocation ? "GPS Anda" : "RSUD BARI"}</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => setSortBy(prev => prev === "distance" ? "name" : "distance")}
-              className="inline-flex items-center gap-1 font-bold text-teal-700 hover:text-teal-800 bg-teal-50/80 hover:bg-teal-100/80 px-2 py-1 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              title="Ubah urutan daftar faskes"
-            >
-              <ArrowUpDown className="w-3 h-3" />
-              <span>{sortBy === "distance" ? "Terdekat" : "Abjad A-Z"}</span>
-            </button>
-          </div>
+        {panelTab === 'list' ? (
+          <motion.div
+            key="panel-list"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16 }}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            {/* Sort & Reference Bar */}
+            <div className="px-3.5 py-2 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between gap-2 text-[11px] text-slate-500 shrink-0">
+              <span className="truncate">
+                Acuan:{' '}
+                <strong className="text-slate-700">
+                  {userLocation ? 'GPS Anda' : activeRegionObj ? activeRegionObj.shortName : 'RSUD BARI'}
+                </strong>
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setSortBy((prev) =>
+                    prev === 'distance' ? 'rating' : prev === 'rating' ? 'name' : 'distance'
+                  )
+                }
+                className="inline-flex items-center gap-1 font-bold text-teal-700 hover:text-teal-800 bg-teal-50/80 hover:bg-teal-100/80 px-2 py-1 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <ArrowUpDown className="w-3 h-3" />
+                <span>
+                  {sortBy === 'distance' ? 'Terdekat' : sortBy === 'rating' ? 'Rating Tertinggi' : 'Abjad A-Z'}
+                </span>
+              </button>
+            </div>
 
-          {/* Scrollable Facility List (with Selected Facility Operational & Contact Detail Card at Top) */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
-            <AnimatePresence initial={false}>
-              {selectedFacility && isDetailCardOpen && (() => {
-                const opMeta = getFacilityOperationalMeta(selectedFacility);
-                const typeMeta = getTypeLabel(selectedFacility.type);
-                const isRSUDBari = selectedFacility.id === 165 || (selectedFacility.name || "").toUpperCase().includes("BARI");
-                const cleanTel = opMeta.contactPhone.replace(/[^0-9+]/g, "");
-
-                return (
-                  <motion.div
-                    key={`detail-card-${selectedFacility.id}`}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ type: "spring", stiffness: 340, damping: 32 }}
-                    className="overflow-hidden bg-gradient-to-b from-teal-50/70 via-white to-white border-b-2 border-teal-500/30"
-                  >
-                    <div className="p-3.5 space-y-3">
-                      {/* Header Badge & Close Detail */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
-                              isRSUDBari
-                                ? "bg-rose-600 text-white"
-                                : `${typeMeta.bg} ${typeMeta.text}`
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${isRSUDBari ? "bg-white" : typeMeta.dot}`} />
-                              {isRSUDBari ? "RS Utama • Host PIOBARI" : typeMeta.label}
-                            </span>
-                            {selectedFacility.jenis && (
-                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold">
-                                {selectedFacility.jenis}
-                              </span>
-                            )}
-                            {selectedFacility.kelas && (
-                              <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
-                                {selectedFacility.type === "Hospital" ? `Kelas ${selectedFacility.kelas}` : selectedFacility.kelas}
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-sm font-extrabold text-slate-900 leading-snug">
-                            {selectedFacility.name}
-                          </h3>
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="font-mono tabular-nums text-[11px] font-bold text-teal-800 bg-teal-100/80 px-2 py-0.5 rounded-lg border border-teal-200">
-                            {selectedFacility.distanceKm < 1
-                              ? `${Math.round(selectedFacility.distanceKm * 1000)} m`
-                              : `${selectedFacility.distanceKm.toFixed(1)} km`}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setIsDetailCardOpen(false)}
-                            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                            title="Tutup kartu detail"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Operational Details Box */}
-                      <div className="p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <Clock className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
-                          <div className="text-[11px] leading-snug">
-                            <span className="font-bold text-slate-800 block">Jam & Status Operasional</span>
-                            <span className="text-slate-600 font-medium">{opMeta.operatingHours}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2 pt-1.5 border-t border-slate-200/60">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                          <div className="text-[11px] leading-snug">
-                            <span className="font-bold text-slate-800 block">{opMeta.emergencyBadge}</span>
-                            <span className="text-slate-600 font-medium">{opMeta.bpjsStatus}</span>
-                          </div>
-                        </div>
-
-                        {/* Available Clinical/Pharmacy Services */}
-                        <div className="pt-1.5 border-t border-slate-200/60">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                            Cakupan Layanan Utama
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {opMeta.services.map((srv) => (
-                              <span
-                                key={srv}
-                                className="px-2 py-0.5 rounded-md bg-white border border-slate-200/80 text-[10px] font-semibold text-slate-700"
-                              >
-                                {srv}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Contact & Location Info Box */}
-                      <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                          <div className="text-[11px] text-slate-700 leading-relaxed">
-                            <span className="font-bold text-slate-800 block">Alamat Lengkap</span>
-                            {selectedFacility.address}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Phone className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                            <div className="truncate">
-                              <span className="text-[10px] text-slate-400 font-semibold block leading-none">
-                                {opMeta.contactNote}
-                              </span>
-                              <span className="text-xs font-mono tabular-nums font-bold text-slate-900">
-                                {opMeta.contactPhone}
-                              </span>
-                            </div>
-                          </div>
-                          <a
-                            href={`tel:${cleanTel}`}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold inline-flex items-center gap-1 shrink-0 transition-colors"
-                            title="Hubungi nomor telepon faskes"
-                          >
-                            <Phone className="w-3 h-3" />
-                            <span>Hubungi</span>
-                          </a>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 text-[11px]">
-                          <div className="font-mono tabular-nums text-slate-600 truncate">
-                            <span className="text-[10px] font-sans font-semibold text-slate-400 mr-1.5">WGS84:</span>
-                            {selectedFacility.lat.toFixed(6)}, {selectedFacility.lng.toFixed(6)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCoords(selectedFacility.lat, selectedFacility.lng, selectedFacility.id)}
-                            className="text-teal-600 hover:text-teal-700 font-bold text-[10px] inline-flex items-center gap-1 shrink-0 cursor-pointer"
-                          >
-                            {copiedCoordsId === selectedFacility.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                            <span>{copiedCoordsId === selectedFacility.id ? "Tersalin" : "Salin"}</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Primary Action Buttons */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => getRouteTo([selectedFacility.lat, selectedFacility.lng], selectedFacility.name)}
-                          disabled={isRouting}
-                          className="min-h-[36px] px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-60"
-                        >
-                          {isRouting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
-                          <span>Rute Navigasi</span>
-                        </button>
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${selectedFacility.lat},${selectedFacility.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Google Maps</span>
-                        </a>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })()}
-            </AnimatePresence>
-            {filteredFacilities.length === 0 ? (
-              <div className="p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-700">Tidak Ada Faskes Ditemukan</p>
-                  <p className="text-[11px] text-slate-500">Coba ubah kata kunci pencarian atau pilih kategori Semua.</p>
-                </div>
+            {activeCustomSearchLabel && (
+              <div className="px-3.5 py-2 bg-indigo-50 border-b border-indigo-200/70 flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-bold text-indigo-900 truncate">{activeCustomSearchLabel}</span>
                 <button
                   type="button"
                   onClick={() => {
-                    setSearchQuery("");
-                    setTypeFilter("Semua");
-                    setCityFilter("Semua");
+                    setCustomSearchResults([]);
+                    setActiveCustomSearchLabel('');
+                    setSearchQuery('');
                   }}
-                  className="px-3 py-1.5 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors"
+                  className="text-indigo-700 hover:text-indigo-900 font-bold underline shrink-0 cursor-pointer"
                 >
-                  Reset Filter
+                  Kembali
                 </button>
               </div>
-            ) : (
-              filteredFacilities.map((facility) => {
-                const isRSUDBari = facility.id === 165 || (facility.name || "").toUpperCase().includes("BARI");
-                const isSelected = selectedFacilityId === facility.id;
-                const typeMeta = getTypeLabel(facility.type);
+            )}
 
-                return (
-                  <div
-                    key={facility.id}
-                    onClick={() => handleSelectFacilityFromList(facility)}
-                    className={`p-3.5 transition-all cursor-pointer hover:bg-slate-50/90 ${
-                      isSelected
-                        ? "bg-teal-50/60 ring-1 ring-inset ring-teal-500/30"
-                        : isRSUDBari
-                        ? "bg-rose-50/30"
-                        : "bg-white/60"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium mb-0.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${isRSUDBari ? "bg-rose-600" : typeMeta.dot}`} />
-                          <span className={isRSUDBari ? "font-bold text-rose-700" : "font-semibold text-slate-600"}>
-                            {isRSUDBari ? "RS Utama (Host PIOBARI)" : typeMeta.label}
+            {/* Selected Facility Detail Card */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
+              {selectedFacility && (
+                <div className="p-3.5 bg-gradient-to-b from-teal-50/70 via-white to-white border-b-2 border-teal-500/30 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {(() => {
+                          const tm = getTypeLabel(selectedFacility.type);
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${tm.bg} ${tm.text}`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${tm.dot}`} />
+                              {tm.label}
+                            </span>
+                          );
+                        })()}
+                        {selectedFacility.city && (
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold">
+                            {selectedFacility.city}
                           </span>
-                          {facility.jenis && (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span className="text-slate-600 font-semibold">{facility.jenis}</span>
-                            </>
-                          )}
-                          {facility.kelas && (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span className="text-slate-600 font-semibold">
-                                {facility.type === "Hospital" ? `Kelas ${facility.kelas}` : facility.kelas}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <h4 className={`text-xs sm:text-sm font-bold leading-snug truncate ${isRSUDBari ? "text-rose-950" : "text-slate-900"}`}>
-                          {facility.name}
-                        </h4>
+                        )}
+                        {selectedFacility.rating !== undefined && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
+                            <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                            {selectedFacility.rating.toFixed(1)}
+                            {selectedFacility.userRatingCount ? ` (${selectedFacility.userRatingCount})` : ''}
+                          </span>
+                        )}
                       </div>
+                      <h3 className="text-sm font-extrabold text-slate-900 leading-snug">
+                        {selectedFacility.name}
+                      </h3>
+                    </div>
 
-                      <div className="text-right shrink-0">
-                        <span className="inline-block font-mono tabular-nums text-xs font-bold text-teal-700 bg-teal-50/90 px-2 py-0.5 rounded-md border border-teal-200/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFacilityId(null);
+                        setInfoWindowFacilityId(null);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                      title="Tutup detail"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 space-y-2 text-[11px]">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                      <span className="text-slate-700 leading-relaxed">{selectedFacility.address}</span>
+                    </div>
+
+                    {loadingDetailsPlaceId === selectedFacility.placeId && (
+                      <div className="flex items-center gap-1.5 text-teal-700 font-semibold pt-1 border-t border-slate-100">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Memuat nomor telepon & jam buka dari Google Maps...</span>
+                      </div>
+                    )}
+
+                    {selectedFacility.contact && (
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                        <div className="flex items-center gap-1.5 text-slate-800 font-mono font-bold">
+                          <Phone className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                          <span>{selectedFacility.contact}</span>
+                        </div>
+                        <a
+                          href={`tel:${selectedFacility.contact.replace(/[^0-9+]/g, '')}`}
+                          className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold"
+                        >
+                          Hubungi
+                        </a>
+                      </div>
+                    )}
+
+                    {selectedFacility.openingHours && selectedFacility.openingHours.length > 0 && (
+                      <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                          <Clock className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Jam Operasional (Google Maps)</span>
+                        </div>
+                        <div className="pl-5 space-y-0.5 text-[10px] text-slate-600">
+                          {selectedFacility.openingHours.slice(0, 3).map((line, i) => (
+                            <div key={i}>{line}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                      <span className="font-mono tabular-nums text-[10px] text-slate-500">
+                        {selectedFacility.lat.toFixed(6)}, {selectedFacility.lng.toFixed(6)} ·{' '}
+                        <strong className="text-teal-700">
+                          {selectedFacility.distanceKm < 1
+                            ? `${Math.round(selectedFacility.distanceKm * 1000)} m`
+                            : `${selectedFacility.distanceKm.toFixed(1)} km`}
+                        </strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopyCoords(selectedFacility.lat, selectedFacility.lng, selectedFacility.id)
+                        }
+                        className="text-teal-600 hover:text-teal-700 font-bold text-[10px] inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedCoordsId === selectedFacility.id ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                        <span>{copiedCoordsId === selectedFacility.id ? 'Tersalin' : 'Salin'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        computeRouteToFacility(
+                          { lat: selectedFacility.lat, lng: selectedFacility.lng },
+                          selectedFacility.name
+                        )
+                      }
+                      disabled={isRouting}
+                      className="min-h-[36px] px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                    >
+                      {isRouting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Navigation className="w-3.5 h-3.5" />
+                      )}
+                      <span>Rute Navigasi</span>
+                    </button>
+                    <a
+                      href={
+                        selectedFacility.googleMapsUri ||
+                        `https://www.google.com/maps/search/?api=1&query=${selectedFacility.lat},${selectedFacility.lng}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Google Maps</span>
+                    </a>
+                  </div>
+
+                  {selectedFacility.websiteUri && (
+                    <a
+                      href={selectedFacility.websiteUri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700 flex items-center justify-center gap-1.5"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-teal-600" />
+                      <span>Kunjungi Situs Resmi Faskes</span>
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {isFetchingPlaces && filteredFacilities.length === 0 ? (
+                <div className="p-8 text-center space-y-3">
+                  <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">
+                    {fetchStatusText || 'Mengambil data faskes dari Google Maps...'}
+                  </p>
+                </div>
+              ) : filteredFacilities.length === 0 ? (
+                <div className="p-8 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-700">Belum Ada Faskes Tampil</p>
+                    <p className="text-[11px] text-slate-500">
+                      Pilih Kota/Kabupaten di Sumatera Selatan atau tekan tombol Cari di Google Maps.
+                    </p>
+                  </div>
+                  {searchQuery.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => void handleLiveGoogleMapsSearch()}
+                      className="px-3.5 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors cursor-pointer"
+                    >
+                      Cari "{searchQuery.trim()}" di Google Maps
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredFacilities.map((facility) => {
+                  const isSelected = selectedFacilityId === facility.id;
+                  const typeMeta = getTypeLabel(facility.type);
+
+                  return (
+                    <div
+                      key={`${facility.placeId || facility.id}`}
+                      onClick={() => handleSelectFacility(facility, true)}
+                      className={`p-3.5 transition-all cursor-pointer hover:bg-slate-50/90 ${
+                        isSelected ? 'bg-teal-50/60 ring-1 ring-inset ring-teal-500/30' : 'bg-white/70'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium mb-0.5 flex-wrap">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${typeMeta.dot}`} />
+                            <span className="font-bold text-slate-700">{typeMeta.label}</span>
+                            {facility.city && (
+                              <>
+                                <span>·</span>
+                                <span className="text-slate-600">{facility.city}</span>
+                              </>
+                            )}
+                            {facility.rating !== undefined && (
+                              <>
+                                <span>·</span>
+                                <span className="inline-flex items-center gap-0.5 text-amber-700 font-bold">
+                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                  {facility.rating.toFixed(1)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <h4 className="text-xs sm:text-sm font-bold leading-snug text-slate-900 truncate">
+                            {facility.name}
+                          </h4>
+                        </div>
+
+                        <span className="inline-block font-mono tabular-nums text-[11px] font-bold text-teal-700 bg-teal-50/90 px-2 py-0.5 rounded-md border border-teal-200/60 shrink-0">
                           {facility.distanceKm < 1
                             ? `${Math.round(facility.distanceKm * 1000)} m`
                             : `${facility.distanceKm.toFixed(1)} km`}
                         </span>
                       </div>
-                    </div>
 
-                    <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                      {facility.address}
-                    </p>
+                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                        {facility.address}
+                      </p>
 
-                    <div className="mt-2.5 flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80">
-                      <div className="flex items-center gap-2 text-[10px] font-mono tabular-nums text-slate-400 truncate">
-                        <span>{facility.lat.toFixed(5)}, {facility.lng.toFixed(5)}</span>
-                        {facility.contact && (
-                          <>
-                            <span>·</span>
-                            <span className="font-sans text-slate-600 font-medium inline-flex items-center gap-0.5">
-                              <Phone className="w-2.5 h-2.5 text-teal-600" />
-                              {facility.contact}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSelectFacilityFromList(facility);
-                            getRouteTo([facility.lat, facility.lng], facility.name);
-                          }}
-                          disabled={isRouting}
-                          className="min-h-[32px] px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
-                          title="Tampilkan rute jalan ke faskes ini"
+                      <div className="mt-2 flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80">
+                        <span className="text-[10px] font-mono tabular-nums text-slate-400">
+                          {facility.lat.toFixed(5)}, {facility.lng.toFixed(5)}
+                        </span>
+                        <div
+                          className="flex items-center gap-1.5 shrink-0"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Navigation className="w-3 h-3" />
-                          <span>Rute</span>
-                        </button>
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${facility.lat},${facility.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="min-h-[32px] px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold inline-flex items-center gap-1 transition-colors"
-                          title="Buka di Google Maps"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>Maps</span>
-                        </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectFacility(facility, false);
+                              void computeRouteToFacility(
+                                { lat: facility.lat, lng: facility.lng },
+                                facility.name
+                              );
+                            }}
+                            disabled={isRouting}
+                            className="min-h-[30px] px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Navigation className="w-3 h-3" />
+                            <span>Rute</span>
+                          </button>
+                          <a
+                            href={
+                              facility.googleMapsUri ||
+                              `https://www.google.com/maps/search/?api=1&query=${facility.lat},${facility.lng}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-h-[30px] px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold inline-flex items-center gap-1 transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Maps</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        ) : panelTab === 'regions' ? (
+          /* 17 Kota & Kabupaten Sumatera Selatan Directory Tab */
+          <motion.div
+            key="panel-regions"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16 }}
+            className="flex-1 overflow-y-auto custom-scrollbar p-3.5 space-y-4"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                handleSelectRegion('all-loaded');
+                setPanelTab('list');
+              }}
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                selectedRegionId === 'all-loaded'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
+              }`}
+            >
+              <div>
+                <div className="text-xs font-extrabold">Semua Wilayah Sumsel (Terkumpul)</div>
+                <div
+                  className={`text-[10px] mt-0.5 ${
+                    selectedRegionId === 'all-loaded' ? 'text-slate-300' : 'text-slate-500'
+                  }`}
+                >
+                  {loadedRegionsCount} dari 17 Kota/Kabupaten telah dimuat dari Google Maps
+                </div>
+              </div>
+              <span className="font-mono text-xs font-black px-2 py-0.5 rounded-lg bg-teal-500/20 text-teal-600">
+                {allLoadedProvinceFacilities.length}
+              </span>
+            </button>
+
+            <div className="space-y-2">
+              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 px-1">
+                Kota Otonom (4 Kota)
+              </h4>
+              <div className="grid grid-cols-1 gap-1.5">
+                {SUMSEL_KOTA_REGIONS.map((region) => {
+                  const count = loadedCountByRegion[region.id] || 0;
+                  const isActive = selectedRegionId === region.id;
+                  return (
+                    <button
+                      key={region.id}
+                      type="button"
+                      onClick={() => {
+                        handleSelectRegion(region.id);
+                        setPanelTab('list');
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                        isActive
+                          ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
+                          : 'bg-white hover:bg-teal-50/60 text-slate-800 border-slate-200/90'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold truncate">{region.name}</div>
+                        <div
+                          className={`text-[10px] ${
+                            isActive ? 'text-teal-100' : 'text-slate-500'
+                          }`}
+                        >
+                          RS · Puskesmas · Klinik · Apotek
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : count > 0
+                            ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {count > 0 ? `${count} faskes` : 'Muat Live'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 px-1">
+                Kabupaten (13 Kabupaten)
+              </h4>
+              <div className="grid grid-cols-1 gap-1.5">
+                {SUMSEL_KABUPATEN_REGIONS.map((region) => {
+                  const count = loadedCountByRegion[region.id] || 0;
+                  const isActive = selectedRegionId === region.id;
+                  return (
+                    <button
+                      key={region.id}
+                      type="button"
+                      onClick={() => {
+                        handleSelectRegion(region.id);
+                        setPanelTab('list');
+                      }}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                        isActive
+                          ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
+                          : 'bg-white hover:bg-teal-50/60 text-slate-800 border-slate-200/90'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold truncate">{region.name}</div>
+                        <div
+                          className={`text-[10px] ${
+                            isActive ? 'text-teal-100' : 'text-slate-500'
+                          }`}
+                        >
+                          Ibu Kota: {region.capital}
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : count > 0
+                            ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                            : 'bg-slate-100 text-slate-500'
+                        }`}
+                      >
+                        {count > 0 ? `${count} faskes` : 'Muat Live'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          /* Statistics & Charts Tab */
+          <motion.div
+            key="panel-stats"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16 }}
+            className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-2.5">
+              {(
+                [
+                  { id: 'Hospital', label: 'Rumah Sakit', dot: 'bg-red-500', text: 'text-red-700', ring: 'bg-red-50 border-red-300' },
+                  { id: 'Puskesmas', label: 'Puskesmas', dot: 'bg-orange-500', text: 'text-orange-700', ring: 'bg-orange-50 border-orange-300' },
+                  { id: 'Clinic', label: 'Klinik', dot: 'bg-blue-500', text: 'text-blue-700', ring: 'bg-blue-50 border-blue-300' },
+                  { id: 'Pharmacy', label: 'Apotek', dot: 'bg-emerald-500', text: 'text-emerald-700', ring: 'bg-emerald-50 border-emerald-300' },
+                ] as const
+              ).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    handleToggleCategoryChip(c.id);
+                    setPanelTab('list');
+                  }}
+                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    typeFilter === c.id ? c.ring : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80'
+                  }`}
+                >
+                  <span className={`text-[11px] font-bold flex items-center gap-1.5 ${c.text}`}>
+                    <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+                    {c.label}
+                  </span>
+                  <span className="text-xl font-black font-mono tabular-nums text-slate-900 mt-0.5 block">
+                    {categoryCounts[c.id]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {pieDataCategory.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
+                <h4 className="text-xs font-bold text-slate-800">
+                  Proporsi Kategori ({activeRegionObj ? activeRegionObj.shortName : 'Sumsel'})
+                </h4>
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieDataCategory}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={38}
+                        outerRadius={58}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {pieDataCategory.map((entry, idx) => (
+                          <Cell key={idx} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '10px',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Legend
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        align="center"
+                        iconType="circle"
+                        wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             )}
-          </div>
-        </motion.div>
-      ) : (
-        /* Statistics & Charts Tab */
-        <motion.div
-          key="panel-stats"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5"
-        >
-          {/* Summary Metric Grid (4 Categories) */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                handleToggleCategoryChip("Hospital");
-                setPanelTab("list");
-              }}
-              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                typeFilter === "Hospital"
-                  ? "bg-red-50 border-red-300 ring-1 ring-red-400"
-                  : "bg-slate-50 hover:bg-red-50/40 border-slate-200/80"
-              }`}
-            >
-              <span className="text-[11px] font-bold text-red-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                Rumah Sakit (RS)
-              </span>
-              <span className="text-xl font-black font-mono tabular-nums text-slate-900 mt-0.5 block">
-                {categoryCounts.Hospital}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleToggleCategoryChip("Puskesmas");
-                setPanelTab("list");
-              }}
-              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                typeFilter === "Puskesmas"
-                  ? "bg-orange-50 border-orange-300 ring-1 ring-orange-400"
-                  : "bg-slate-50 hover:bg-orange-50/40 border-slate-200/80"
-              }`}
-            >
-              <span className="text-[11px] font-bold text-orange-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-orange-500" />
-                Puskesmas
-              </span>
-              <span className="text-xl font-black font-mono tabular-nums text-slate-900 mt-0.5 block">
-                {categoryCounts.Puskesmas}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleToggleCategoryChip("Clinic");
-                setPanelTab("list");
-              }}
-              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                typeFilter === "Clinic"
-                  ? "bg-blue-50 border-blue-300 ring-1 ring-blue-400"
-                  : "bg-slate-50 hover:bg-blue-50/40 border-slate-200/80"
-              }`}
-            >
-              <span className="text-[11px] font-bold text-blue-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                Klinik
-              </span>
-              <span className="text-xl font-black font-mono tabular-nums text-slate-900 mt-0.5 block">
-                {categoryCounts.Clinic}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleToggleCategoryChip("Pharmacy");
-                setPanelTab("list");
-              }}
-              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                typeFilter === "Pharmacy"
-                  ? "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-400"
-                  : "bg-slate-50 hover:bg-emerald-50/40 border-slate-200/80"
-              }`}
-            >
-              <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Apotek
-              </span>
-              <span className="text-xl font-black font-mono tabular-nums text-slate-900 mt-0.5 block">
-                {categoryCounts.Pharmacy}
-              </span>
-            </button>
-          </div>
 
-          {/* Rumah Sakit Charts */}
-          {pieDataKelas.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-800">Sebaran RS Berdasarkan Kelas</h4>
-                {hoveredKelas && (
-                  <button
-                    type="button"
-                    onClick={() => setHoveredKelas(null)}
-                    className="text-[10px] text-teal-600 font-bold hover:underline"
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieDataKelas}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                      onMouseEnter={(_, index) => setHoveredKelas(pieDataKelas[index].name)}
-                      onMouseLeave={() => setHoveredKelas(null)}
+            {barDataByRegion.length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
+                <h4 className="text-xs font-bold text-slate-800">
+                  Sebaran Faskes per Kota/Kabupaten Dimuat
+                </h4>
+                <div className="h-52 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={barDataByRegion}
+                      layout="vertical"
+                      margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
                     >
-                      {pieDataKelas.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
-                      itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
-                    />
-                    <Legend
-                      layout="horizontal"
-                      verticalAlign="bottom"
-                      align="center"
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#475569' }}
+                        width={86}
+                      />
+                      <Tooltip
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{
+                          borderRadius: '10px',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="value" fill="#0d9488" radius={[0, 6, 6, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-            </div>
-          )}
-
-          {barDataJenis.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
-              <h4 className="text-xs font-bold text-slate-800">Sebaran RS Berdasarkan Jenis</h4>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={barDataJenis}
-                    layout="vertical"
-                    margin={{ top: 4, right: 16, left: 16, bottom: 4 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                    <XAxis type="number" hide />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: '#475569' }}
-                      width={52}
-                    />
-                    <Tooltip
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                    />
-                    <Bar dataKey="value" fill="#0d9488" radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-
-          {pieDataPuskesmas.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
-              <h4 className="text-xs font-bold text-slate-800">Puskesmas Berdasarkan Layanan</h4>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieDataPuskesmas}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {pieDataPuskesmas.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                    />
-                    <Legend
-                      layout="horizontal"
-                      verticalAlign="bottom"
-                      align="center"
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-        </motion.div>
-      )}
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
 
-  const currentTile = MAP_TILE_STYLES[mapStyle];
+  return (
+    <div className="relative flex flex-col h-[calc(100vh-148px)] lg:h-[calc(100vh-116px)] min-h-[620px] w-full bg-slate-900 rounded-3xl shadow-md border border-slate-200/90 overflow-hidden">
+      {/* FULL-SCREEN INTERACTIVE GOOGLE MAPS CANVAS */}
+      <div className="absolute inset-0 z-0 w-full h-full">
+        <GoogleMap
+          mapId="DEMO_MAP_ID"
+          defaultCenter={SUMSEL_REGIONS[0].center}
+          defaultZoom={SUMSEL_REGIONS[0].zoom}
+          mapTypeId={mapStyle}
+          gestureHandling="greedy"
+          disableDefaultUI={true}
+          zoomControl={true}
+          internalUsageAttributionIds={GMP_ATTRIBUTION_IDS}
+          style={{ width: '100%', height: '100%' }}
+        >
+          <MapCameraController
+            targetCenter={targetCenter}
+            targetZoom={targetZoom}
+            cameraNonce={cameraNonce}
+          />
 
-  // Memoize Leaflet markers so typing or interacting with UI controls never re-mounts map pins
-  const renderedMarkers = useMemo(() => {
-    return filteredFacilities
-      .filter(f => f && f.lat !== undefined && f.lng !== undefined && f.id !== undefined)
-      .map(facility => {
-        const isRSUDBari = facility.id === 165 || (facility.name || "").toUpperCase().includes("BARI");
-        const markerIcon = isRSUDBari
-          ? iconRSUDBari
-          : facility.type === "Hospital"
-          ? iconHospital
-          : facility.type === "Clinic"
-          ? iconClinic
-          : facility.type === "Pharmacy"
-          ? iconPharmacy
-          : iconPuskesmas;
+          {/* User GPS Marker (only rendered when explicitly activated by user) */}
+          {userLocation && (
+            <AdvancedMarker position={userLocation} title="Lokasi GPS Anda" zIndex={1200}>
+              <div className="w-5 h-5 rounded-full bg-violet-600 border-3 border-white shadow-lg ring-4 ring-violet-500/30" />
+            </AdvancedMarker>
+          )}
 
-        return (
-          <Marker
-            key={facility.id}
-            position={[facility.lat, facility.lng]}
-            draggable={false}
-            icon={markerIcon}
-            zIndexOffset={isRSUDBari ? 1000 : selectedFacilityId === facility.id ? 600 : 0}
-            eventHandlers={{
-              click: () => handleMarkerPinClick(facility)
-            }}
-          >
-            <Popup>
-              <div className="font-sans min-w-[235px] max-w-[285px]">
-                {isRSUDBari && (
-                  <div className="mb-2 px-2.5 py-1 bg-rose-600 text-white rounded-md text-[10px] font-extrabold uppercase tracking-wide flex items-center justify-between">
-                    <span>Rumah Sakit Utama (Pusat PIOBARI)</span>
-                  </div>
-                )}
+          {/* Facility AdvancedMarkers */}
+          {filteredFacilities.map((facility) => (
+            <FacilityMarkerPin
+              key={`${facility.placeId || facility.id}`}
+              facility={facility}
+              isSelected={selectedFacilityId === facility.id}
+              onClick={() => handleSelectFacility(facility, false)}
+            />
+          ))}
+
+          {/* Interactive InfoWindow for Active Facility */}
+          {infoWindowFacility && (
+            <InfoWindow
+              position={{ lat: infoWindowFacility.lat, lng: infoWindowFacility.lng }}
+              pixelOffset={[0, -34]}
+              maxWidth={290}
+              onCloseClick={() => setInfoWindowFacilityId(null)}
+            >
+              <div className="font-sans text-slate-800 space-y-2 pr-1">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className={`font-bold text-sm m-0 ${isRSUDBari ? "text-rose-950 font-black text-base" : "text-slate-900"}`}>
-                    {facility.name}
+                  <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
+                    {infoWindowFacility.name}
                   </h3>
-                  {facility.distanceKm !== undefined && (
-                    <span className="font-mono tabular-nums text-[11px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0">
-                      {facility.distanceKm.toFixed(1)} km
-                    </span>
+                  <span className="font-mono text-[10px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0">
+                    {infoWindowFacility.distanceKm < 1
+                      ? `${Math.round(infoWindowFacility.distanceKm * 1000)} m`
+                      : `${infoWindowFacility.distanceKm.toFixed(1)} km`}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="font-bold text-teal-700">
+                    {getTypeLabel(infoWindowFacility.type).label}
+                  </span>
+                  {infoWindowFacility.city && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-slate-600 font-semibold">{infoWindowFacility.city}</span>
+                    </>
+                  )}
+                  {infoWindowFacility.rating !== undefined && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="font-bold text-amber-700">★ {infoWindowFacility.rating.toFixed(1)}</span>
+                    </>
                   )}
                 </div>
 
-                <div className="text-xs text-slate-500 mt-1 mb-0 flex flex-wrap gap-1.5 items-center">
-                  <span className="font-semibold text-slate-600">{facility.type}</span>
-                  {facility.jenis && (
-                    <>
-                      <span>·</span>
-                      <span className="font-bold text-teal-700">{facility.jenis}</span>
-                    </>
-                  )}
-                  {facility.kelas && (
-                    <>
-                      <span>·</span>
-                      <span className="font-bold text-amber-700">Kelas {facility.kelas}</span>
-                    </>
-                  )}
-                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed m-0">
+                  {infoWindowFacility.address}
+                </p>
 
-                <hr className="my-2 border-slate-200" />
-                <p className="text-xs text-slate-700 m-0 leading-relaxed">{facility.address}</p>
-                {facility.contact && (
-                  <p className="text-xs text-teal-700 font-semibold mt-1 mb-0 flex items-center gap-1">
-                    <Phone className="w-3 h-3" /> {facility.contact}
+                {infoWindowFacility.contact && (
+                  <p className="text-[11px] font-mono font-bold text-teal-700 m-0">
+                    Telp: {infoWindowFacility.contact}
                   </p>
                 )}
 
-                <div className="mt-2.5 p-2 bg-slate-50 border border-slate-200/90 rounded-lg">
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold mb-1">
-                    <span className="uppercase tracking-wider">Koordinat Nyata (WGS84)</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopyCoords(facility.lat, facility.lng, facility.id);
-                      }}
-                      className="text-teal-600 hover:text-teal-700 flex items-center gap-1 font-mono text-[10px] cursor-pointer"
-                      title="Salin Koordinat"
-                    >
-                      {copiedCoordsId === facility.id ? <Check className="w-3 h-3 text-teal-600" /> : <Copy className="w-3 h-3" />}
-                      {copiedCoordsId === facility.id ? "Tersalin" : "Salin"}
-                    </button>
-                  </div>
-                  <div className="font-mono tabular-nums text-xs font-bold text-slate-800 flex items-center justify-between">
-                    <span>{facility.lat.toFixed(6)}, {facility.lng.toFixed(6)}</span>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${facility.lat},${facility.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 px-2 py-0.5 rounded border border-sky-200 transition-colors ml-2"
-                      title="Buka titik koordinat ini di Google Maps"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Maps</span>
-                    </a>
-                  </div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      computeRouteToFacility(
+                        { lat: infoWindowFacility.lat, lng: infoWindowFacility.lng },
+                        infoWindowFacility.name
+                      )
+                    }
+                    disabled={isRouting}
+                    className="flex-1 py-1.5 px-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-60"
+                  >
+                    {isRouting ? 'Menghitung...' : 'Rute Google Maps'}
+                  </button>
+                  <a
+                    href={
+                      infoWindowFacility.googleMapsUri ||
+                      `https://www.google.com/maps/search/?api=1&query=${infoWindowFacility.lat},${infoWindowFacility.lng}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold"
+                  >
+                    Buka Maps
+                  </a>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => getRouteTo([facility.lat, facility.lng], facility.name)}
-                  disabled={isRouting}
-                  className="mt-2.5 w-full min-h-[38px] bg-teal-600 hover:bg-teal-700 text-white py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs active:scale-95 cursor-pointer"
-                >
-                  {isRouting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
-                  {isRouting ? "Mencari Rute..." : "Arahkan Navigasi ke Sini"}
-                </button>
               </div>
-            </Popup>
-          </Marker>
-        );
-      });
-  }, [filteredFacilities, selectedFacilityId, copiedCoordsId, isRouting, handleMarkerPinClick]);
-
-  return (
-    <div className="relative flex flex-col h-[calc(100vh-148px)] lg:h-[calc(100vh-116px)] min-h-[620px] w-full bg-slate-900 rounded-3xl shadow-md border border-slate-200/90 overflow-hidden select-none">
-      {/* FULL-SCREEN INTERACTIVE LEAFLET MAP CANVAS */}
-      <div className="absolute inset-0 z-0">
-        <MapContainer
-          center={center}
-          zoom={14}
-          preferCanvas={true}
-          scrollWheelZoom={true}
-          zoomControl={false}
-          style={{ height: '100%', width: '100%' }}
-        >
-          <TileLayer
-            key={currentTile.id}
-            attribution={currentTile.attribution}
-            url={currentTile.url}
-          />
-
-          <MapController targetCoords={targetCoords} zoom={targetZoom} />
-          <MapCoordinatesHud tileLabel={currentTile.label} />
-
-          {/* User Location Marker */}
-          {userLocation && (
-            <Marker position={userLocation} icon={iconUser}>
-              <Popup>
-                <div className="font-sans min-w-[210px]">
-                  <div className="font-bold text-sm text-violet-800 flex items-center gap-1.5">
-                    <span>📍 Lokasi GPS Anda Saat Ini</span>
-                  </div>
-                  <div className="mt-2 p-2 bg-violet-50 rounded-lg border border-violet-100 text-[11px] font-mono tabular-nums text-violet-900">
-                    <span className="text-[9px] uppercase font-bold text-violet-500 font-sans block">Koordinat GPS Browser:</span>
-                    <span className="font-bold text-xs">{userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-1.5 mb-0">Posisi real-time diverifikasi dari perangkat Anda.</p>
-                </div>
-              </Popup>
-            </Marker>
+            </InfoWindow>
           )}
+        </GoogleMap>
 
-          {/* Route Polyline */}
-          {routeCoordinates.length > 0 && (
-            <Polyline
-              positions={routeCoordinates}
-              color="#0d9488"
-              weight={5}
-              opacity={0.9}
-              lineCap="round"
-              lineJoin="round"
-              dashArray="10, 8"
-            />
-          )}
-
-          {renderedMarkers}
-        </MapContainer>
+        <MapCoordsHud mapStyleLabel={currentMapStyleLabel} />
       </div>
 
-      {/* FLOATING TOP BAR OVERLAY (Search, Category Filters, Quick Focus & Map Layer Switcher) */}
-      <div className="relative z-20 p-3 sm:p-4 pointer-events-none flex flex-col gap-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Left: Search & City Filter */}
-          <div className="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-lg border border-slate-200/90 w-full lg:w-auto lg:min-w-[430px] flex-1 max-w-2xl">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+      {/* FLOATING TOP BAR OVERLAY */}
+      <div className="relative z-20 p-3 sm:p-4 pointer-events-none flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Left: Search Input + 17 Kota/Kabupaten Sumatera Selatan Selector */}
+          <div className="pointer-events-auto flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-lg border border-slate-200/90 w-full lg:w-auto lg:min-w-[520px] flex-1 max-w-3xl">
+            <div className="relative flex-1 min-w-[160px] flex items-center">
+              <Search className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Cari RS, Puskesmas, alamat..."
+                placeholder="Cari RS, Puskesmas, Klinik, Apotek di Sumsel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-transparent text-xs sm:text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleLiveGoogleMapsSearch();
+                  }
+                }}
+                className="w-full pl-9 pr-7 py-2 bg-transparent text-xs sm:text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
               />
               {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCustomSearchResults([]);
+                    setActiveCustomSearchLabel('');
+                  }}
+                  className="absolute right-1.5 p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            <div className="h-5 w-px bg-slate-200 shrink-0" />
+            {searchQuery.trim() && (
+              <button
+                type="button"
+                onClick={() => void handleLiveGoogleMapsSearch()}
+                disabled={isFetchingPlaces}
+                className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+              >
+                Cari Maps
+              </button>
+            )}
+
+            <div className="hidden sm:block h-5 w-px bg-slate-200 shrink-0" />
 
             <select
-              value={cityFilter}
-              onChange={(e) => setCityFilter(e.target.value)}
-              className="py-2 pl-2.5 pr-7 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 outline-none focus:border-teal-500 transition-all cursor-pointer truncate max-w-[130px] sm:max-w-[150px]"
+              value={selectedRegionId}
+              onChange={(e) => handleSelectRegion(e.target.value)}
+              aria-label="Pilih Kota atau Kabupaten di Sumatera Selatan"
+              className="py-2 pl-2.5 pr-7 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-teal-500 transition-all cursor-pointer max-w-[205px] truncate"
             >
-              {cities.map(city => (
-                <option key={city} value={city}>{city === "Semua" ? "Semua Kota" : city}</option>
-              ))}
+              <option value="all-loaded">
+                Semua Sumsel Terkumpul ({allLoadedProvinceFacilities.length})
+              </option>
+              <optgroup label="Kota Otonom Sumatera Selatan (4)">
+                {SUMSEL_KOTA_REGIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                    {loadedCountByRegion[r.id] ? ` (${loadedCountByRegion[r.id]})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Kabupaten Sumatera Selatan (13)">
+                {SUMSEL_KABUPATEN_REGIONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                    {loadedCountByRegion[r.id] ? ` (${loadedCountByRegion[r.id]})` : ''}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
-          {/* Right: Quick Focus Controls + Map Style Switcher + Admin */}
-          <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 sm:gap-2">
+          {/* Right: Quick Focus Controls + Map Type Switcher + Admin */}
+          <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={focusRSUDBari}
+              onClick={() => {
+                handleSelectRegion('kota-palembang');
+                flyToLocation(RSUD_BARI_COORDS.lat, RSUD_BARI_COORDS.lng, 15);
+              }}
               className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md border bg-rose-600 text-white border-rose-700 hover:bg-rose-700 active:scale-95 cursor-pointer whitespace-nowrap"
-              title="Pusatkan peta ke RSUD Palembang BARI (Lat -3.010222, Lng 104.768972)"
+              title="Pusatkan peta ke RSUD Palembang BARI"
             >
               <Building2 className="w-3.5 h-3.5 shrink-0" />
               <span>RSUD BARI</span>
@@ -2491,12 +2068,12 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
 
             <button
               type="button"
-              onClick={focusPalembang}
+              onClick={() => flyToLocation(SUMSEL_PROVINCE_CENTER.lat, SUMSEL_PROVINCE_CENTER.lng, 8)}
               className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md border bg-white/95 backdrop-blur-md text-slate-700 border-slate-200/90 hover:bg-white active:scale-95 cursor-pointer whitespace-nowrap"
-              title="Lihat seluruh sebaran faskes Kota Palembang"
+              title="Lihat seluruh Provinsi Sumatera Selatan"
             >
               <Compass className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-              <span className="hidden sm:inline">Seluruh Kota</span>
+              <span className="hidden sm:inline">Peta Sumsel</span>
             </button>
 
             {userLocation ? (
@@ -2506,21 +2083,22 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                   onClick={locateUser}
                   disabled={isLocating}
                   className="min-h-[30px] flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-600 text-white hover:bg-violet-700 transition-all disabled:opacity-70 cursor-pointer whitespace-nowrap"
-                  title="Perbarui koordinat posisi GPS nyata Anda"
                 >
-                  {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Navigation className="w-3.5 h-3.5" />}
+                  {isLocating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Navigation className="w-3.5 h-3.5" />
+                  )}
                   <span>GPS Aktif</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setUserLocation(null);
-                    setRouteCoordinates([]);
-                    setRouteInfo(null);
-                    setRoutingError("");
+                    clearRoute();
                   }}
                   className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                  title="Matikan penanda GPS"
+                  title="Matikan lokasi GPS"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -2531,28 +2109,31 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                 onClick={locateUser}
                 disabled={isLocating}
                 className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md border bg-teal-600 text-white border-teal-700 hover:bg-teal-700 disabled:opacity-70 active:scale-95 cursor-pointer whitespace-nowrap"
-                title="Deteksi koordinat GPS nyata posisi Anda sekarang"
               >
-                {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Crosshair className="w-3.5 h-3.5" />}
+                {isLocating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Crosshair className="w-3.5 h-3.5" />
+                )}
                 <span>GPS Saya</span>
               </button>
             )}
 
-            {/* Map Style Switcher Segmented Control */}
+            {/* Google Maps Type Switcher */}
             <div className="flex items-center bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200/90">
               <Layers className="w-3.5 h-3.5 text-slate-400 ml-1.5 mr-1 hidden sm:block shrink-0" />
-              {(["standard", "light", "satellite"] as const).map((styleKey) => (
+              {MAP_STYLE_OPTIONS.map((opt) => (
                 <button
-                  key={styleKey}
+                  key={opt.id}
                   type="button"
-                  onClick={() => setMapStyle(styleKey)}
+                  onClick={() => setMapStyle(opt.id)}
                   className={`min-h-[30px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    mapStyle === styleKey
-                      ? "bg-slate-900 text-white shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    mapStyle === opt.id
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  {MAP_TILE_STYLES[styleKey].label}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -2565,30 +2146,27 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                   className="min-h-[38px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Update Data</span>
+                  <span className="hidden sm:inline">Impor Faskes</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (window.confirm("Apakah Anda yakin ingin menghapus semua data fasilitas kesehatan?")) {
-                      try {
-                        await deleteAllFacilities();
-                        setFacilities([]);
-                        localStorage.removeItem("faskes_facilities_v5");
-                      } catch (e) {}
-                    }
-                  }}
-                  className="min-h-[38px] inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
-                  title="Hapus Semua Data"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                {adminFacilities.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await deleteAllFacilities();
+                      setAdminFacilities([]);
+                    }}
+                    className="min-h-[38px] inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
+                    title="Hapus Data Tambahan Admin"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Second Row: Quick Category Filter Chips (Semua, RS, Puskesmas, Klinik, Apotek) */}
+        {/* Second Row: Category Filter Chips + Live Sync Indicator */}
         <div className="pointer-events-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
           {QUICK_CATEGORY_CHIPS.map((chip) => {
             const count = categoryCounts[chip.id];
@@ -2598,18 +2176,17 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                 key={chip.id}
                 type="button"
                 onClick={() => handleToggleCategoryChip(chip.id)}
-                title={`Filter kategori: ${chip.fullLabel}`}
                 className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm border whitespace-nowrap shrink-0 cursor-pointer active:scale-95 ${
                   active
                     ? chip.activeClass
-                    : "bg-white/95 backdrop-blur-md text-slate-700 border-slate-200/90 hover:bg-white"
+                    : 'bg-white/95 backdrop-blur-md text-slate-700 border-slate-200/90 hover:bg-white'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${active ? "bg-white" : chip.dot}`} />
+                <span className={`w-2 h-2 rounded-full ${active ? 'bg-white' : chip.dot}`} />
                 <span>{chip.shortLabel}</span>
                 <span
                   className={`font-mono tabular-nums text-[11px] px-1.5 py-0.2 rounded-md font-extrabold ${
-                    active ? chip.badgeActive : "bg-slate-100 text-slate-500"
+                    active ? chip.badgeActive : 'bg-slate-100 text-slate-500'
                   }`}
                 >
                   {count}
@@ -2617,21 +2194,51 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
               </button>
             );
           })}
+
+          {isFetchingPlaces && (
+            <div className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-900/90 text-white text-[11px] font-bold flex items-center gap-2 shrink-0 shadow-md">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-400" />
+              <span className="max-w-[240px] truncate">{fetchStatusText || 'Sinkronisasi Google Maps...'}</span>
+            </div>
+          )}
         </div>
 
-        {/* Active Routing Status / Error Banner */}
+        {/* Status / Route / Error Banners */}
         <AnimatePresence>
+          {fetchError && (
+            <motion.div
+              key="fetch-error"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="pointer-events-auto self-start bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{fetchError}</span>
+              <button
+                type="button"
+                onClick={() => setFetchError('')}
+                className="p-0.5 hover:bg-white/20 rounded cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+
           {routingError && (
             <motion.div
               key="routing-error"
-              initial={{ opacity: 0, y: -8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 380, damping: 28 }}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
               className="pointer-events-auto self-start bg-rose-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2"
             >
               <span>{routingError}</span>
-              <button type="button" onClick={() => setRoutingError("")} className="p-0.5 hover:bg-white/20 rounded">
+              <button
+                type="button"
+                onClick={() => setRoutingError('')}
+                className="p-0.5 hover:bg-white/20 rounded cursor-pointer"
+              >
                 <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>
@@ -2640,26 +2247,23 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
           {routeInfo && (
             <motion.div
               key="route-info"
-              initial={{ opacity: 0, y: -8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 380, damping: 28 }}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
               className="pointer-events-auto self-start bg-teal-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-lg border border-teal-700/60 flex flex-wrap items-center gap-3"
             >
               <div className="text-xs">
-                Rute aktif menuju <strong className="font-bold text-teal-200">{routeInfo.destinationName}</strong>
+                Rute dari <span className="text-teal-300 font-semibold">{routeInfo.originLabel}</span> ke{' '}
+                <strong className="font-bold text-white">{routeInfo.destinationName}</strong>
               </div>
-              <div className="flex items-center gap-3 font-mono tabular-nums text-xs font-bold bg-white/10 px-3 py-1 rounded-xl">
-                <span>{(routeInfo.distance / 1000).toFixed(1)} km</span>
+              <div className="flex items-center gap-2.5 font-mono tabular-nums text-xs font-bold bg-white/10 px-3 py-1 rounded-xl">
+                <span>{(routeInfo.distanceMeters / 1000).toFixed(1)} km</span>
                 <span className="text-teal-400">·</span>
-                <span>{Math.ceil(routeInfo.duration / 60)} menit berkendara</span>
+                <span>{Math.max(1, Math.round(routeInfo.durationMillis / 60000))} menit</span>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setRouteCoordinates([]);
-                  setRouteInfo(null);
-                }}
+                onClick={clearRoute}
                 className="text-[11px] font-bold text-teal-200 hover:text-white underline cursor-pointer"
               >
                 Tutup Rute
@@ -2669,7 +2273,7 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
         </AnimatePresence>
       </div>
 
-      {/* DESKTOP FLOATING GLASS PANEL (Left Side with Fast Framer Motion Transitions) */}
+      {/* DESKTOP FLOATING GLASS PANEL */}
       <div className="hidden md:flex absolute top-28 bottom-12 left-4 z-20 pointer-events-none items-start">
         <AnimatePresence initial={false} mode="popLayout">
           {isDesktopPanelOpen && !isMobileViewport && (
@@ -2678,11 +2282,8 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
               initial={{ opacity: 0, x: -20, scale: 0.98 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: -20, scale: 0.98 }}
-              transition={{
-                duration: 0.18,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="pointer-events-auto h-full w-80 lg:w-96 bg-white/95 rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden origin-top-left"
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="pointer-events-auto h-full w-80 lg:w-96 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden origin-top-left"
             >
               {renderPanelContent()}
             </motion.aside>
@@ -2691,69 +2292,72 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
 
         <button
           type="button"
-          onClick={() => setIsDesktopPanelOpen(prev => !prev)}
+          onClick={() => setIsDesktopPanelOpen((prev) => !prev)}
           className={`pointer-events-auto mt-3 bg-white/95 hover:bg-white text-slate-700 rounded-xl shadow-lg border border-slate-200/90 flex items-center justify-center gap-1.5 cursor-pointer transition-transform active:scale-95 ${
-            isDesktopPanelOpen ? "ml-2 w-9 h-11" : "px-3.5 h-11 text-xs font-bold text-teal-800"
+            isDesktopPanelOpen ? 'ml-2 w-9 h-11' : 'px-3.5 h-11 text-xs font-bold text-teal-800'
           }`}
-          title={isDesktopPanelOpen ? "Sembunyikan Panel Daftar" : "Tampilkan Panel Daftar Faskes"}
+          title={isDesktopPanelOpen ? 'Sembunyikan Panel Daftar' : 'Tampilkan Panel Daftar Faskes'}
         >
           {isDesktopPanelOpen ? (
             <ChevronLeft className="w-4 h-4 text-slate-700" />
           ) : (
             <>
               <ListFilter className="w-4 h-4 text-teal-600" />
-              <span>Daftar Faskes ({filteredFacilities.length})</span>
+              <span>Faskes Sumsel ({filteredFacilities.length})</span>
               <ChevronRight className="w-4 h-4 text-slate-500" />
             </>
           )}
         </button>
       </div>
 
-      {/* MOBILE INTERACTIVE BOTTOM DRAWER / SHEET */}
+      {/* MOBILE INTERACTIVE BOTTOM DRAWER */}
       <motion.div
         initial={false}
         animate={{
           height:
-            mobileDrawerState === "expanded"
-              ? "82%"
-              : mobileDrawerState === "half"
-              ? "46%"
-              : "64px",
+            mobileDrawerState === 'expanded'
+              ? '82%'
+              : mobileDrawerState === 'half'
+              ? '46%'
+              : '64px',
         }}
-        transition={{
-          duration: 0.2,
-          ease: [0.22, 1, 0.36, 1],
-        }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
         className="md:hidden absolute left-0 right-0 bottom-0 z-30 bg-white/95 rounded-t-3xl shadow-[0_-8px_30px_rgba(15,23,42,0.18)] border-t border-slate-200/90 flex flex-col overflow-hidden"
       >
-        {/* Touch Handle Header */}
         <div
           onClick={() =>
-            setMobileDrawerState(prev =>
-              prev === "minimized" ? "half" : prev === "half" ? "expanded" : "minimized"
+            setMobileDrawerState((prev) =>
+              prev === 'minimized' ? 'half' : prev === 'half' ? 'expanded' : 'minimized'
             )
           }
           className="pt-2 pb-2.5 px-4 flex flex-col items-center cursor-pointer shrink-0 border-b border-slate-100"
         >
           <div className="w-10 h-1.5 bg-slate-300 rounded-full mb-2" />
           <div className="w-full flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-extrabold text-slate-800">
-                {filteredFacilities.length} Faskes Terdekat
-              </span>
-              <span className="text-[11px] text-slate-500">
-                · {sortBy === "distance" ? "Urut Jarak" : "Urut Nama"}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-extrabold text-slate-800 truncate">
+                {filteredFacilities.length} Faskes · {activeRegionObj ? activeRegionObj.shortName : 'Sumsel'}
               </span>
             </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-teal-700">
-              <span>{mobileDrawerState === "expanded" ? "Kecilkan" : mobileDrawerState === "half" ? "Perluas" : "Buka Daftar"}</span>
-              {mobileDrawerState === "expanded" ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            <div className="flex items-center gap-1 text-xs font-bold text-teal-700 shrink-0">
+              <span>
+                {mobileDrawerState === 'expanded'
+                  ? 'Kecilkan'
+                  : mobileDrawerState === 'half'
+                  ? 'Perluas'
+                  : 'Buka Daftar'}
+              </span>
+              {mobileDrawerState === 'expanded' ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronUp className="w-4 h-4" />
+              )}
             </div>
           </div>
         </div>
 
         <AnimatePresence initial={false}>
-          {mobileDrawerState !== "minimized" && isMobileViewport && (
+          {mobileDrawerState !== 'minimized' && isMobileViewport && (
             <motion.div
               key="mobile-drawer-body"
               initial={{ opacity: 0 }}
@@ -2768,32 +2372,34 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
         </AnimatePresence>
       </motion.div>
 
+      {/* Admin CSV/Excel Import Modal */}
       {isUpdateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">Update Data Peta Faskes</h3>
-              <button 
+              <h3 className="text-lg font-bold text-slate-800">Impor Data Faskes Tambahan (Admin)</h3>
+              <button
+                type="button"
                 onClick={() => setIsUpdateModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-5 flex-1 overflow-y-auto">
-              <div className="flex flex-col gap-4 mb-4">
-                <p className="text-sm text-slate-600">
-                  Unggah data Peta Faskes dalam format CSV atau Excel (.xlsx). Pastikan file memiliki baris pertama sebagai header yang tepat.
-                </p>
-                <button
-                  onClick={handleDownloadTemplate}
-                  className="self-start inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  Download Template Excel
-                </button>
-              </div>
-
+            <div className="p-5 flex-1 overflow-y-auto space-y-4">
+              <p className="text-sm text-slate-600">
+                Data utama Rumah Sakit, Puskesmas, Klinik, dan Apotek diambil secara langsung dari{' '}
+                <strong>Google Maps Platform (Places API New)</strong>. Unggah CSV/Excel hanya jika Admin ingin
+                menambahkan titik faskes internal khusus.
+              </p>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Download Template Excel
+              </button>
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-700">Pilih File</label>
                 <input
@@ -2803,29 +2409,30 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
                     const file = e.target.files?.[0];
                     if (file) {
                       setCsvFile(file);
-                      setCsvError("");
+                      setCsvError('');
                     }
                   }}
                   className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                 />
               </div>
-
               {csvError && (
-                <div className="mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl">
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl">
                   {csvError}
                 </div>
               )}
             </div>
             <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setIsUpdateModalOpen(false)}
-                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors"
+                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
               >
                 Batal
               </button>
               <button
+                type="button"
                 onClick={handleUpdateData}
-                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2"
+                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2 cursor-pointer"
               >
                 <Save className="w-4 h-4" />
                 Simpan Data
@@ -2838,3 +2445,43 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   );
 };
 
+interface MapFacilitiesProps {
+  isAdmin?: boolean;
+}
+
+export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false }) => {
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <div className="min-h-[480px] rounded-3xl bg-white border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
+          <MapPinned className="w-6 h-6" />
+        </div>
+        <h3 className="text-base font-extrabold text-slate-900">
+          Kunci API Google Maps Platform Belum Tersedia
+        </h3>
+        <p className="text-xs text-slate-600 max-w-md leading-relaxed">
+          Pastikan variabel lingkungan <code className="font-mono font-bold">VITE_GOOGLE_MAPS_API_KEY</code>{' '}
+          telah aktif pada proyek ini untuk memuat peta interaktif dan basis data Rumah Sakit, Puskesmas, Klinik,
+          serta Apotek di seluruh 17 Kota &amp; Kabupaten Sumatera Selatan dari Google Maps.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <APIProvider
+      apiKey={GOOGLE_MAPS_API_KEY}
+      language="id"
+      region="ID"
+      libraries={['places', 'marker', 'routes']}
+      onError={(err) => {
+        console.error('Google Maps APIProvider Error:', err);
+        if (isGoogleMapsQuotaError(err)) {
+          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+        }
+      }}
+    >
+      <SumselMapInner isAdmin={isAdmin} />
+    </APIProvider>
+  );
+};

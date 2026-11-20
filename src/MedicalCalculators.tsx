@@ -27,8 +27,16 @@ import {
   X
 } from "lucide-react";
 import { CHEMO_REGIMENS_DATA, ChemoRegimen, ChemoDrugComponent } from "./data/chemoRegimensData";
+import {
+  CHEMOTHERAPY_REGIMENS,
+  REGIMEN_CATEGORIES,
+  calculateRegimenDosages,
+  formatRegimenOrderSummary,
+  type BsaFormulaType,
+  type RegimenCancerCategory,
+} from "./regimens";
 
-type CalculatorType = "bmi" | "crcl" | "bsa" | "gcs" | "apgar" | "cha2ds2vasc" | "pediatric" | "chemo" | "egfr" | "lab";
+type CalculatorType = "bmi" | "crcl" | "bsa" | "gcs" | "apgar" | "cha2ds2vasc" | "pediatric" | "chemo" | "regimen" | "egfr" | "lab";
 
 export function MedicalCalculators() {
   const [activeCalc, setActiveCalc] = useState<CalculatorType | null>(null);
@@ -70,6 +78,25 @@ export function MedicalCalculators() {
   const [chemoHasCalculated, setChemoHasCalculated] = useState(false);
   const [chemoActiveTab, setChemoActiveTab] = useState<"drugs" | "sequence" | "premed" | "vital">("drugs");
   const [copiedNotification, setCopiedNotification] = useState(false);
+
+  // States for Regimen Kemoterapi Calculator (src/regimens.ts)
+  const [regimenSelectedId, setRegimenSelectedId] = useState<string>(CHEMOTHERAPY_REGIMENS[0]?.id || "abvd");
+  const [regimenCategory, setRegimenCategory] = useState<"all" | RegimenCancerCategory>("all");
+  const [regimenSearch, setRegimenSearch] = useState<string>("");
+  const [regimenGender, setRegimenGender] = useState<"female" | "male">("female");
+  const [regimenAge, setRegimenAge] = useState<string>("50");
+  const [regimenWeight, setRegimenWeight] = useState<string>("58");
+  const [regimenHeight, setRegimenHeight] = useState<string>("158");
+  const [regimenCr, setRegimenCr] = useState<string>("0.9");
+  const [regimenAuc, setRegimenAuc] = useState<string>("5");
+  const [regimenBsaMode, setRegimenBsaMode] = useState<"auto" | "manual">("auto");
+  const [regimenManualBsa, setRegimenManualBsa] = useState<string>("1.60");
+  const [regimenBsaFormula, setRegimenBsaFormula] = useState<BsaFormulaType>("mosteller");
+  const [regimenDosePercent, setRegimenDosePercent] = useState<number>(100);
+  const [regimenCapGfr, setRegimenCapGfr] = useState<boolean>(true);
+  const [regimenCapVincristine, setRegimenCapVincristine] = useState<boolean>(true);
+  const [regimenCustomDoses, setRegimenCustomDoses] = useState<Record<string, number>>({});
+  const [regimenCopied, setRegimenCopied] = useState<boolean>(false);
 
   // States for Pediatric Dose
   const [pedAdultDose, setPedAdultDose] = useState("");
@@ -180,9 +207,21 @@ export function MedicalCalculators() {
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <h3 className="font-bold text-slate-800 text-lg">Kalkulator Kemoterapi</h3>
-            <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-teal-100 text-teal-800 rounded uppercase">9 Regimen Kanker</span>
+            <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-teal-100 text-teal-800 rounded uppercase">{CHEMO_REGIMENS_DATA.length} Regimen Kanker</span>
           </div>
           <p className="text-slate-500 text-sm mt-1">Dosis Individual LPT/AUC, Urutan Infus & Protokol Kanker</p>
+        </div>
+      </button>
+      <button onClick={() => setActiveCalc("regimen")} className="bg-white p-6 rounded-2xl border border-indigo-200 hover:border-indigo-400 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
+        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+          <Layers className="w-6 h-6" />
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h3 className="font-bold text-slate-800 text-lg">Regimen Kemoterapi</h3>
+            <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-indigo-100 text-indigo-800 rounded uppercase">{CHEMOTHERAPY_REGIMENS.length} Protokol</span>
+          </div>
+          <p className="text-slate-500 text-sm mt-1">Hitung Dosis Spesifik Regimen (7+3, ABVD, R-CHOP, FOLFIRINOX, BEP, CAPOX, dll.)</p>
         </div>
       </button>
       <button onClick={() => setActiveCalc("pediatric")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
@@ -1797,6 +1836,769 @@ export function MedicalCalculators() {
     );
   };
 
+  const renderRegimenKemoterapiCalculator = () => {
+    const filteredRegimens = CHEMOTHERAPY_REGIMENS.filter((r) => {
+      if (regimenCategory !== "all" && r.category !== regimenCategory) return false;
+      if (regimenSearch.trim()) {
+        const q = regimenSearch.trim().toLowerCase();
+        const inName = r.name.toLowerCase().includes(q) || r.fullName.toLowerCase().includes(q);
+        const inInd = r.indication.toLowerCase().includes(q) || r.categoryLabel.toLowerCase().includes(q);
+        const inDrugs = r.drugs.some(
+          (d) =>
+            d.drugName.toLowerCase().includes(q) ||
+            (d.genericAlias || "").toLowerCase().includes(q) ||
+            d.drugId.toLowerCase().includes(q)
+        );
+        return inName || inInd || inDrugs;
+      }
+      return true;
+    });
+
+    const activeRegimen =
+      CHEMOTHERAPY_REGIMENS.find((r) => r.id === regimenSelectedId) ||
+      filteredRegimens[0] ||
+      CHEMOTHERAPY_REGIMENS[0];
+
+    const patientInput = {
+      gender: regimenGender,
+      ageYears: parseFloat(regimenAge) || 0,
+      weightKg: parseFloat(regimenWeight) || 0,
+      heightCm: parseFloat(regimenHeight) || 0,
+      serumCreatinineMgDl: parseFloat(regimenCr) || 0,
+      targetAUC: parseFloat(regimenAuc) || 5,
+      bsaInputMode: regimenBsaMode,
+      manualBsaM2: parseFloat(regimenManualBsa) || 0,
+      bsaFormula: regimenBsaFormula,
+      doseReductionPercent: regimenDosePercent,
+      capGfrAt125: regimenCapGfr,
+      capVincristineAt2mg: regimenCapVincristine,
+      customComponentDoses: regimenCustomDoses,
+    };
+
+    const calcResult = calculateRegimenDosages(activeRegimen, patientInput);
+    const hasValidPatientData =
+      regimenBsaMode === "manual"
+        ? patientInput.manualBsaM2 > 0 || patientInput.weightKg > 0
+        : patientInput.weightKg > 0 && patientInput.heightCm > 0;
+    const sortedDrugs = [...calcResult.drugs].sort(
+      (a, b) => a.drug.sequenceOrder - b.drug.sequenceOrder
+    );
+    const hasCustomOverrides = Object.keys(regimenCustomDoses).length > 0;
+
+    const selectRegimenById = (id: string) => {
+      setRegimenSelectedId(id);
+      setRegimenCustomDoses({});
+    };
+
+    const handleCopyRegimenSummary = () => {
+      const text = formatRegimenOrderSummary(calcResult, patientInput);
+      navigator.clipboard.writeText(text).then(() => {
+        setRegimenCopied(true);
+        setTimeout(() => setRegimenCopied(false), 2500);
+      });
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xs space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-500/20 text-indigo-300 rounded-xl">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-black tracking-tight">Kalkulator Regimen Kemoterapi</h2>
+              </div>
+              <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                Hitung dosis obat sitotoksik individual secara presisi berdasarkan <strong className="text-white">{CHEMOTHERAPY_REGIMENS.length} protokol regimen kemoterapi</strong> (LPT Mosteller/Du Bois, Calvert AUC dengan pembatasan GFR 125 mL/menit, batas dosis tunggal Vinkristin 2 mg, serta reduksi dosis).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyRegimenSummary}
+              disabled={!hasValidPatientData}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-center cursor-pointer"
+            >
+              {regimenCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              <span>{regimenCopied ? "Tersalin ke Clipboard" : "Salin Order Dosis"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Step 1: Select Regimen */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-black flex items-center justify-center">1</span>
+              Pilih Regimen Kemoterapi
+            </h3>
+            <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+              Menampilkan {filteredRegimens.length} dari {CHEMOTHERAPY_REGIMENS.length} regimen
+            </span>
+          </div>
+
+          {/* Category Filter Chips */}
+          <div className="flex flex-wrap gap-1.5">
+            {REGIMEN_CATEGORIES.map((cat) => {
+              const isActive = regimenCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setRegimenCategory(cat.id);
+                    const nextList = CHEMOTHERAPY_REGIMENS.filter(
+                      (r) => cat.id === "all" || r.category === cat.id
+                    );
+                    if (nextList.length > 0 && !nextList.some((r) => r.id === regimenSelectedId)) {
+                      selectRegimenById(nextList[0].id);
+                    }
+                  }}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  {cat.label} ({cat.count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search & Dropdown Selector */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={regimenSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRegimenSearch(val);
+                  if (val.trim()) {
+                    const q = val.trim().toLowerCase();
+                    const firstMatch = CHEMOTHERAPY_REGIMENS.find(
+                      (r) =>
+                        (regimenCategory === "all" || r.category === regimenCategory) &&
+                        (r.name.toLowerCase().includes(q) ||
+                          r.fullName.toLowerCase().includes(q) ||
+                          r.indication.toLowerCase().includes(q) ||
+                          r.drugs.some((d) => d.drugName.toLowerCase().includes(q)))
+                    );
+                    if (firstMatch) selectRegimenById(firstMatch.id);
+                  }
+                }}
+                placeholder="Cari regimen (7+3, ABVD, R-CHOP, CAPOX, BEP, FLOT, CYBORD, obat, kanker)..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              />
+              {regimenSearch && (
+                <button
+                  type="button"
+                  onClick={() => setRegimenSearch("")}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <select
+              value={activeRegimen.id}
+              onChange={(e) => selectRegimenById(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            >
+              {filteredRegimens.length === 0 ? (
+                <option value={activeRegimen.id}>Tidak ada regimen cocok</option>
+              ) : (
+                filteredRegimens.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} — {r.indication}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {/* Active Regimen Overview Box */}
+          <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-4 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 bg-indigo-700 text-white text-xs font-black rounded-lg">
+                  {activeRegimen.name}
+                </span>
+                <span className="text-xs font-bold text-indigo-950">{activeRegimen.fullName}</span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-indigo-700 rounded-md border border-indigo-200">
+                {activeRegimen.categoryLabel}
+              </span>
+            </div>
+            <p className="text-xs text-slate-700 leading-relaxed">
+              <strong className="text-slate-900">Indikasi:</strong> {activeRegimen.indication}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span><strong>Siklus:</strong> {activeRegimen.cycleProtocol}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span><strong>Durasi:</strong> {activeRegimen.totalRecommendedCycles}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2: Patient Anthropometrics & Dosing Rules */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-black flex items-center justify-center">2</span>
+              Data Antropometri & Parameter Klinis Pasien
+            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setRegimenBsaMode("auto")}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                    regimenBsaMode === "auto"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  Hitung LPT (BB & TB)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (calcResult.activeBsa > 0) {
+                      setRegimenManualBsa(calcResult.activeBsa.toFixed(2));
+                    }
+                    setRegimenBsaMode("manual");
+                  }}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                    regimenBsaMode === "manual"
+                      ? "bg-white text-indigo-700 shadow-xs"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  Input LPT (BSA) Langsung
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRegimenAge("50");
+                  setRegimenWeight("58");
+                  setRegimenHeight("158");
+                  setRegimenManualBsa("1.60");
+                  setRegimenBsaMode("auto");
+                  setRegimenCr("0.9");
+                  setRegimenAuc("5");
+                  setRegimenDosePercent(100);
+                  setRegimenBsaFormula("mosteller");
+                  setRegimenCapGfr(true);
+                  setRegimenCapVincristine(true);
+                  setRegimenCustomDoses({});
+                }}
+                className="text-[11px] font-semibold text-slate-500 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+              >
+                <RefreshCw className="w-3 h-3" /> Reset Default
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
+              <div className="grid grid-cols-2 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setRegimenGender("female")}
+                  className={`py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                    regimenGender === "female" ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600"
+                  }`}
+                >
+                  Wanita
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegimenGender("male")}
+                  className={`py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                    regimenGender === "male" ? "bg-white text-indigo-700 shadow-xs" : "text-slate-600"
+                  }`}
+                >
+                  Pria
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Usia (tahun)</label>
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={regimenAge}
+                onChange={(e) => setRegimenAge(e.target.value)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Berat Badan (kg)</label>
+              <input
+                type="number"
+                min="1"
+                step="0.5"
+                value={regimenWeight}
+                onChange={(e) => setRegimenWeight(e.target.value)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+              />
+            </div>
+
+            {regimenBsaMode === "manual" ? (
+              <div>
+                <label className="block text-[11px] font-bold text-indigo-700 mb-1">LPT / BSA Langsung (m²)</label>
+                <input
+                  type="number"
+                  min="0.2"
+                  max="3.5"
+                  step="0.01"
+                  value={regimenManualBsa}
+                  onChange={(e) => setRegimenManualBsa(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-indigo-400 bg-indigo-50/50 rounded-lg text-sm font-black text-indigo-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Tinggi Badan (cm)</label>
+                <input
+                  type="number"
+                  min="30"
+                  step="0.5"
+                  value={regimenHeight}
+                  onChange={(e) => setRegimenHeight(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">Kreatinin (mg/dL)</label>
+              <input
+                type="number"
+                min="0.1"
+                step="0.05"
+                value={regimenCr}
+                onChange={(e) => setRegimenCr(e.target.value)}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+              />
+            </div>
+
+            {regimenBsaMode === "manual" ? (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">Tinggi Badan (opsional)</label>
+                <input
+                  type="number"
+                  min="30"
+                  step="0.5"
+                  value={regimenHeight}
+                  onChange={(e) => setRegimenHeight(e.target.value)}
+                  placeholder="cm"
+                  className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Formula LPT/BSA</label>
+                <select
+                  value={regimenBsaFormula}
+                  onChange={(e) => setRegimenBsaFormula(e.target.value as BsaFormulaType)}
+                  className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-hidden bg-white"
+                >
+                  <option value="mosteller">Mosteller</option>
+                  <option value="dubois">Du Bois</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Conditional AUC + Dose Intensity + Safety Caps */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-slate-600">Intensitas / Reduksi Dosis</label>
+                <span
+                  className={`text-[11px] font-black px-2 py-0.5 rounded-md ${
+                    regimenDosePercent < 100
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {regimenDosePercent}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={50}
+                max={100}
+                step={5}
+                value={regimenDosePercent}
+                onChange={(e) => setRegimenDosePercent(Number(e.target.value))}
+                className="w-full accent-indigo-600"
+              />
+              <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                <span>50%</span>
+                <span>75%</span>
+                <span>80%</span>
+                <span>100% (Standar)</span>
+              </div>
+            </div>
+
+            {activeRegimen.hasCarboplatin ? (
+              <div>
+                <label className="block text-[11px] font-bold text-indigo-700 mb-1">
+                  Target AUC Carboplatin (Calvert)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="0.5"
+                  value={regimenAuc}
+                  onChange={(e) => setRegimenAuc(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-indigo-300 bg-indigo-50/40 rounded-lg text-sm font-bold text-indigo-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Rumus Calvert: AUC × (GFR + 25)</p>
+              </div>
+            ) : (
+              <div className="flex flex-col justify-center bg-slate-50 border border-slate-200/70 rounded-xl px-3 py-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Mode Perhitungan</span>
+                <span className="text-xs font-bold text-slate-700 mt-0.5">
+                  LPT ({regimenBsaMode === "manual" ? "Input Manual" : regimenBsaFormula === "dubois" ? "Du Bois" : "Mosteller"}) / BB (kg) / Flat Dose
+                </span>
+              </div>
+            )}
+
+            <div className="space-y-2 bg-slate-50 border border-slate-200/70 rounded-xl p-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Pengaman Dosis Klinis (ASCO/FDA)
+              </span>
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={regimenCapGfr}
+                  onChange={(e) => setRegimenCapGfr(e.target.checked)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>Batasi GFR Calvert ≤ 125 mL/menit</span>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={regimenCapVincristine}
+                  onChange={(e) => setRegimenCapVincristine(e.target.checked)}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>Batasi Dosis Tunggal Vinkristin ≤ 2 mg</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 3: Calculated Anthropometrics & Drug Dosages */}
+        {!hasValidPatientData ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center text-xs font-semibold text-amber-800">
+            {regimenBsaMode === "manual"
+              ? "Masukkan nilai LPT / BSA (m²) atau Berat Badan (kg) pasien yang valid untuk melihat kalkulasi dosis individual."
+              : "Masukkan Berat Badan (kg) dan Tinggi Badan (cm) pasien yang valid untuk melihat kalkulasi dosis individual."}
+          </div>
+        ) : (
+          <>
+            {/* Anthropometric Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="bg-white border border-indigo-200 rounded-xl p-4 shadow-3xs">
+                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
+                  LPT / BSA ({regimenBsaMode === "manual" ? "Input Manual" : regimenBsaFormula === "dubois" ? "Du Bois" : "Mosteller"})
+                </span>
+                <div className="text-2xl font-black text-slate-900 mt-1 font-mono">
+                  {calcResult.activeBsa.toFixed(2)} <span className="text-xs font-sans text-slate-500 font-semibold">m²</span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {regimenBsaMode === "manual"
+                    ? `BB Aktual: ${patientInput.weightKg} kg`
+                    : regimenBsaFormula === "dubois"
+                    ? `Mosteller: ${calcResult.bsaMosteller.toFixed(2)} m²`
+                    : `Du Bois: ${calcResult.bsaDuBois.toFixed(2)} m²`}
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Klirens Kreatinin (CrCl)
+                </span>
+                <div className="text-2xl font-black text-slate-900 mt-1 font-mono">
+                  {calcResult.crClRaw.toFixed(1)} <span className="text-xs font-sans text-slate-500 font-semibold">mL/mnt</span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {calcResult.gfrWasCapped ? "Calvert capped: 125 mL/mnt" : "Cockcroft-Gault"}
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  IMT / BMI
+                </span>
+                <div className="text-2xl font-black text-slate-900 mt-1 font-mono">
+                  {calcResult.bmi > 0 ? calcResult.bmi.toFixed(1) : "—"} <span className="text-xs font-sans text-slate-500 font-semibold">{calcResult.bmi > 0 ? "kg/m²" : ""}</span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  {calcResult.bmi <= 0
+                    ? "Isi TB untuk hitung IMT"
+                    : calcResult.bmi < 18.5
+                    ? "Underweight"
+                    : calcResult.bmi < 25
+                    ? "Normal"
+                    : calcResult.bmi < 30
+                    ? "Overweight"
+                    : "Obesitas (ASCO: tetap gunakan BB aktual)"}
+                </span>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Berat Badan Ideal (IBW)
+                </span>
+                <div className="text-2xl font-black text-slate-900 mt-1 font-mono">
+                  {calcResult.ibwKg > 0 ? calcResult.ibwKg.toFixed(1) : "—"} <span className="text-xs font-sans text-slate-500 font-semibold">{calcResult.ibwKg > 0 ? "kg" : ""}</span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Komponen Regimen: {sortedDrugs.length} obat
+                </span>
+              </div>
+            </div>
+
+            {/* Individualized Drug Dosages List */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+              <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-bold">
+                    Rincian Dosis Individual — Regimen {activeRegimen.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Diurutkan sesuai urutan pemberian infus (administration sequence)
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {hasCustomOverrides && (
+                    <button
+                      type="button"
+                      onClick={() => setRegimenCustomDoses({})}
+                      className="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-400/40 rounded-lg text-[11px] font-bold cursor-pointer"
+                    >
+                      Reset Dosis Kustom
+                    </button>
+                  )}
+                  {regimenDosePercent < 100 && (
+                    <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-bold">
+                      Reduksi Dosis Aktif: {regimenDosePercent}%
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {sortedDrugs.map((item) => {
+                  const drugKey = `${item.drug.drugId}_${item.drug.sequenceOrder}`;
+                  const isCustomDose = regimenCustomDoses[drugKey] !== undefined;
+                  const doseUnitLabel =
+                    item.drug.doseUnit === "mg/m2"
+                      ? "mg/m²"
+                      : item.drug.doseUnit === "unit/m2"
+                      ? "unit/m²"
+                      : item.drug.doseUnit === "mg/kg"
+                      ? "mg/kg"
+                      : item.drug.doseUnit === "mcg/kg"
+                      ? "mcg/kg"
+                      : item.drug.doseUnit === "AUC"
+                      ? "AUC"
+                      : item.drug.doseUnit === "unit_flat"
+                      ? "unit"
+                      : "mg";
+                  const formattedFinal =
+                    item.finalDose < 10
+                      ? item.finalDose.toFixed(2)
+                      : Math.round(item.finalDose).toLocaleString("id-ID");
+                  const formattedStd =
+                    item.standardDose < 10
+                      ? item.standardDose.toFixed(2)
+                      : Math.round(item.standardDose).toLocaleString("id-ID");
+
+                  return (
+                    <div key={drugKey} className="p-4 sm:p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-mono font-bold rounded-md">
+                              Urutan #{item.drug.sequenceOrder}
+                            </span>
+                            <h4 className="text-sm font-extrabold text-slate-900">{item.drug.drugName}</h4>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                item.drug.vesicantStatus.includes("Vesikant") && !item.drug.vesicantStatus.includes("Non")
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : item.drug.vesicantStatus === "Iritan"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              }`}
+                            >
+                              {item.drug.vesicantStatus}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">{item.drug.role}</p>
+
+                          {/* Inline Protocol Dose Adjuster */}
+                          <div className="flex items-center gap-2 flex-wrap pt-1">
+                            <span className="text-[11px] font-semibold text-slate-500">Dosis Protokol:</span>
+                            <div className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5">
+                              <input
+                                type="number"
+                                min="0.01"
+                                step={item.drug.doseValue < 10 ? "0.1" : "1"}
+                                value={isCustomDose ? regimenCustomDoses[drugKey] : item.appliedDoseValue}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  if (!Number.isNaN(v) && v > 0) {
+                                    setRegimenCustomDoses((prev) => ({ ...prev, [drugKey]: v }));
+                                  }
+                                }}
+                                aria-label={`Sesuaikan dosis ${item.drug.drugName}`}
+                                className="w-16 text-xs font-mono font-bold text-slate-800 bg-transparent focus:outline-hidden"
+                              />
+                              <span className="text-[10px] font-bold text-slate-500">{doseUnitLabel}</span>
+                            </div>
+                            {isCustomDose && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setRegimenCustomDoses((prev) => {
+                                    const next = { ...prev };
+                                    delete next[drugKey];
+                                    return next;
+                                  })
+                                }
+                                className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                              >
+                                Reset ({item.drug.doseValue} {doseUnitLabel})
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="sm:text-right bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5 shrink-0">
+                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
+                            Dosis Individual Pasien
+                          </span>
+                          <div className="text-2xl font-black text-indigo-950 font-mono">
+                            {formattedFinal} <span className="text-xs font-sans font-bold text-indigo-700">{item.displayUnit}</span>
+                          </div>
+                          <div className="text-[10px] text-indigo-700 font-medium">
+                            {isCustomDose ? "Dosis kustom" : item.drug.dosageFormula} ({item.formulaBreakdown})
+                          </div>
+                          {regimenDosePercent < 100 && (
+                            <div className="text-[10px] text-amber-700 font-bold mt-0.5">
+                              Standar 100%: {formattedStd} {item.displayUnit} → {regimenDosePercent}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {item.wasCapped && item.capReason && (
+                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-900">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <span>
+                            <strong>Pembatasan Dosis Diterapkan (Capped):</strong> Dosis hitung awal {formattedStd} {item.displayUnit}. {item.capReason}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-lg p-2.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Rute & Jadwal</span>
+                          <p className="text-slate-700 font-semibold mt-0.5">{item.drug.adminRoute}</p>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-lg p-2.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Pelarut Standar</span>
+                          <p className="text-slate-700 font-semibold mt-0.5">{item.drug.diluentStandard}</p>
+                          {item.drug.diluentForbidden && (
+                            <p className="text-rose-600 font-bold mt-1">{item.drug.diluentForbidden}</p>
+                          )}
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-lg p-2.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Kewaspadaan Klinis</span>
+                          <p className="text-slate-700 mt-0.5 leading-relaxed">{item.drug.specialPrecautions}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Premedication, Hydration & Vital Monitoring */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-3xs">
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Premedikasi
+                </h4>
+                <ul className="text-xs text-slate-600 list-disc pl-4 space-y-1.5 leading-relaxed">
+                  {activeRegimen.premedicationProtocol.map((p, idx) => (
+                    <li key={idx}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-3xs">
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Droplets className="w-4 h-4 text-sky-600" /> Hidrasi & Proteksi Organ
+                </h4>
+                <ul className="text-xs text-slate-600 list-disc pl-4 space-y-1.5 leading-relaxed">
+                  {activeRegimen.hydrationAndProtection.map((h, idx) => (
+                    <li key={idx}>{h}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-3xs">
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-rose-600" /> Monitoring Vital & Lab
+                </h4>
+                <ul className="text-xs text-slate-600 list-disc pl-4 space-y-1.5 leading-relaxed">
+                  {activeRegimen.vitalMonitoring.map((m, idx) => (
+                    <li key={idx}>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </>
+        )}
+
+        <ReferenceFooter
+          references={[
+            `${activeRegimen.references}`,
+            "Mosteller RD. Simplified calculation of body-surface area. N Engl J Med. 1987;317(17):1098.",
+            "Calvert AH, et al. Carboplatin dosage: prospective evaluation of a simple formula based on renal clearance. J Clin Oncol. 1989;7(11):1748-1756.",
+            "ASCO Guideline: Appropriate Systemic Therapy Dosing for Obese Adult Patients With Cancer (Griggs JJ, et al. J Clin Oncol. 2021).",
+            "NCCN Clinical Practice Guidelines in Oncology & FDA Carboplatin GFR Capping Communication.",
+          ]}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="bg-white border-b border-slate-200 p-6">
@@ -1835,6 +2637,7 @@ export function MedicalCalculators() {
               {activeCalc === "cha2ds2vasc" && renderCha2ds2vasc()}
               {activeCalc === "pediatric" && renderPediatricDoseCalculator()}
               {activeCalc === "chemo" && renderChemoCalculator()}
+              {activeCalc === "regimen" && renderRegimenKemoterapiCalculator()}
               {activeCalc === "egfr" && renderEgfrCalculator()}
               {activeCalc === "lab" && renderLabCalculator()}
             </div>

@@ -11,6 +11,23 @@ export interface DrugInteraction {
 }
 
 import { EXTENDED_INTERACTIONS_FOR_PRESETS, EXTENDED_FOOD_INTERACTIONS } from "./interactions_presets_extended";
+import { DDI_DATABASE_PART1 } from "./data/ddiDatabasePart1";
+import { DDI_DATABASE_PART2, EXTENDED_FOOD_INTERACTIONS_V2 } from "./data/ddiDatabasePart2";
+import { DDI_DATABASE_PART3 } from "./data/ddiDatabasePart3";
+import { EXTENDED_CANONICAL_PATTERNS, DDI_REFERENCE_SOURCES, type DdiReferenceSource } from "./data/ddiReferenceSources";
+import {
+  evaluateClassBasedInteractions,
+  detectPolypharmacySyndromes,
+  type PolypharmacySyndromeAlert,
+} from "./data/ddiClassEngine";
+
+export {
+  DDI_REFERENCE_SOURCES,
+  evaluateClassBasedInteractions,
+  detectPolypharmacySyndromes,
+  type DdiReferenceSource,
+  type PolypharmacySyndromeAlert,
+};
 
 const BASE_INTERACTION_DATABASE: DrugInteraction[] = [
   {
@@ -642,10 +659,32 @@ const BASE_INTERACTION_DATABASE: DrugInteraction[] = [
   },
 ];
 
-export const INTERACTION_DATABASE: DrugInteraction[] = [
+const RAW_COMBINED_INTERACTIONS: DrugInteraction[] = [
   ...BASE_INTERACTION_DATABASE,
   ...EXTENDED_INTERACTIONS_FOR_PRESETS,
+  ...DDI_DATABASE_PART1,
+  ...DDI_DATABASE_PART2,
+  ...DDI_DATABASE_PART3,
 ];
+
+function deduplicateInteractions(list: DrugInteraction[]): DrugInteraction[] {
+  const seenIds = new Set<string>();
+  const seenPairs = new Set<string>();
+  const result: DrugInteraction[] = [];
+  for (const item of list) {
+    if (seenIds.has(item.id)) continue;
+    const sA = getCanonicalSubstance(item.drugAId, item.drugAName);
+    const sB = getCanonicalSubstance(item.drugBId, item.drugBName);
+    const pairKey = [sA, sB].sort().join("::");
+    if (seenPairs.has(pairKey)) continue;
+    seenIds.add(item.id);
+    seenPairs.add(pairKey);
+    result.push(item);
+  }
+  return result;
+}
+
+export const INTERACTION_DATABASE: DrugInteraction[] = deduplicateInteractions(RAW_COMBINED_INTERACTIONS);
 
 export interface FoodInteraction {
   id: string;
@@ -834,6 +873,7 @@ const BASE_FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
 export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
   ...BASE_FOOD_INTERACTION_DATABASE,
   ...EXTENDED_FOOD_INTERACTIONS,
+  ...EXTENDED_FOOD_INTERACTIONS_V2,
 ];
 
 /**
@@ -910,6 +950,14 @@ export function getCanonicalSubstance(id: string, name: string): string {
   if (norm.includes("fluconazol") || norm.includes("flukonazol") || norm.includes("diflucan") || norm.includes("flucoral") || norm.includes("candizol") || norm.includes("zemyc")) return "fluconazole";
   if (norm.includes("donepezil") || norm.includes("aricept") || norm.includes("alzeil") || norm.includes("donecept")) return "donepezil";
   if (norm.includes("ondansetron") || norm.includes("narfoz") || norm.includes("cedantron") || norm.includes("invomit") || norm.includes("zofran") || norm.includes("vometron") || norm.includes("dantrox")) return "ondansetron";
+
+  // Extended international + Indonesian MIMS/hospital formulary canonical mappings
+  for (const entry of EXTENDED_CANONICAL_PATTERNS) {
+    if (entry.patterns.some(pat => norm.includes(pat))) {
+      return entry.canonical;
+    }
+  }
+
   if (norm.includes("calcium") || norm.includes("kalsium") || norm.includes("calc") || norm.includes("cagluconat") || norm.includes("calcii")) return "calcium";
 
   return id.toLowerCase();
@@ -951,27 +999,39 @@ export function getFoodInteractionsForDrug(id: string, name: string, db: FoodInt
     const sub = getCanonicalSubstance(item.drugId, item.drugName);
     if (sub === targetSubstance) return true;
     const baseA = targetId.split("_")[0];
-    const baseB = item.drugId.split("_")[0];
-    return baseA === baseB;
+    const baseB = item.drugId.toLowerCase().split("_")[0];
+    return baseA !== "auto" && baseA.length >= 4 && baseA === baseB;
   });
 }
 
 /**
- * Checks for food-drug interactions for a list of drug IDs.
- * Returns an array of food-drug interactions.
+ * Checks for food-drug interactions for a list of drug IDs (using canonical matching).
+ * Returns an array of deduplicated food-drug interactions.
  */
-export function checkFoodInteractions(drugIds: string[]): FoodInteraction[] {
+export function checkFoodInteractions(drugIds: string[], drugNamesById?: Record<string, string>): FoodInteraction[] {
   if (!drugIds || drugIds.length === 0) {
     return [];
   }
 
+  const selectedCanonicals = new Set(
+    drugIds.map(id => getCanonicalSubstance(id, drugNamesById?.[id] || id))
+  );
+
+  const seen = new Set<string>();
   return FOOD_INTERACTION_DATABASE.filter(interaction => {
-    return drugIds.some(id => {
+    if (seen.has(interaction.id)) return false;
+    const intSub = getCanonicalSubstance(interaction.drugId, interaction.drugName);
+    const matched = drugIds.some(id => {
       if (id === interaction.drugId) return true;
-      const baseA = id.split("_")[0];
-      const baseB = interaction.drugId.split("_")[0];
-      return baseA === baseB;
+      if (selectedCanonicals.has(intSub)) return true;
+      const baseA = id.toLowerCase().split("_")[0];
+      const baseB = interaction.drugId.toLowerCase().split("_")[0];
+      return baseA !== "auto" && baseA.length >= 4 && baseA === baseB;
     });
+    if (matched) {
+      seen.add(interaction.id);
+    }
+    return matched;
   });
 }
 

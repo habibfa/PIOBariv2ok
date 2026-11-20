@@ -3,6 +3,7 @@ import { db, isFirebaseConfigured } from '../firebase';
 
 export interface Facility {
   id: number;
+  placeId?: string;
   name: string;
   type: 'Hospital' | 'Pharmacy' | 'Clinic' | 'Puskesmas';
   address: string;
@@ -12,6 +13,14 @@ export interface Facility {
   kelas?: string;
   jenis?: string;
   city?: string;
+  regionId?: string;
+  rating?: number;
+  userRatingCount?: number;
+  businessStatus?: string;
+  openingHours?: string[];
+  googleMapsUri?: string;
+  websiteUri?: string;
+  source?: 'google_maps' | 'admin';
   locked?: boolean;
 }
 

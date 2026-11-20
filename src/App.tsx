@@ -3,7 +3,18 @@ import { Upload, Save, Menu } from "lucide-react";
 import { CalculatorInputs, CalculationResult, DrugPreset, AlertLevel } from "./types";
 import { getDrugSafetyReview } from "./data/drugSafetyMetadata";
 import { DRUG_PRESETS as INITIAL_DRUG_PRESETS } from "./presets";
-import { INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE, checkFoodInteractions, FoodInteraction, DrugInteraction, getCanonicalSubstance, getInteractionsForDrug, getFoodInteractionsForDrug } from "./interactions";
+import {
+  INTERACTION_DATABASE as INITIAL_INTERACTION_DATABASE,
+  checkFoodInteractions,
+  FoodInteraction,
+  DrugInteraction,
+  getCanonicalSubstance,
+  getInteractionsForDrug,
+  getFoodInteractionsForDrug,
+  evaluateClassBasedInteractions,
+  detectPolypharmacySyndromes,
+  DDI_REFERENCE_SOURCES,
+} from "./interactions";
 import { calculateDosage, calculateMostellerBsa, calculateCockcroftGault } from "./mathUtils";
 import ClinicalAlerts from "./components/ClinicalAlerts";
 import { generateMedicalReportPDF } from "./pdfUtils";
@@ -22,6 +33,7 @@ const MedicalCalculators = lazy(() => import("./MedicalCalculators").then(m => (
 const GlassSettingsModal = lazy(() => import("./components/GlassSettingsModal"));
 const AdminWebAnalytics = lazy(() => import("./components/AdminWebAnalytics"));
 const SiteRatingReviews = lazy(() => import("./components/SiteRatingReviews"));
+const DeviceGuideAnimated = lazy(() => import("./components/DeviceGuideAnimated"));
 import FirestoreErrorBoundary from "./components/FirestoreErrorBoundary";
 import { trackCustomEvent, trackPageView, sendHeartbeat, detectRealClientLocation, getDetectedClientGeoMeta } from "./services/analyticsService";
 import { setAdminWebCopyMode } from "./utils/clientProtection";
@@ -87,19 +99,6 @@ import {
 } from "lucide-react";
 import HighlightText from "./components/HighlightText";
 import { matchDrugSimultaneous, SearchScope } from "./utils/searchUtils";
-
-// @ts-ignore
-import suppositoriaImg from "./assets/images/suppositoria_guide_1782741722992.jpg";
-// @ts-ignore
-import inhalerImg from "./assets/images/inhaler_guide_1782741740111.jpg";
-// @ts-ignore
-import tetesMataImg from "./assets/images/tetes_mata_guide_1782741754486.jpg";
-// @ts-ignore
-import tetesTelingaImg from "./assets/images/tetes_telinga_guide_1782741766653.jpg";
-// @ts-ignore
-import semprotHidungImg from "./assets/images/semprot_hidung_guide_1782741778450.jpg";
-// @ts-ignore
-import insulinImg from "./assets/images/pena_insulin_guide_1782741791385.jpg";
 
 // Helper function to extract Generic and Brand names
 const getGenericAndBrand = (name: string, presetId?: string) => {
@@ -1195,6 +1194,14 @@ export default function App() {
     return saved ? parseInt(saved, 10) : 16;
   });
 
+  const [gmpQuotaExceeded, setGmpQuotaExceeded] = useState(false);
+
+  useEffect(() => {
+    const handleQuotaExceeded = () => setGmpQuotaExceeded(true);
+    window.addEventListener("gmp-quota-exceeded", handleQuotaExceeded);
+    return () => window.removeEventListener("gmp-quota-exceeded", handleQuotaExceeded);
+  }, []);
+
   useEffect(() => {
     localStorage.setItem("piobari_glass_opacity", glassOpacity.toString());
     localStorage.setItem("piobari_glass_blur", glassBlur.toString());
@@ -1289,7 +1296,8 @@ export default function App() {
     localStorage.removeItem("interactionDatabase_v4");
     localStorage.removeItem("interactionDatabase_v5");
     localStorage.removeItem("interactionDatabase_v6");
-    const saved = localStorage.getItem("interactionDatabase_v7");
+    localStorage.removeItem("interactionDatabase_v7");
+    const saved = localStorage.getItem("interactionDatabase_v8");
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as DrugInteraction[];
@@ -1301,19 +1309,19 @@ export default function App() {
             return fresh || item;
           });
           const merged = [...updated, ...missing];
-          localStorage.setItem("interactionDatabase_v7", JSON.stringify(merged));
+          localStorage.setItem("interactionDatabase_v8", JSON.stringify(merged));
           return merged;
         }
       } catch (e) {
         return INITIAL_INTERACTION_DATABASE;
       }
     }
-    localStorage.setItem("interactionDatabase_v7", JSON.stringify(INITIAL_INTERACTION_DATABASE));
+    localStorage.setItem("interactionDatabase_v8", JSON.stringify(INITIAL_INTERACTION_DATABASE));
     return INITIAL_INTERACTION_DATABASE;
   });
 
   useEffect(() => {
-    localStorage.setItem("interactionDatabase_v7", JSON.stringify(interactionDatabase));
+    localStorage.setItem("interactionDatabase_v8", JSON.stringify(interactionDatabase));
   }, [interactionDatabase]);
 
   const [isUpdateDdiModalOpen, setIsUpdateDdiModalOpen] = useState(false);
@@ -1435,21 +1443,32 @@ export default function App() {
       return unique;
     }
 
-    // 3. Fallback: fuzzy substring matching
-    const normA = nameA.toLowerCase();
-    const normB = nameB.toLowerCase();
-    const fallback = interactionDatabase.filter(interaction => {
-      const iA = interaction.drugAName.toLowerCase();
-      const iB = interaction.drugBName.toLowerCase();
-      return (
-        (normA.includes(iA) || iA.includes(normA)) && (normB.includes(iB) || iB.includes(normB))
-      ) || (
-        (normA.includes(iB) || iB.includes(normA)) && (normB.includes(iA) || iA.includes(normB))
-      );
-    });
+    // 3. Pharmacological Class, CYP/P-gp & DGIdb Pathway Rule Engine (DDInter / DGIdb / Drugs.com / Medscape / MIMS / WebMD)
+    const displayA = nameA.split(" - ")[0];
+    const displayB = nameB.split(" - ")[0];
+    const classMatches = evaluateClassBasedInteractions(subA, displayA, subB, displayB);
+    if (classMatches.length > 0) {
+      return classMatches;
+    }
 
-    if (fallback.length > 0) {
-      return [fallback[0]];
+    // 4. Fallback: fuzzy substring matching (strict length >= 5 to avoid false positives)
+    const normA = displayA.toLowerCase().trim();
+    const normB = displayB.toLowerCase().trim();
+    if (normA.length >= 5 && normB.length >= 5) {
+      const fallback = interactionDatabase.filter(interaction => {
+        const iA = interaction.drugAName.toLowerCase().trim();
+        const iB = interaction.drugBName.toLowerCase().trim();
+        if (iA.length < 5 || iB.length < 5) return false;
+        return (
+          (normA.includes(iA) || iA.includes(normA)) && (normB.includes(iB) || iB.includes(normB))
+        ) || (
+          (normA.includes(iB) || iB.includes(normA)) && (normB.includes(iA) || iA.includes(normB))
+        );
+      });
+
+      if (fallback.length > 0) {
+        return [fallback[0]];
+      }
     }
 
     return [];
@@ -2219,7 +2238,24 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen medical-ambient-bg flex font-sans text-slate-900 selection:bg-teal-100 overflow-hidden">
+    <div className="h-screen medical-ambient-bg flex flex-col font-sans text-slate-900 selection:bg-teal-100 overflow-hidden">
+      {gmpQuotaExceeded && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm shrink-0">
+          <span>
+            Google Maps Platform quota reached. If you are the app owner, visit{' '}
+            <a
+              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-amber-950 hover:text-amber-800"
+            >
+              maps developer site
+            </a>{' '}
+            for instructions to update your account.
+          </span>
+        </div>
+      )}
+      <div className="flex-1 min-h-0 flex overflow-hidden">
       
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
@@ -3327,6 +3363,38 @@ export default function App() {
                 >
                   Gunakan Contoh Kandesartan (Hiperkalemia)
                 </button>
+                <button
+                  onClick={() => setDdiSelectedIds(["uperio", "captopril_adult", "furosemide_ped", "ibuprofen_ped"])}
+                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10.5px] font-bold rounded-lg border border-amber-200 transition-colors"
+                >
+                  Uji ARNI + ACEi & Triple Whammy
+                </button>
+                <button
+                  onClick={() => setDdiSelectedIds(["auto_rivaroxaban", "ketoconazole_adult", "auto_vometa", "levofloxacin_adult"])}
+                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10.5px] font-bold rounded-lg border border-indigo-200 transition-colors"
+                >
+                  Uji DOAC + CYP3A4 & QT (DDInter)
+                </button>
+              </div>
+              {/* Reference Sources Strip */}
+              <div className="pt-4 mt-2 border-t border-slate-100 space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Basis Data Referensi Interaksi ({interactionDatabase.length} Pasangan Terkurasi + Mesin Jalur CYP/DGIdb/QT)
+                </p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {DDI_REFERENCE_SOURCES.map(src => (
+                    <a
+                      key={src.id}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={src.focus}
+                      className={`px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-opacity hover:opacity-80 ${src.badgeColor}`}
+                    >
+                      {src.shortName}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           ) : (() => {
@@ -3371,7 +3439,16 @@ export default function App() {
             const criticalCount = detectedInteractions.filter(x => x.severity === "CRITICAL").length;
             const warningCount = detectedInteractions.filter(x => x.severity === "WARNING").length;
 
-            const detectedFoodInteractions = checkFoodInteractions(ddiSelectedIds);
+            const drugNamesById: Record<string, string> = {};
+            const selectedCanonicalItems = ddiSelectedIds.map(id => {
+              const p = drugPresets.find(x => x.id === id) || INITIAL_DRUG_PRESETS.find(x => x.id === id);
+              const label = p ? p.name.split(" - ")[0] : (id === "ciprofloxacin_adult" ? "Ciprofloxacin" : id);
+              drugNamesById[id] = label;
+              return { canonical: getCanonicalSubstance(id, label), name: label };
+            });
+
+            const polypharmacySyndromes = detectPolypharmacySyndromes(selectedCanonicalItems);
+            const detectedFoodInteractions = checkFoodInteractions(ddiSelectedIds, drugNamesById);
             const criticalFoodCount = detectedFoodInteractions.filter(x => x.severity === "CRITICAL").length;
             const warningFoodCount = detectedFoodInteractions.filter(x => x.severity === "WARNING").length;
 
@@ -3547,22 +3624,28 @@ export default function App() {
                 // Therapeutic category filter
                 if (allDdiTherapeuticFilter !== "ALL") {
                   const combined = `${item.drugAName} ${item.drugBName} ${item.mechanism} ${item.id}`.toLowerCase();
-                  if (allDdiTherapeuticFilter === "antikoagulan" && !combined.includes("warfarin") && !combined.includes("aspirin") && !combined.includes("clopidogrel")) {
+                  if (allDdiTherapeuticFilter === "antikoagulan" && !combined.includes("warfarin") && !combined.includes("aspirin") && !combined.includes("clopidogrel") && !combined.includes("klopidogrel") && !combined.includes("rivaroxaban") && !combined.includes("apixaban") && !combined.includes("heparin") && !combined.includes("fondaparinux") && !combined.includes("traneksamat")) {
                     return false;
                   }
-                  if (allDdiTherapeuticFilter === "antibiotik" && !combined.includes("cipro") && !combined.includes("klari") && !combined.includes("amox") && !combined.includes("vanko") && !combined.includes("genta") && !combined.includes("doxy") && !combined.includes("kolera") && !combined.includes("chloramphenicol") && !combined.includes("amikacin")) {
+                  if (allDdiTherapeuticFilter === "antibiotik" && !combined.includes("cipro") && !combined.includes("sipro") && !combined.includes("klari") && !combined.includes("amox") && !combined.includes("amok") && !combined.includes("ampisilin") && !combined.includes("vanko") && !combined.includes("genta") && !combined.includes("doxy") && !combined.includes("doksi") && !combined.includes("kolera") && !combined.includes("chloramphenicol") && !combined.includes("amikacin") && !combined.includes("amikasin") && !combined.includes("rifampi") && !combined.includes("isoniazid") && !combined.includes("bedakuilin") && !combined.includes("meropenem") && !combined.includes("metronidazol") && !combined.includes("kotrimoksazol") && !combined.includes("linezolid") && !combined.includes("azitromisin") && !combined.includes("levoflok") && !combined.includes("ketokonazol") && !combined.includes("flukonazol") && !combined.includes("ritonavir") && !combined.includes("tenofovir") && !combined.includes("asiklovir") && !combined.includes("klorokuin") && !combined.includes("kuinin")) {
                     return false;
                   }
-                  if (allDdiTherapeuticFilter === "kardiovaskular" && !combined.includes("digoksin") && !combined.includes("digoxin") && !combined.includes("furosemid") && !combined.includes("propranolol") && !combined.includes("bisoprolol") && !combined.includes("captopril") && !combined.includes("enalapril") && !combined.includes("spironolakton") && !combined.includes("amiodaron") && !combined.includes("tiaryt") && !combined.includes("kalium") && !combined.includes("kcl")) {
+                  if (allDdiTherapeuticFilter === "kardiovaskular" && !combined.includes("digoksin") && !combined.includes("digoxin") && !combined.includes("furosemid") && !combined.includes("propranolol") && !combined.includes("bisoprolol") && !combined.includes("captopril") && !combined.includes("kaptopril") && !combined.includes("enalapril") && !combined.includes("ramipril") && !combined.includes("valsartan") && !combined.includes("kandesartan") && !combined.includes("telmisartan") && !combined.includes("uperio") && !combined.includes("sakubitril") && !combined.includes("spironolakton") && !combined.includes("amiodaron") && !combined.includes("tiaryt") && !combined.includes("kalium") && !combined.includes("kcl") && !combined.includes("verapamil") && !combined.includes("diltiazem") && !combined.includes("amlodipin") && !combined.includes("nifedipin") && !combined.includes("klonidin") && !combined.includes("isosorbide") && !combined.includes("nitrogliserin") && !combined.includes("sildenafil") && !combined.includes("hidroklorotiazid")) {
                     return false;
                   }
-                  if (allDdiTherapeuticFilter === "statin" && !combined.includes("statin")) {
+                  if (allDdiTherapeuticFilter === "statin" && !combined.includes("statin") && !combined.includes("gemfibrozil") && !combined.includes("fibrat")) {
                     return false;
                   }
-                  if (allDdiTherapeuticFilter === "nsaid" && !combined.includes("ibuprofen") && !combined.includes("mefenamat") && !combined.includes("diklofenak") && !combined.includes("ketorolac") && !combined.includes("aspirin")) {
+                  if (allDdiTherapeuticFilter === "nsaid" && !combined.includes("ibuprofen") && !combined.includes("mefenamat") && !combined.includes("diklofenak") && !combined.includes("ketorolac") && !combined.includes("ketorolak") && !combined.includes("aspirin") && !combined.includes("selekoksib") && !combined.includes("meloksikam") && !combined.includes("deksametason") && !combined.includes("metilprednisolon") && !combined.includes("kolkisin")) {
                     return false;
                   }
-                  if (allDdiTherapeuticFilter === "imunosupresan" && !combined.includes("metotreksat") && !combined.includes("methotrexate") && !combined.includes("rheu") && !combined.includes("cemiplimab") && !combined.includes("cosibelimab") && !combined.includes("dostarlimab")) {
+                  if (allDdiTherapeuticFilter === "ssp" && !combined.includes("tramadol") && !combined.includes("morfin") && !combined.includes("fentanil") && !combined.includes("kodein") && !combined.includes("diazepam") && !combined.includes("midazolam") && !combined.includes("alprazolam") && !combined.includes("pregabalin") && !combined.includes("gabapentin") && !combined.includes("haloperidol") && !combined.includes("quetiapin") && !combined.includes("klozapin") && !combined.includes("fluoksetin") && !combined.includes("sertralin") && !combined.includes("amitriptilin") && !combined.includes("litium") && !combined.includes("valproat") && !combined.includes("karbamazepin") && !combined.includes("fenitoin") && !combined.includes("lamotrigin") && !combined.includes("topiramat") && !combined.includes("fenobarbital") && !combined.includes("donepezil") && !combined.includes("levodopa") && !combined.includes("metoklopramid")) {
+                    return false;
+                  }
+                  if (allDdiTherapeuticFilter === "endokrin" && !combined.includes("metformin") && !combined.includes("glimepirid") && !combined.includes("glibenklamid") && !combined.includes("insulin") && !combined.includes("levotiroksin") && !combined.includes("tiamazol") && !combined.includes("omeprazol") && !combined.includes("esomeprazol") && !combined.includes("lansoprazol") && !combined.includes("domperidon") && !combined.includes("sukralfat") && !combined.includes("alendronat") && !combined.includes("teofilin") && !combined.includes("budesonid")) {
+                    return false;
+                  }
+                  if (allDdiTherapeuticFilter === "imunosupresan" && !combined.includes("metotreksat") && !combined.includes("methotrexate") && !combined.includes("rheu") && !combined.includes("cemiplimab") && !combined.includes("cosibelimab") && !combined.includes("dostarlimab") && !combined.includes("siklosporin") && !combined.includes("takrolimus") && !combined.includes("azatioprin") && !combined.includes("merkaptopurin") && !combined.includes("mikofenolat") && !combined.includes("tamoksifen") && !combined.includes("imatinib") && !combined.includes("erlotinib") && !combined.includes("vinkristin") && !combined.includes("sisplatin") && !combined.includes("paklitaksel") && !combined.includes("siklofosfamid") && !combined.includes("fluorourasil") && !combined.includes("kapesitabin") && !combined.includes("dgidb")) {
                     return false;
                   }
                 }
@@ -3618,8 +3701,22 @@ export default function App() {
                           <h3 className="text-base font-bold">Katalog Lengkap Seluruh Interaksi Antar-Obat</h3>
                         </div>
                         <p className="text-xs text-slate-400 mt-1 font-sans">
-                          Database memuat <strong className="text-white font-semibold">{totalCatalog} pasangan interaksi terdaftar</strong> dengan telaah farmakologi lengkap, rekomendasi tata laksana klinis, dan bukti kepustakaan FDA / PubMed.
+                          Database memuat <strong className="text-white font-semibold">{totalCatalog} pasangan interaksi terkurasi</strong> + mesin deteksi jalur CYP/P-gp/QT/DGIdb yang diselaraskan dengan <strong className="text-emerald-300 font-medium">DDInter 2.0, DGIdb, Zenodo DDI, Drugs.com, Medscape, MIMS Indonesia & WebMD</strong>.
                         </p>
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {DDI_REFERENCE_SOURCES.map(src => (
+                            <a
+                              key={src.id}
+                              href={src.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={src.focus}
+                              className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                            >
+                              {src.shortName}
+                            </a>
+                          ))}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
@@ -3722,12 +3819,14 @@ export default function App() {
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Golongan Farmakologi:</span>
                       {[
                         { key: "ALL", label: "Semua Terapi" },
-                        { key: "antikoagulan", label: "Antikoagulan & Antiplatelet" },
-                        { key: "antibiotik", label: "Antibiotik & Vaksin" },
-                        { key: "kardiovaskular", label: "Kardiovaskular & Elektrolit" },
-                        { key: "statin", label: "Statin / Kolesterol" },
-                        { key: "nsaid", label: "NSAID & Analgesik" },
-                        { key: "imunosupresan", label: "Metotreksat & Imunologi" },
+                        { key: "antikoagulan", label: "Antikoagulan, DOAC & Antiplatelet" },
+                        { key: "antibiotik", label: "Antibiotik, OAT, Antijamur & Antivirus" },
+                        { key: "kardiovaskular", label: "Kardiovaskular, ARNI & Elektrolit" },
+                        { key: "statin", label: "Statin & Fibrat" },
+                        { key: "nsaid", label: "NSAID, Steroid & Analgesik" },
+                        { key: "ssp", label: "SSP, Psikotropika, Opioid & Epilepsi" },
+                        { key: "endokrin", label: "Endokrin, Tiroid, Diabetes & GI" },
+                        { key: "imunosupresan", label: "Onkologi, DGIdb & Imunosupresan" },
                       ].map(cat => {
                         const isActive = allDdiTherapeuticFilter === cat.key;
                         return (
@@ -4091,6 +4190,42 @@ export default function App() {
                   </div>
                 )}
 
+                {/* 1B. MULTI-DRUG POLYPHARMACY SYNDROME ALERTS (Triple Whammy, High QT Burden, Triple CNS) */}
+                {polypharmacySyndromes.length > 0 && (
+                  <div className="space-y-3">
+                    {polypharmacySyndromes.map(syn => (
+                      <div
+                        key={syn.id}
+                        className="bg-rose-950 text-white border border-rose-800 rounded-2xl p-4 shadow-xs space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0" />
+                            <h4 className="text-xs font-extrabold uppercase tracking-wider text-rose-100">
+                              Peringatan Sindrom Polifarmasi: {syn.title}
+                            </h4>
+                          </div>
+                          <span className="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-rose-600 text-white shrink-0">
+                            MULTI-DRUG CRITICAL
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {syn.involvedDrugs.map((d, idx) => (
+                            <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-900/80 border border-rose-700 text-rose-100">
+                              {d}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-rose-100/90 leading-relaxed font-sans">{syn.mechanism}</p>
+                        <p className="text-[11px] text-emerald-200 font-semibold leading-relaxed font-sans bg-rose-900/50 p-2.5 rounded-lg border border-rose-800">
+                          Tata Laksana: {syn.recommendation}
+                        </p>
+                        <p className="text-[10px] text-rose-300/80 italic font-sans">{syn.evidence}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* 2. CLINICAL INTERACTION MATRIX (Visual Grid) */}
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
                   <div className="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
@@ -4204,7 +4339,7 @@ export default function App() {
                         <Info className="w-4 h-4 text-slate-500" />
                         Detail Interaksi Klinis Terdeteksi ({detectedInteractions.length})
                       </h4>
-                      <span className="text-[10px] text-slate-400 italic font-sans font-medium">Berdasarkan Kepustakaan Jurnal FDA & GINA</span>
+                      <span className="text-[10px] text-slate-400 italic font-sans font-medium">Basis Data: DDInter • DGIdb • Zenodo • Drugs.com • Medscape • MIMS • WebMD</span>
                     </div>
 
                     {detectedInteractions.map((interaction, index) => (
@@ -5503,595 +5638,19 @@ export default function App() {
       </>
     ) : (
       <>
-        {/* VIDEO PENGGUNAAN OBAT KHUSUS TAB */}
-        {(() => {
-          const SPECIAL_ADMINS = [
-            {
-              id: "suppositoria",
-              title: "Penggunaan Suppositoria",
-              device: "Suppositoria Rektal",
-              subtitle: "Pemberian obat padat berbentuk torpedo melalui dubur untuk penyerapan cepat (misal: antipiretik atau laksatif).",
-              imageUrl: suppositoriaImg,
-              storage: "Wajib disimpan di Lemari Es (suhu 2°C - 8°C). Jangan dibekukan. Jika terlalu lunak sebelum dipakai, rendam sebentar dalam wadah tertutup berisi air dingin atau simpan di kulkas beberapa menit.",
-              steps: [
-                {
-                  title: "Higienisasi Tangan",
-                  desc: "Cuci tangan Anda secara menyeluruh menggunakan sabun antiseptik dan air mengalir sebelum memegang obat."
-                },
-                {
-                  title: "Persiapan Sediaan",
-                  desc: "Buka kemasan foil suppositoria secara perlahan. Jika ujung obat terasa kesat, basahi ujungnya dengan sedikit air bersih atau pelumas berbasis air (water-soluble lubricant) untuk mempermudah pemasukan."
-                },
-                {
-                  title: "Atur Posisi Tubuh",
-                  desc: "Berbaringlah miring ke salah satu sisi (Posisi Sims). Luruskan kaki bagian bawah, dan tekuk lutut kaki bagian atas ke arah dada untuk membuka area rektum."
-                },
-                {
-                  title: "Penyisipan Obat",
-                  desc: "Masukkan suppositoria ke dalam lubang dubur dengan bagian ujung lancip terlebih dahulu. Dorong perlahan menggunakan jari telunjuk sedalam sekitar 1 ruas jari pada anak-anak atau sekitar 2-3 cm pada orang dewasa."
-                },
-                {
-                  title: "Pertahankan Posisi",
-                  desc: "Rapatkan kedua paha dan tetaplah berbaring miring selama minimal 5-10 menit. Langkah ini krusial agar suppositoria meleleh sepenuhnya oleh suhu tubuh dan tidak terdorong keluar kembali."
-                },
-                {
-                  title: "Dekontaminasi Akhir",
-                  desc: "Cuci tangan Anda kembali dengan sabun dan air mengalir setelah seluruh prosedur selesai untuk menjaga higienitas."
-                }
-              ],
-              dos: [
-                "Simpan suppositoria di dalam lemari es (bukan freezer) agar bentuknya tetap padat dan mudah disisipkan.",
-                "Jika dosis yang diinstruksikan dokter hanya setengah, potong suppositoria secara vertikal (membujur) menggunakan silet steril agar pembagian zat aktif merata.",
-                "Gunakan sarung tangan sekali pakai (apabila ada) untuk kenyamanan dan kebersihan ekstra."
-              ],
-              donts: [
-                "Jangan memotong suppositoria secara horizontal (melintang), karena distribusi bahan obat aktif di dalam basis supositoria tidak merata.",
-                "Hindari mengejan atau buang air besar (defekasi) setidaknya selama 1 jam pertama setelah pemasukan obat agar penyerapan zat aktif maksimal."
-              ],
-              counseling: [
-                "Bila obat keluar kembali dalam kondisi belum meleleh penuh, masukkan kembali menggunakan jari telunjuk yang bersih sedalam mungkin melampaui sfingter ani.",
-                "Untuk anak yang rewel, dekap paha anak dalam posisi merapat selama beberapa menit setelah suppositoria dimasukkan."
-              ]
-            },
-            {
-              id: "inhaler",
-              title: "Penggunaan Inhaler (MDI)",
-              device: "Metered Dose Inhaler",
-              subtitle: "Pemberian obat bronkodilator atau kortikosteroid langsung ke paru-paru menggunakan inhaler semprot takaran terbatas.",
-              imageUrl: inhalerImg,
-              storage: "Simpan pada suhu ruangan kering (15°C - 25°C). Hindarkan dari paparan sinar matahari langsung, suhu panas ekstrem, atau pembekuan. Pastikan penutup mulut selalu terpasang saat tidak digunakan.",
-              steps: [
-                {
-                  title: "Pemeriksaan Alat",
-                  desc: "Lepaskan penutup corong inhaler. Periksa corong mulut bagian dalam dan luar untuk memastikan tidak ada debu, kotoran, atau benda asing yang menyumbat."
-                },
-                {
-                  title: "Homogenisasi Obat",
-                  desc: "Pegang inhaler secara tegak dan kocok dengan kuat sebanyak 5-10 kali agar suspensi obat di dalam kanister tercampur dengan sempurna."
-                },
-                {
-                  title: "Ekspirasi Maksimal",
-                  desc: "Hembuskan napas sedalam-dalamnya melalui mulut secara perlahan, menjauhi corong inhaler, untuk mengosongkan udara dari paru-paru Anda."
-                },
-                {
-                  title: "Inhalasi Sinkron",
-                  desc: "Posisikan corong di antara gigi tanpa digigit, lalu rapatkan bibir di sekelilingnya. Mulailah menghirup napas perlahan lewat mulut, lalu tekan bagian atas kanister inhaler (satu semprotan) secara bersamaan sembari melanjutkan hirupan napas dalam-dalam."
-                },
-                {
-                  title: "Retensi Napas",
-                  desc: "Lepaskan inhaler dari mulut Anda. Pejamkan mata dan tahan napas selama 10 detik (atau senyaman yang Anda bisa) agar partikel obat dapat mengendap sempurna di dalam alveoli paru."
-                },
-                {
-                  title: "Bilas Mulut (Gargle)",
-                  desc: "Keluarkan napas secara perlahan. Jika Anda menggunakan inhaler golongan kortikosteroid, segeralah berkumur dengan air hangat dan buang airnya (jangan ditelan) untuk mencegah timbulnya sariawan (oral thrush) atau suara serak."
-                }
-              ],
-              dos: [
-                "Selalu gunakan alat bantu Spacer (tabung antara) terutama untuk anak-anak atau lansia untuk mengatasi masalah koordinasi hisapan.",
-                "Pastikan untuk selalu menutup kembali corong inhaler segera setelah selesai digunakan agar tetap steril."
-              ],
-              donts: [
-                "Jangan menekan tombol inhaler sebelum Anda mulai menghirup napas; hisapan dan semprotan harus dilakukan secara sinkron.",
-                "Jangan menghirup napas terlalu cepat atau terburu-buru. Lakukan tarikan napas secara perlahan namun dalam."
-              ],
-              counseling: [
-                "Jika dokter meresepkan lebih dari 1 semprotan (puff), berikan jeda waktu minimal 30 detik sampai 1 menit sebelum mengulangi langkah pengocokan dan semprotan berikutnya.",
-                "Bersihkan corong plastik inhaler minimal seminggu sekali dengan air hangat mengalir lalu keringkan secara alami (jangan dilap tisu)."
-              ]
-            },
-            {
-              id: "tetes_mata",
-              title: "Penggunaan Tetes Mata",
-              device: "Obat Tetes Mata Steril",
-              subtitle: "Pemberian sediaan cair steril langsung pada kantung mata untuk mengatasi infeksi, glaukoma, maupun mata kering.",
-              imageUrl: tetesMataImg,
-              storage: "Simpan pada suhu ruangan sejuk (15°C - 25°C). Hindari pembekuan. CATATAN PENTING: Obat tetes mata botol multi-dosis hanya boleh digunakan maksimal 30 hari setelah segel pertama kali dibuka, meskipun tanggal kedaluwarsa di kemasan masih lama.",
-              steps: [
-                {
-                  title: "Aseptis Diri",
-                  desc: "Cuci tangan Anda dengan sabun antiseptik sampai bersih dan keringkan. Pastikan ujung penetes mata tidak menyentuh permukaan apapun agar tetap steril."
-                },
-                {
-                  title: "Pembentukan Kantung",
-                  desc: "Dongakkan kepala Anda ke belakang. Tarik kelopak mata bawah Anda secara perlahan menggunakan jari telunjuk yang bersih sehingga membentuk kantung konjungtiva kecil."
-                },
-                {
-                  title: "Penetesan Presisi",
-                  desc: "Dekatkan botol penetes ke arah mata (jarak ±2 cm, jangan sampai ujung penetes menyentuh bola mata atau bulu mata). Tekan botol dengan lembut agar satu tetes obat jatuh tepat di dalam kantung tersebut."
-                },
-                {
-                  title: "Pejaman Lembut",
-                  desc: "Lepaskan tarikan jari pada kelopak mata bawah. Tutup mata Anda perlahan-lahan selama minimal 2-3 menit. Hindari mengedipkan mata berulang kali atau memejamkan mata terlalu kencang."
-                },
-                {
-                  title: "Oklusi Lakrimalis",
-                  desc: "Sembari mata terpejam, tekan sudut dalam mata Anda (dekat hidung) menggunakan ujung jari bersih selama 1-2 menit. Ini mencegah obat mengalir keluar melalui saluran air mata (duktus nasolakrimalis) ke tenggorokan sehingga menghindari efek samping sistemik."
-                },
-                {
-                  title: "Finishing & Higienitas",
-                  desc: "Lap sisa cairan yang mengalir ke pipi menggunakan tisu bersih. Tutup kembali botol tetes mata dengan rapat tanpa menyentuh atau mengelap ujung penetesnya."
-                }
-              ],
-              dos: [
-                "Lepaskan lensa kontak sebelum meneteskan obat, dan pasang kembali minimal 15 menit setelah penetesan.",
-                "Gunakan obat tetes mata terlebih dahulu sebelum salep mata jika Anda diresepkan kedua jenis sediaan tersebut."
-              ],
-              donts: [
-                "Jangan membiarkan ujung penetes menyentuh jari, kelopak mata, atau bola mata Anda untuk mencegah penularan kuman atau kerusakan sterilitas sediaan.",
-                "Jangan menggosok atau mengucek mata Anda setelah penetesan obat."
-              ],
-              counseling: [
-                "Jika Anda menggunakan lebih dari satu jenis obat tetes mata pada mata yang sama, berikan jeda waktu minimal 5-10 menit antarpemberian agar obat pertama tidak terbilas oleh obat kedua.",
-                "Awal penetesan mungkin memicu pandangan buram sesaat. Hindari berkendara sampai penglihatan Anda kembali jernih sepenuhnya."
-              ]
-            },
-            {
-              id: "tetes_telinga",
-              title: "Penggunaan Tetes Telinga",
-              device: "Obat Tetes Telinga Steril",
-              subtitle: "Pemberian obat tetes steril untuk mengatasi infeksi saluran telinga luar (otitis eksterna) atau melunakkan serumen.",
-              imageUrl: tetesTelingaImg,
-              storage: "Simpan pada suhu ruangan kering dan sejuk (15°C - 25°C). Tutup rapat botol setelah digunakan. Jauhkan dari jangkauan anak-anak.",
-              steps: [
-                {
-                  title: "Penyesuaian Suhu",
-                  desc: "Cuci tangan Anda. Genggam botol tetes telinga di telapak tangan selama 1-2 menit. Menghangatkan botol setara suhu tubuh sangat penting untuk mencegah efek pusing berputar (vertigo) akibat stimulasi termal cairan dingin di telinga dalam."
-                },
-                {
-                  title: "Atur Posisi Kepala",
-                  desc: "Miringkan kepala Anda ke samping atau berbaringlah dengan posisi telinga yang sakit menghadap ke atas."
-                },
-                {
-                  title: "Pelebaran Liang Telinga",
-                  desc: "Luruskan saluran telinga Anda: Untuk DEWASA, tarik daun telinga dengan lembut ke arah atas dan belakang. Untuk ANAK (< 3 tahun), tarik daun telinga ke arah bawah dan belakang."
-                },
-                {
-                  title: "Aplikasi Tetesan",
-                  desc: "Teteskan sejumlah obat sesuai dosis anjuran ke dalam liang telinga. Jaga agar ujung botol penetes tidak menyentuh daun telinga atau bagian dalam telinga Anda."
-                },
-                {
-                  title: "Difusi & Absorpsi",
-                  desc: "Tetap miringkan kepala atau berbaring miring selama 3-5 menit agar cairan obat mengalir sempurna ke bagian dalam saluran telinga."
-                },
-                {
-                  title: "Pijatan Tragus",
-                  desc: "Tekan dan pijat secara lembut bagian tragus (tonjolan tulang rawan kecil di depan lubang telinga) beberapa kali untuk mendorong gelembung udara keluar dan membantu obat menyebar merata."
-                }
-              ],
-              dos: [
-                "Pastikan telinga bersih dari cairan berlebih dengan menyekanya lembut menggunakan tisu sebelum penetesan.",
-                "Mintalah bantuan orang lain jika kesulitan meneteskan secara mandiri agar dosis yang masuk akurat."
-              ],
-              donts: [
-                "Jangan meneteskan obat jika dicurigai atau diketahui gendang telinga Anda robek/perforasi, kecuali diresepkan khusus oleh dokter spesialis THT.",
-                "Jangan menyumbat saluran telinga terlalu dalam dengan kapas biasa setelah penetesan karena kapas dapat menyerap obat kembali."
-              ],
-              counseling: [
-                "Cairan obat yang terasa dingin di dalam telinga dapat memicu refleks batuk atau pusing sesaat. Hal ini normal, namun dapat diminimalisir dengan menghangatkan botol di tangan terlebih dahulu.",
-                "Jika setelah beberapa hari telinga terasa gatal menyengat atau nyeri bertambah parah, segera hentikan pemakaian dan konsultasikan ke dokter."
-              ]
-            },
-            {
-              id: "semprot_hidung",
-              title: "Penggunaan Semprot Hidung",
-              device: "Nasal Spray Aerosol",
-              subtitle: "Aplikasi obat semprot hidung (nasal spray) untuk meredakan inflamasi mukosa, kongesti, atau rinitis alergi.",
-              imageUrl: semprotHidungImg,
-              storage: "Simpan pada suhu ruangan kering (15°C - 30°C). Jangan dibekukan. Bersihkan ujung aplikator semprot dengan tisu bersih setelah digunakan dan selalu pasang penutup plastik pelindung.",
-              steps: [
-                {
-                  title: "Pembersihan Rongga",
-                  desc: "Hembuskan napas secara perlahan melalui hidung untuk membersihkan rongga hidung dari ingus atau sumbatan sebelum menyemprotkan obat."
-                },
-                {
-                  title: "Uji Semprotan (Priming)",
-                  desc: "Cuci tangan Anda, kocok botol semprot hidung dengan baik. Jika baru pertama kali digunakan atau sudah lama tidak dipakai, semprotkan obat ke udara beberapa kali sampai keluar kabut halus yang merata."
-                },
-                {
-                  title: "Posisi Kepala Menunduk",
-                  desc: "Tundukkan kepala Anda sedikit ke depan (pandangan mengarah ke arah ujung kaki Anda, bukan mendongak)."
-                },
-                {
-                  title: "Injeksi Mengarah Luar",
-                  desc: "Masukkan ujung aplikator semprot ke dalam salah satu lubang hidung. Arahkan ujung aplikator ke sudut luar mata (ke arah luar/lateral, bukan ke arah septum/sekat tengah hidung) untuk mencegah iritasi septum."
-                },
-                {
-                  title: "Semprot & Hisap Halus",
-                  desc: "Tutup lubang hidung yang lain menggunakan jari tangan Anda yang bebas. Tekan pompa aplikator dengan gerakan cepat dan kuat, sembari menghirup napas perlahan dan lembut melalui lubang hidung tersebut."
-                },
-                {
-                  title: "Ekspirasi Oral",
-                  desc: "Keluarkan ujung semprotan dari hidung Anda dan hembuskan napas secara perlahan melalui mulut. Hindari membuang ingus (bersin) atau mendongakkan kepala ke belakang setidaknya selama 10-15 menit agar obat tidak tertelan."
-                }
-              ],
-              dos: [
-                "Gunakan ibu jari di bagian bawah botol dan jari telunjuk serta jari tengah di bagian bahu botol semprot untuk memompa dengan stabil.",
-                "Bersihkan ujung semprotan hidung dengan air hangat minimal seminggu sekali agar tidak tersumbat obat kering."
-              ],
-              donts: [
-                "Jangan mengarahkan semprotan langsung ke septum (sekat tengah hidung) karena dapat memicu iritasi kronis, luka, hingga mimisan.",
-                "Jangan mendongakkan kepala ke belakang saat atau segera setelah menyemprot, karena obat akan mengalir ke tenggorokan dan tertelan, mengurangi efektivitas lokalnya."
-              ],
-              counseling: [
-                "Jika Anda merasakan rasa pahit di tenggorokan setelah pemakaian, minumlah segelas air putih untuk menghilangkannya.",
-                "Jangan pernah meminjamkan semprot hidung Anda kepada orang lain karena kontaminasi silang bakteri/virus sangat mudah terjadi melalui mukosa hidung."
-              ]
-            },
-            {
-              id: "pena_insulin",
-              title: "Penggunaan Pena Insulin",
-              device: "Insulin Pen Device",
-              subtitle: "Penyuntikan insulin subkutan (bawah kulit) secara mandiri untuk mengontrol kadar glukosa darah pada penderita diabetes melitus.",
-              imageUrl: insulinImg,
-              storage: "Pena insulin yang BELUM dibuka harus disimpan di lemari es (suhu 2°C - 8°C), jangan dibekukan. Pena insulin yang SEDANG aktif digunakan disimpan di suhu ruangan sejuk (15°C - 30°C) dan dapat bertahan hingga 28-30 hari. JANGAN memasukkan kembali pena yang sedang aktif digunakan ke dalam kulkas karena suhu dingin dapat membuat injeksi terasa perih.",
-              steps: [
-                {
-                  title: "Sterilisasi Area",
-                  desc: "Cuci tangan Anda. Tentukan area suntikan (perut berjarak minimal 5 cm dari pusar, paha bagian depan, lengan atas bagian luar, atau pantat). Bersihkan area tersebut menggunakan alcohol swab dan biarkan mengering alami."
-                },
-                {
-                  title: "Pemasangan Jarum",
-                  desc: "Ambil pena insulin, buka penutup pelindungnya. Ambil jarum suntik steril yang baru, kelupas segel kertasnya, lalu pasang jarum pada ujung pena dengan memutarnya searah jarum jam hingga kencang."
-                },
-                {
-                  title: "Pembuangan Udara (Priming)",
-                  desc: "Lakukan priming (air-shot) 2 unit: Putar tombol dosis ke angka 2 unit. Ketuk-ketuk badan pena dengan jari agar gelembung udara naik ke atas. Arahkan jarum tegak lurus ke atas, lalu tekan tombol dosis hingga habis. Pastikan setetes insulin keluar di ujung jarum dan penunjuk dosis kembali ke angka 0."
-                },
-                {
-                  title: "Pengaturan Dosis",
-                  desc: "Putar tombol dosis di ujung pena insulin sesuai dengan unit dosis yang telah ditentukan oleh dokter Anda. Pastikan angka pada jendela dosis menunjukkan unit yang benar."
-                },
-                {
-                  title: "Penyuntikan Subkutan",
-                  desc: "Cubit lipatan kulit di area suntikan jika tubuh Anda kurus, masukkan jarum secara tegak lurus (90 derajat) ke dalam kulit dengan mantap. Tekan tombol dosis sepenuhnya ke bawah hingga penunjuk kembali ke angka 0."
-                },
-                {
-                  title: "Retensi Jarum & Pelepasan",
-                  desc: "Tahan jarum tetap berada di bawah kulit selama minimal 10 detik agar seluruh dosis insulin masuk sempurna. Tarik jarum dari kulit, lalu segera lepaskan jarum dari pena insulin menggunakan penutup luarnya untuk dibuang ke wadah khusus benda tajam (sharp container). Pasang kembali penutup pena."
-                }
-              ],
-              dos: [
-                "Lakukan rotasi lokasi penyuntikan (misal geser 2 cm dari bekas suntikan sebelumnya) untuk mencegah penumpukan lemak/kerusakan jaringan bawah kulit (lipodistrofi).",
-                "Gunakan jarum suntik steril yang baru setiap kali melakukan penyuntikan insulin."
-              ],
-              donts: [
-                "Jangan menyimpan pena insulin dengan jarum masih terpasang karena dapat memicu masuknya gelembung udara atau kebocoran insulin.",
-                "Jangan menggosok atau memijat area bekas suntikan, karena pijatan dapat mempercepat penyerapan insulin secara tidak terduga dan memicu serangan hipoglikemia."
-              ],
-              counseling: [
-                "Kenali gejala hipoglikemia (lemas, gemetar, keringat dingin, lapar berlebih, jantung berdebar). Selalu siapkan tablet glukosa, permen, atau jus buah manis sebagai penanganan cepat.",
-                "Periksa kejernihan insulin Anda. Insulin jenis 'Rapid-acting' atau 'Long-acting' analog biasanya jernih, sedangkan insulin jenis 'NPH' atau 'Premixed' biasanya keruh dan memerlukan pengocokan memutar di antara telapak tangan sebanyak 10 kali sebelum digunakan."
-              ]
-            }
-          ];
-
-          const currentItem = SPECIAL_ADMINS.find(x => x.id === activeVideoId) || SPECIAL_ADMINS[0];
-          const totalSteps = currentItem.steps.length;
-          const currentStepData = currentItem.steps[activeVideoStep];
-
-          // Calculate checked count
-          const checkedCount = currentItem.steps.filter((_, idx) => videoPracticeChecked[`${currentItem.id}_${idx}`]).length;
-          const isAllChecked = checkedCount === totalSteps;
-          const progressPercentage = Math.round((checkedCount / totalSteps) * 100);
-
-          return (
-            <>
-              {/* Left Column: Selector */}
-              <section className="lg:col-span-3 space-y-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-5">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-                      <Settings className="w-4 h-4" />
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-800">Jenis Obat Khusus</h3>
-                  </div>
-
-                  {/* Menu Buttons for 6 items */}
-                  <div className="space-y-1">
-                    {SPECIAL_ADMINS.map((item) => {
-                      const isSelected = activeVideoId === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            setActiveVideoId(item.id);
-                            setActiveVideoStep(0);
-                          }}
-                          className={`w-full text-left flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-lg transition-all border ${
-                            isSelected
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-150 shadow-3xs"
-                              : "text-slate-600 hover:bg-slate-50 border-transparent"
-                          }`}
-                        >
-                          <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-                            {item.id === "suppositoria" && <Activity className="w-4 h-4" />}
-                            {item.id === "inhaler" && <Volume2 className="w-4 h-4" />}
-                            {item.id === "tetes_mata" && <Eye className="w-4 h-4" />}
-                            {item.id === "tetes_telinga" && <Info className="w-4 h-4" />}
-                            {item.id === "semprot_hidung" && <Droplets className="w-4 h-4" />}
-                            {item.id === "pena_insulin" && <Heart className="w-4 h-4" />}
-                          </div>
-                          <span className="truncate font-sans font-bold">{item.title}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Quick info card */}
-                <div className="bg-gradient-to-br from-emerald-900 to-slate-950 text-white rounded-2xl p-5 shadow-sm border border-slate-900">
-                  <div className="flex items-center gap-2 border-b border-emerald-800/50 pb-3 mb-3">
-                    <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-                    <h3 className="text-sm font-bold text-white">Standar Klinik Aseptis</h3>
-                  </div>
-                  <p className="text-xs text-emerald-200 leading-relaxed font-sans font-medium">
-                    Sebelum mempraktikkan teknik pemberian obat khusus ini, selalu pastikan Anda mencuci tangan menggunakan sabun antiseptik selama minimal 20 detik atau menggunakan hand sanitizer berbasis alkohol. Jaga agar ujung aplikator tidak terkontaminasi oleh kuman luar.
-                  </p>
-                </div>
-              </section>
-
-              {/* Right Content Column */}
-              <section className="lg:col-span-9 space-y-6">
-                <div className="space-y-6">
-                  
-                  {/* Header Information card */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider bg-teal-50 border border-teal-100 text-teal-700 px-2.5 py-1 rounded-full">
-                        Sediaan Alat Khusus: {currentItem.device}
-                      </span>
-                      <span className="text-xs font-mono font-bold bg-orange-50 text-orange-700 border border-orange-100 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        Instruksi Terverifikasi Klinis (Kemenkes & FDA)
-                      </span>
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-950 tracking-tight">{currentItem.title}</h2>
-                    <p className="text-xs text-slate-600 font-sans leading-relaxed">{currentItem.subtitle}</p>
-                  </div>
-
-                  {/* Main Content Layout Grid */}
-                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                    
-                    {/* Instructional Device Image (Left/Top side of layout) */}
-                    <div className="xl:col-span-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
-                      <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                        <Image className="w-4 h-4 text-emerald-600" />
-                        Ilustrasi Alat & Sediaan
-                      </h3>
-                      
-                      <div className="aspect-video w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-inner relative group cursor-zoom-in">
-                        <img
-                          src={currentItem.imageUrl}
-                          alt={currentItem.title}
-                          referrerPolicy="no-referrer"
-                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                          <span className="text-white text-xs font-bold font-sans">Sediaan: {currentItem.device}</span>
-                        </div>
-                      </div>
-
-
-
-                      <div className="bg-emerald-50/50 border border-emerald-100/60 rounded-xl p-3.5 text-[11px] leading-relaxed text-emerald-800">
-                        <span className="font-extrabold text-[10px] text-emerald-900 uppercase tracking-wide block mb-1">Panduan Penggunaan Alat:</span>
-                        <p className="font-sans font-medium text-emerald-900/80 leading-normal">
-                          Visualisasi di atas memperlihatkan instrumen medis <strong>{currentItem.device}</strong> yang dirancang higienis dan presisi sesuai standar kefarmasian klinis.
-                        </p>
-                      </div>
-                      
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-[11px] leading-relaxed text-slate-600">
-                        <span className="font-extrabold text-[10px] text-slate-800 uppercase tracking-wide block mb-1">Kondisi Penyimpanan:</span>
-                        <p className="font-sans font-medium text-slate-700 leading-normal">{currentItem.storage}</p>
-                      </div>
-                    </div>
-
-                    {/* Interactive Steps Simulator (Right/Bottom side of layout) */}
-                    <div className="xl:col-span-6 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between gap-5">
-                      
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                            <Activity className="w-4 h-4 text-emerald-600" />
-                            Simulator Langkah & Progres
-                          </h3>
-                          <span className="text-[11px] font-mono bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-100">
-                            Langkah {activeVideoStep + 1} dari {totalSteps}
-                          </span>
-                        </div>
-
-                        {/* Interactive step visual container */}
-                        <div className="bg-gradient-to-br from-emerald-50/50 to-teal-50/40 border border-emerald-100/60 rounded-xl p-5 min-h-[160px] flex flex-col justify-center relative overflow-hidden">
-                          
-                          {/* Step number watermark */}
-                          <div className="absolute right-3 -bottom-8 text-8xl font-black text-slate-200/55 font-mono select-none pointer-events-none">
-                            {activeVideoStep + 1}
-                          </div>
-
-                          <div className="space-y-2 relative z-10">
-                            <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
-                              Instruksi Aktif
-                            </span>
-                            <h4 className="text-base font-extrabold text-slate-900 tracking-tight">
-                              {currentStepData.title}
-                            </h4>
-                            <p className="text-xs text-slate-700 leading-relaxed font-sans font-medium">
-                              {currentStepData.desc}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Stepper Controls */}
-                        <div className="flex items-center justify-between gap-3">
-                          <button
-                            disabled={activeVideoStep === 0}
-                            onClick={() => setActiveVideoStep(prev => prev - 1)}
-                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 rounded-xl text-xs font-bold flex items-center gap-1 transition-all border border-slate-200 cursor-pointer"
-                          >
-                            <ArrowLeft className="w-3.5 h-3.5" />
-                            <span>Sebelumnya</span>
-                          </button>
-
-                          <button
-                            disabled={activeVideoStep === totalSteps - 1}
-                            onClick={() => setActiveVideoStep(prev => prev + 1)}
-                            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 rounded-xl text-xs font-bold flex items-center gap-1 transition-all border border-slate-200 cursor-pointer"
-                          >
-                            <span>Selanjutnya</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {/* Timeline dot progress bar */}
-                        <div className="flex items-center justify-center gap-1.5 pt-2">
-                          {currentItem.steps.map((_, idx) => (
-                            <button
-                              key={"dot_" + idx}
-                              onClick={() => setActiveVideoStep(idx)}
-                              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                                idx === activeVideoStep 
-                                  ? "w-6 bg-emerald-600" 
-                                  : videoPracticeChecked[`${currentItem.id}_${idx}`]
-                                  ? "w-2 bg-emerald-500"
-                                  : "w-2 bg-slate-200 hover:bg-slate-300"
-                              }`}
-                            ></button>
-                          ))}
-                        </div>
-
-                      </div>
-
-                      {/* Interactive practice checklists */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Praktek Mandiri:</span>
-                          <span className="text-[10px] font-mono font-bold text-slate-700">
-                            {checkedCount}/{totalSteps} Langkah Centang ({progressPercentage}%)
-                          </span>
-                        </div>
-                        
-                        {/* Mini progress meter */}
-                        <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                          <div
-                            style={{ width: `${progressPercentage}%` }}
-                            className={`h-full transition-all duration-500 ${
-                              isAllChecked ? "bg-emerald-500" : "bg-emerald-600"
-                            }`}
-                          ></div>
-                        </div>
-
-                        {/* Quick check active step check box */}
-                        <label className="flex items-start gap-2.5 p-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-slate-300 transition-all">
-                          <input
-                            type="checkbox"
-                            checked={!!videoPracticeChecked[`${currentItem.id}_${activeVideoStep}`]}
-                            onChange={(e) => {
-                              setVideoPracticeChecked(prev => ({
-                                ...prev,
-                                [`${currentItem.id}_${activeVideoStep}`]: e.target.checked
-                              }));
-                            }}
-                            className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 h-3.5 w-3.5 cursor-pointer"
-                          />
-                          <div className="text-[11px] font-sans leading-tight">
-                            <span className="font-bold text-slate-800 block">Saya sudah mempraktikkan Langkah {activeVideoStep + 1}</span>
-                            <span className="text-slate-500">Tandai langkah ini sebagai selesai dalam simulasi latihan Anda.</span>
-                          </div>
-                        </label>
-
-                        {isAllChecked && (
-                          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] p-2.5 rounded-lg font-medium leading-relaxed flex items-start gap-2 animate-bounce">
-                            <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                            <div>
-                              <strong className="font-bold block">✓ Latihan Selesai!</strong>
-                              Anda telah meninjau dan mencentang semua langkah penggunaan {currentItem.device} dengan benar. Simpan panduan ini untuk konsultasi berikutnya.
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  {/* DOs & DONTs Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    {/* DOs CARD */}
-                    <div className="bg-emerald-50/20 border border-emerald-100 rounded-2xl p-5 shadow-3xs space-y-4">
-                      <h3 className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100/60 pb-3">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        Anjuran / Boleh Dilakukan (DOs)
-                      </h3>
-                      <ul className="space-y-3 text-xs leading-relaxed font-medium text-emerald-950 font-sans">
-                        {currentItem.dos.map((doItem, idx) => (
-                          <li key={"do_" + idx} className="flex items-start gap-2">
-                            <span className="text-emerald-600 shrink-0 mt-1 font-bold">✓</span>
-                            <span>{doItem}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* DONTs CARD */}
-                    <div className="bg-rose-50/20 border border-rose-100 rounded-2xl p-5 shadow-3xs space-y-4">
-                      <h3 className="text-xs font-extrabold text-rose-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-rose-100/60 pb-3">
-                        <X className="w-4 h-4 text-rose-600" />
-                        Pantangan / Hindari (DONTs)
-                      </h3>
-                      <ul className="space-y-3 text-xs leading-relaxed font-medium text-rose-950 font-sans">
-                        {currentItem.donts.map((dontItem, idx) => (
-                          <li key={"dont_" + idx} className="flex items-start gap-2">
-                            <span className="text-rose-600 shrink-0 mt-1 font-bold">✗</span>
-                            <span>{dontItem}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                  </div>
-
-                  {/* Clinical Counseling Pearls */}
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                      <Sparkles className="w-4 h-4 text-orange-500" />
-                      Mutiara Klinis & Panduan Konseling Pasien (Counseling Pearls)
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs text-slate-700 leading-relaxed font-sans">
-                      {currentItem.counseling.map((counselItem, idx) => (
-                        <div key={"counsel_" + idx} className="bg-slate-50/60 border border-slate-100 p-4 rounded-xl flex items-start gap-3">
-                          <span className="text-orange-500 font-extrabold shrink-0">💡</span>
-                          <p className="font-medium">{counselItem}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              </section>
-            </>
-          );
-        })()}
+        {/* PANDUAN ALAT & CARA PAKAI INTERAKTIF TERANIMASI */}
+        <section className="lg:col-span-12 w-full">
+          <Suspense fallback={<TabLoadingFallback />}>
+            <DeviceGuideAnimated
+              activeDeviceId={activeVideoId}
+              onSelectDevice={setActiveVideoId}
+              activeStep={activeVideoStep}
+              onSelectStep={setActiveVideoStep}
+              practiceChecked={videoPracticeChecked}
+              onTogglePractice={setVideoPracticeChecked}
+            />
+          </Suspense>
+        </section>
       </>
     )}
           </div>
@@ -6255,10 +5814,11 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setInteractionDatabase(INITIAL_INTERACTION_DATABASE);
-                  localStorage.setItem("interactionDatabase_v7", JSON.stringify(INITIAL_INTERACTION_DATABASE));
+                  localStorage.setItem("interactionDatabase_v8", JSON.stringify(INITIAL_INTERACTION_DATABASE));
                   localStorage.removeItem("interactionDatabase_v4");
                   localStorage.removeItem("interactionDatabase_v5");
                   localStorage.removeItem("interactionDatabase_v6");
+                  localStorage.removeItem("interactionDatabase_v7");
                   setIsUpdateDdiModalOpen(false);
                 }}
                 className="px-3.5 py-2 font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors text-xs"
@@ -6394,6 +5954,7 @@ export default function App() {
           />
         </Suspense>
       )}
-</div>
+      </div>
+    </div>
   );
 }
