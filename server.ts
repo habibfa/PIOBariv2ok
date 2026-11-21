@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "fs";
 import path from "path";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
@@ -694,6 +695,21 @@ FORMATTING:
     }
   });
 
+  // Runtime Google Maps Platform browser key resolver (bridges build-time vs runtime env vars in Cloud Run / Shared Preview)
+  function getRuntimeGoogleMapsApiKey(): string {
+    return (
+      process.env.VITE_GOOGLE_MAPS_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY ||
+      process.env.MAPS_API_KEY ||
+      ""
+    ).trim();
+  }
+
+  app.get("/api/maps-config", generalRateLimiter, (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.json({ apiKey: getRuntimeGoogleMapsApiKey() });
+  });
+
   // Serve static client assets or mount Vite in dev mode
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -703,7 +719,9 @@ FORMATTING:
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    const indexHtmlPath = path.join(distPath, "index.html");
     app.use(express.static(distPath, {
+      index: false,
       maxAge: "1d",
       setHeaders: (res, filePath) => {
         if (filePath.endsWith(".html")) {
@@ -713,8 +731,20 @@ FORMATTING:
         }
       }
     }));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    app.get("*", (_req, res) => {
+      try {
+        const rawHtml = fs.readFileSync(indexHtmlPath, "utf8");
+        const mapsKey = getRuntimeGoogleMapsApiKey();
+        const safeKeyJson = JSON.stringify(mapsKey).replace(/</g, "\\u003c");
+        const injectedHtml = rawHtml.replace(
+          "</head>",
+          `<script>window.__PIOBARI_MAPS_API_KEY__=${safeKeyJson};</script></head>`
+        );
+        res.setHeader("Cache-Control", "no-cache");
+        res.type("html").send(injectedHtml);
+      } catch {
+        res.sendFile(indexHtmlPath);
+      }
     });
   }
 

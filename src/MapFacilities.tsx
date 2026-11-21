@@ -70,7 +70,18 @@ import {
   SumselRegion,
 } from './data/sumselRegions';
 
-const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
+function getInitialGoogleMapsApiKey(): string {
+  const buildKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
+  if (buildKey.trim()) return buildKey.trim();
+  if (typeof window !== 'undefined') {
+    const runtimeKey = (window as unknown as { __PIOBARI_MAPS_API_KEY__?: string }).__PIOBARI_MAPS_API_KEY__;
+    if (typeof runtimeKey === 'string' && runtimeKey.trim()) {
+      return runtimeKey.trim();
+    }
+  }
+  return '';
+}
+
 const GMP_ATTRIBUTION_IDS = ['gmp_mcp_codeassist_v1_aistudio'];
 const RSUD_BARI_COORDS = { lat: -3.010222, lng: 104.768972 };
 
@@ -2450,9 +2461,55 @@ interface MapFacilitiesProps {
 }
 
 export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false }) => {
-  if (!GOOGLE_MAPS_API_KEY) {
+  const [resolvedApiKey, setResolvedApiKey] = useState<string>(() => getInitialGoogleMapsApiKey());
+  const [isLoadingConfig, setIsLoadingConfig] = useState<boolean>(() => !getInitialGoogleMapsApiKey());
+
+  const loadRuntimeMapsConfig = useCallback(async () => {
+    const initial = getInitialGoogleMapsApiKey();
+    if (initial) {
+      setResolvedApiKey(initial);
+      setIsLoadingConfig(false);
+      return;
+    }
+
+    setIsLoadingConfig(true);
+    try {
+      const res = await fetch('/api/maps-config', { cache: 'no-store' });
+      if (res.ok) {
+        const data = (await res.json()) as { apiKey?: string };
+        const key = typeof data?.apiKey === 'string' ? data.apiKey.trim() : '';
+        if (key) {
+          setResolvedApiKey(key);
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal memuat konfigurasi runtime Google Maps:', err);
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!resolvedApiKey) {
+      loadRuntimeMapsConfig();
+    }
+  }, [resolvedApiKey, loadRuntimeMapsConfig]);
+
+  if (isLoadingConfig) {
     return (
       <div className="min-h-[480px] rounded-3xl bg-white border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
+        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+        <p className="text-sm font-bold text-slate-800">Memuat Google Maps Platform...</p>
+        <p className="text-xs text-slate-500">
+          Menyiapkan peta interaktif 17 Kota &amp; Kabupaten Sumatera Selatan
+        </p>
+      </div>
+    );
+  }
+
+  if (!resolvedApiKey) {
+    return (
+      <div className="min-h-[480px] rounded-3xl bg-white border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-xs">
         <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
           <MapPinned className="w-6 h-6" />
         </div>
@@ -2464,13 +2521,21 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
           telah aktif pada proyek ini untuk memuat peta interaktif dan basis data Rumah Sakit, Puskesmas, Klinik,
           serta Apotek di seluruh 17 Kota &amp; Kabupaten Sumatera Selatan dari Google Maps.
         </p>
+        <button
+          type="button"
+          onClick={loadRuntimeMapsConfig}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Muat Ulang Konfigurasi Peta</span>
+        </button>
       </div>
     );
   }
 
   return (
     <APIProvider
-      apiKey={GOOGLE_MAPS_API_KEY}
+      apiKey={resolvedApiKey}
       language="id"
       region="ID"
       libraries={['places', 'marker', 'routes']}
