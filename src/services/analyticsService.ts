@@ -354,15 +354,15 @@ export async function detectRealClientLocation(): Promise<string> {
     let detectedIsp = "";
     let ipNorm: { city: string; province: string; country: string; formatted: string } | null = null;
 
-    // 1. Query public IP & GeoIP from browser
+    // Query same-origin server GeoIP endpoint (/api/analytics/geo) to avoid rate-limited 3rd-party browser 429/CORS errors
     try {
-      const res1 = await fetch("https://ipwho.is/", { signal: AbortSignal.timeout(3000) });
-      if (res1.ok) {
-        const d1 = await res1.json();
-        if (d1 && d1.success !== false && d1.city && d1.ip) {
-          detectedIp = String(d1.ip);
-          detectedIsp = d1.connection?.isp || d1.connection?.org || "";
-          if (isTelkomselPalembangIPv6(detectedIp, d1.city)) {
+      const res = await fetch("/api/analytics/geo", { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.formatted) {
+          detectedIp = data.rawIp || data.ip || "";
+          detectedIsp = data.isp || "";
+          if (detectedIp && isTelkomselPalembangIPv6(detectedIp, data.city || "")) {
             ipNorm = {
               city: "Kota Palembang",
               province: "Sumatera Selatan",
@@ -370,67 +370,6 @@ export async function detectRealClientLocation(): Promise<string> {
               formatted: "Kota Palembang, Sumatera Selatan"
             };
           } else {
-            ipNorm = formatIndonesianCityAndProvince(d1.city, d1.region, d1.country);
-          }
-        }
-      }
-    } catch {}
-
-    // 2. Fallback browser IP lookup: freeipapi.com
-    if (!ipNorm) {
-      try {
-        const res2 = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(3000) });
-        if (res2.ok) {
-          const d2 = await res2.json();
-          if (d2 && d2.cityName && d2.ipAddress) {
-            detectedIp = String(d2.ipAddress);
-            if (isTelkomselPalembangIPv6(detectedIp, d2.cityName)) {
-              ipNorm = {
-                city: "Kota Palembang",
-                province: "Sumatera Selatan",
-                country: "Indonesia",
-                formatted: "Kota Palembang, Sumatera Selatan"
-              };
-            } else {
-              ipNorm = formatIndonesianCityAndProvince(d2.cityName, d2.regionName, d2.countryName);
-            }
-          }
-        }
-      } catch {}
-    }
-
-    // 3. Tertiary browser IP lookup: api.db-ip.com
-    if (!ipNorm) {
-      try {
-        const res3 = await fetch("https://api.db-ip.com/v2/free/self", { signal: AbortSignal.timeout(3000) });
-        if (res3.ok) {
-          const d3 = await res3.json();
-          if (d3 && d3.city && d3.ipAddress) {
-            detectedIp = String(d3.ipAddress);
-            if (isTelkomselPalembangIPv6(detectedIp, d3.city)) {
-              ipNorm = {
-                city: "Kota Palembang",
-                province: "Sumatera Selatan",
-                country: "Indonesia",
-                formatted: "Kota Palembang, Sumatera Selatan"
-              };
-            } else {
-              ipNorm = formatIndonesianCityAndProvince(d3.city, d3.stateProv, d3.countryName);
-            }
-          }
-        }
-      } catch {}
-    }
-
-    // 4. Server-side GeoIP endpoint (/api/analytics/geo) if browser lookup failed
-    if (!ipNorm) {
-      try {
-        const res4 = await fetch("/api/analytics/geo");
-        if (res4.ok) {
-          const data = await res4.json();
-          if (data?.formatted && data?.isVerifiedIp) {
-            detectedIp = data.rawIp || data.ip || "";
-            detectedIsp = data.isp || "";
             ipNorm = {
               city: data.city || data.formatted,
               province: data.province || "Indonesia",
@@ -439,8 +378,8 @@ export async function detectRealClientLocation(): Promise<string> {
             };
           }
         }
-      } catch {}
-    }
+      }
+    } catch {}
 
     // Save initial IP-based or CGNAT-corrected resolution immediately so UI doesn't wait
     let finalResult = "";

@@ -1,6 +1,3 @@
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '../firebase';
-
 export interface Facility {
   id: number;
   placeId?: string;
@@ -24,56 +21,50 @@ export interface Facility {
   locked?: boolean;
 }
 
-const COLLECTION_NAME = 'facilities';
+const ADMIN_FACILITIES_STORAGE_KEY = 'piobari_admin_custom_facilities_v1';
 
+/**
+ * Loads optional admin-imported custom institutional facilities from browser storage.
+ * Live Sumatera Selatan facilities are fetched directly from Google Maps Platform Places API (New)
+ * without persisting Google Maps content to Firestore.
+ */
 export const getFacilitiesFromDb = async (): Promise<Facility[]> => {
-  if (!isFirebaseConfigured) {
-    console.warn("Firebase is not fully configured on Vercel environment. Using local data fallback.");
-    return [];
-  }
+  if (typeof window === 'undefined') return [];
   try {
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Firestore fetch timeout")), 3000)
-    );
-    const querySnapshot = await Promise.race([
-      getDocs(collection(db, COLLECTION_NAME)),
-      timeoutPromise
-    ]);
-    const facilities: Facility[] = [];
-    querySnapshot.forEach((doc) => {
-      facilities.push(doc.data() as Facility);
-    });
-    return facilities;
-  } catch (error) {
-    console.warn("Error or timeout fetching facilities from Firestore: ", error);
+    const raw = window.localStorage.getItem(ADMIN_FACILITIES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Facility[]) : [];
+  } catch {
     return [];
   }
 };
 
-export const saveFacilitiesToDb = async (facilities: Facility[]) => {
-  if (!isFirebaseConfigured) return;
+export const saveFacilitiesToDb = async (facilities: Facility[]): Promise<void> => {
+  if (typeof window === 'undefined') return;
   try {
-    const batch = writeBatch(db);
+    const existing = await getFacilitiesFromDb();
+    const mergedMap: Record<number, Facility> = {};
+    existing.forEach((f) => {
+      mergedMap[f.id] = f;
+    });
     facilities.forEach((f) => {
-      const docRef = doc(db, COLLECTION_NAME, String(f.id));
-      batch.set(docRef, f);
+      mergedMap[f.id] = { ...f, source: 'admin' };
     });
-    await batch.commit();
+    window.localStorage.setItem(
+      ADMIN_FACILITIES_STORAGE_KEY,
+      JSON.stringify(Object.values(mergedMap))
+    );
   } catch (error) {
-    console.error("Error saving facilities: ", error);
+    console.warn('Gagal menyimpan data faskes kustom admin:', error);
   }
 };
 
-export const deleteAllFacilities = async () => {
-  if (!isFirebaseConfigured) return;
+export const deleteAllFacilities = async (): Promise<void> => {
+  if (typeof window === 'undefined') return;
   try {
-    const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
-    const batch = writeBatch(db);
-    querySnapshot.forEach((d) => {
-      batch.delete(d.ref);
-    });
-    await batch.commit();
-  } catch (error) {
-    console.error("Error deleting facilities: ", error);
+    window.localStorage.removeItem(ADMIN_FACILITIES_STORAGE_KEY);
+  } catch {
+    // Ignore storage removal errors
   }
 };
