@@ -30,6 +30,7 @@ import {
   Timestamp
 } from "firebase/firestore";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { pushSiteUpdate } from "../utils/siteUpdates";
 import {
   db,
   auth,
@@ -428,6 +429,12 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
       setSubmitSuccess(
         `Terima kasih, ${cleanName}! Penilaian ${cleanRating} bintang dan komentar Anda sudah tersimpan permanen di database cloud secara real-time.`
       );
+      pushSiteUpdate({
+        title: `Ulasan Baru (${cleanRating}★) dari ${cleanName}`,
+        description: `Ulasan baru ditambahkan pada aspek ${cleanAspect}.`,
+        category: "data",
+        targetTab: "reviews",
+      });
     } catch (err: any) {
       try {
         handleFirestoreError(err, OperationType.CREATE, docPath);

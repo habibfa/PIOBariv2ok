@@ -21,6 +21,8 @@ import { generateMedicalReportPDF } from "./pdfUtils";
 import FloatingAIAssistant from "./components/FloatingAIAssistant";
 import MedicalDashboardHero from "./components/MedicalDashboardHero";
 import CountUp from "./components/CountUp";
+import { UpdateNotificationBell } from "./components/UpdateNotificationBell";
+import { pushSiteUpdate } from "./utils/siteUpdates";
 
 // Lazy-loaded tab components for fast initial load and smooth tab transitions
 const PharmacistConsultation = lazy(() => import("./PharmacistConsultation"));
@@ -2683,6 +2685,8 @@ export default function App() {
               <RefreshCw className="w-3.5 h-3.5 text-teal-600 shrink-0" />
               <span className="hidden sm:inline">Reset</span>
             </button>
+
+            <UpdateNotificationBell onNavigateTab={(tab) => setActiveTab(tab as any)} />
           </div>
         </header>
 
@@ -5711,6 +5715,12 @@ export default function App() {
                   const defaultList = sanitizeDrugPresets(INITIAL_DRUG_PRESETS);
                   setDrugPresets(defaultList);
                   localStorage.setItem("drugPresets_v5", JSON.stringify(defaultList));
+                  pushSiteUpdate({
+                    title: "Database Katalog Obat Direset",
+                    description: "Daftar obat dan preset klinis dikembalikan ke versi standar terbaru.",
+                    category: "data",
+                    targetTab: "desc",
+                  });
                   localStorage.removeItem("drugPresets_v4");
                   setIsUpdateDrugModalOpen(false);
                 }}
@@ -5792,6 +5802,12 @@ export default function App() {
                 onClick={() => {
                   setInteractionDatabase(INITIAL_INTERACTION_DATABASE);
                   localStorage.setItem("interactionDatabase_v8", JSON.stringify(INITIAL_INTERACTION_DATABASE));
+                  pushSiteUpdate({
+                    title: "Database Interaksi Obat (DDI) Diperbarui",
+                    description: "Basis data skrining interaksi obat dikembalikan ke data referensi standar.",
+                    category: "data",
+                    targetTab: "ddi",
+                  });
                   localStorage.removeItem("interactionDatabase_v4");
                   localStorage.removeItem("interactionDatabase_v5");
                   localStorage.removeItem("interactionDatabase_v6");

@@ -24,7 +24,19 @@ import {
   ChevronUp,
   RefreshCw,
   Search,
-  X
+  X,
+  Gauge,
+  Stethoscope,
+  Wind,
+  Flame,
+  Calendar,
+  TrendingUp,
+  Syringe,
+  FlaskConical,
+  ClipboardList,
+  LineChart,
+  ArrowLeft,
+  ChevronRight
 } from "lucide-react";
 import { CHEMO_REGIMENS_DATA, ChemoRegimen, ChemoDrugComponent } from "./data/chemoRegimensData";
 import {
@@ -35,11 +47,84 @@ import {
   type BsaFormulaType,
   type RegimenCancerCategory,
 } from "./regimens";
+import {
+  MapCalculator,
+  PreventAscvdCalculator,
+  QsofaCurb65Calculator,
+  Spo2Fio2Calculator,
+} from "./components/calculators/RenalCardioInfectionCalcs";
+import {
+  CalorieBmrTdeeCalculator,
+  HplCalculator,
+  WhoZScoreCalculator,
+} from "./components/calculators/NutritionPregnancyCalcs";
+import {
+  IvInfusionCalculator,
+  UnitDilutionCalculator,
+  CompoundingPrescriptionCalculator,
+  PharmacokineticsCalculator,
+  InfusionDripRateCalculator,
+  SyringePumpCalculator,
+  FluidElectrolyteCalculator,
+} from "./components/calculators/ClinicalDosingCalcs";
 
-type CalculatorType = "bmi" | "crcl" | "bsa" | "gcs" | "apgar" | "cha2ds2vasc" | "pediatric" | "chemo" | "regimen" | "egfr" | "lab";
+type CalculatorType =
+  | "egfr"
+  | "crcl"
+  | "map"
+  | "cha2ds2vasc"
+  | "ascvd"
+  | "qsofa_curb65"
+  | "gcs"
+  | "sf_ratio"
+  | "bmi"
+  | "bmr_tdee"
+  | "bsa"
+  | "hpl"
+  | "apgar"
+  | "zscore_who"
+  | "chemo"
+  | "regimen"
+  | "pediatric"
+  | "iv_infusion"
+  | "unit_dilution"
+  | "compounding"
+  | "pharmacokinetics"
+  | "drip_rate"
+  | "syringe_pump"
+  | "fluid_electrolyte"
+  | "lab";
+
+type CalculatorGroupId =
+  | "all"
+  | "ginjal_cairan"
+  | "jantung_infeksi"
+  | "neuro_paru_igd"
+  | "nutrisi_kehamilan"
+  | "kemoterapi"
+  | "klinis_dosis";
+
+interface CalculatorCatalogItem {
+  id: CalculatorType;
+  title: string;
+  description: string;
+  meta?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accentClass: string;
+}
+
+interface CalculatorGroupConfig {
+  id: Exclude<CalculatorGroupId, "all">;
+  index: string;
+  title: string;
+  subtitle: string;
+  items: CalculatorCatalogItem[];
+}
 
 export function MedicalCalculators() {
   const [activeCalc, setActiveCalc] = useState<CalculatorType | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<CalculatorGroupId>("all");
+  const [catalogSearch, setCatalogSearch] = useState("");
 
   const ReferenceFooter = ({ references }: { references: string[] }) => (
     <div className="mt-8 pt-4 border-t border-slate-200">
@@ -99,6 +184,14 @@ export function MedicalCalculators() {
   const [regimenCopied, setRegimenCopied] = useState<boolean>(false);
 
   // States for Pediatric Dose
+  const [pedTab, setPedTab] = useState<"weight_bsa" | "empirical">("weight_bsa");
+  const [pedDoseMethod, setPedDoseMethod] = useState<"mg_kg" | "mg_m2">("mg_kg");
+  const [pedTargetDose, setPedTargetDose] = useState("15");
+  const [pedWeightDirect, setPedWeightDirect] = useState("14");
+  const [pedHeightDirect, setPedHeightDirect] = useState("95");
+  const [pedFreqPerDay, setPedFreqPerDay] = useState("3");
+  const [pedSyrupStrength, setPedSyrupStrength] = useState("120");
+  const [pedSyrupVol, setPedSyrupVol] = useState("5");
   const [pedAdultDose, setPedAdultDose] = useState("");
   const [pedAgeMonths, setPedAgeMonths] = useState("");
   const [pedWeight, setPedWeight] = useState("");
@@ -139,120 +232,417 @@ export function MedicalCalculators() {
   const [chaVascular, setChaVascular] = useState(false);
   const [chaDiabetes, setChaDiabetes] = useState(false);
 
-  const renderCalculatorList = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <button onClick={() => setActiveCalc("apgar")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center">
-          <Baby className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">APGAR Score</h3>
-          <p className="text-slate-500 text-sm mt-1">Penilaian Kondisi Bayi Baru Lahir</p>
-        </div>
-      </button>
+  const calculatorGroups: CalculatorGroupConfig[] = [
+    {
+      id: "ginjal_cairan",
+      index: "01",
+      title: "Ginjal & Cairan",
+      subtitle: "Evaluasi laju filtrasi glomerulus, penyesuaian dosis obat renal, dan pemantauan perfusi organ.",
+      items: [
+        {
+          id: "egfr",
+          title: "eGFR (CKD-EPI)",
+          description: "Memperkirakan laju filtrasi glomerulus untuk menilai fungsi ginjal dan stadium penyakit ginjal kronis.",
+          meta: "CKD-EPI 2021 · Stadium G1–G5",
+          icon: Droplet,
+          accentClass: "bg-sky-50 text-sky-700",
+        },
+        {
+          id: "crcl",
+          title: "Klirens Kreatinin (Cockcroft-Gault)",
+          description: "Membantu menyesuaikan dosis obat yang diekskresikan lewat ginjal berdasarkan usia, BB, dan kreatinin.",
+          meta: "Penyesuaian Dosis Renal",
+          icon: Activity,
+          accentClass: "bg-amber-50 text-amber-700",
+        },
+        {
+          id: "map",
+          title: "MAP (Mean Arterial Pressure)",
+          description: "Mengukur tekanan arteri rata-rata untuk memantau kecukupan perfusi organ vital dan target resusitasi.",
+          meta: "SBP / DBP · Pulse Pressure",
+          icon: Gauge,
+          accentClass: "bg-teal-50 text-teal-700",
+        },
+      ],
+    },
+    {
+      id: "jantung_infeksi",
+      index: "02",
+      title: "Jantung, Pembuluh Darah & Infeksi",
+      subtitle: "Stratifikasi risiko stroke, penyakit kardiovaskular jangka panjang, sepsis, dan keparahan pneumonia.",
+      items: [
+        {
+          id: "cha2ds2vasc",
+          title: "CHA₂DS₂-VASc",
+          description: "Menilai risiko stroke pada pasien fibrilasi atrium non-valvular untuk panduan terapi antikoagulan.",
+          meta: "Fibrilasi Atrium · Skor 0–9",
+          icon: Heart,
+          accentClass: "bg-rose-50 text-rose-700",
+        },
+        {
+          id: "ascvd",
+          title: "PREVENT / ASCVD Risk",
+          description: "Memperkirakan risiko penyakit kardiovaskular jangka panjang berdasarkan usia, tekanan darah, kolesterol, eGFR, dan faktor metabolik.",
+          meta: "Risiko 10 Tahun · AHA/ACC",
+          icon: Stethoscope,
+          accentClass: "bg-rose-50 text-rose-700",
+        },
+        {
+          id: "qsofa_curb65",
+          title: "qSOFA / CURB-65",
+          description: "Membantu menilai tingkat keparahan infeksi/sepsis akut maupun pneumonia komunitas (CAP).",
+          meta: "Sepsis-3 · Stratifikasi CAP",
+          icon: ShieldAlert,
+          accentClass: "bg-amber-50 text-amber-700",
+        },
+      ],
+    },
+    {
+      id: "neuro_paru_igd",
+      index: "03",
+      title: "Neurologi, Paru & Gawat Darurat",
+      subtitle: "Penilaian cepat tingkat kesadaran dan evaluasi oksigenasi paru pada gangguan napas akut.",
+      items: [
+        {
+          id: "gcs",
+          title: "Glasgow Coma Scale (GCS)",
+          description: "Menilai tingkat kesadaran pasien melalui respons mata (E), verbal (V), dan motorik (M).",
+          meta: "Skor 3–15 · Cedera Otak",
+          icon: Brain,
+          accentClass: "bg-teal-50 text-teal-700",
+        },
+        {
+          id: "sf_ratio",
+          title: "Rasio SpO₂/FiO₂",
+          description: "Mengevaluasi fungsi oksigenasi paru secara non-invasif, estimasi P/F ARDS, dan indeks ROX pada gangguan napas akut.",
+          meta: "Oksigenasi · ARDS · ROX",
+          icon: Wind,
+          accentClass: "bg-sky-50 text-sky-700",
+        },
+      ],
+    },
+    {
+      id: "nutrisi_kehamilan",
+      index: "04",
+      title: "Nutrisi, Metabolisme & Kehamilan",
+      subtitle: "Antropometri dewasa & balita, kebutuhan energi klinis, obstetri, serta penilaian neonatus.",
+      items: [
+        {
+          id: "bmi",
+          title: "IMT (BMI) & Berat Badan Ideal",
+          description: "Mengukur status gizi (IMT) dan batas berat badan ideal (IBW Devine).",
+          meta: "WHO · Devine IBW",
+          icon: Weight,
+          accentClass: "bg-emerald-50 text-emerald-700",
+        },
+        {
+          id: "bmr_tdee",
+          title: "Kalkulator Kebutuhan Kalori (BMR & TDEE)",
+          description: "Menggunakan rumus Harris-Benedict atau Mifflin-St Jeor yang disesuaikan dengan aktivitas dan faktor stres penyakit pasien.",
+          meta: "Mifflin-St Jeor · Harris-Benedict",
+          icon: Flame,
+          accentClass: "bg-amber-50 text-amber-700",
+        },
+        {
+          id: "bsa",
+          title: "Body Surface Area",
+          description: "Menghitung luas permukaan tubuh (Mosteller) untuk penentuan dosis obat kritis dan kemoterapi.",
+          meta: "Rumus Mosteller (m²)",
+          icon: Calculator,
+          accentClass: "bg-emerald-50 text-emerald-700",
+        },
+        {
+          id: "hpl",
+          title: "HPL (Hari Perkiraan Lahir)",
+          description: "Menghitung perkiraan tanggal persalinan dan usia kehamilan berdasarkan Hari Pertama Haid Terakhir (HPHT).",
+          meta: "Rumus Naegele · Siklus Haid",
+          icon: Calendar,
+          accentClass: "bg-pink-50 text-pink-700",
+        },
+        {
+          id: "apgar",
+          title: "APGAR Score",
+          description: "Penilaian klinis cepat kondisi bayi baru lahir berdasarkan 5 parameter vital.",
+          meta: "Neonatus · Skor 0–10",
+          icon: Baby,
+          accentClass: "bg-pink-50 text-pink-700",
+        },
+        {
+          id: "zscore_who",
+          title: "Kalkulator Kurva Pertumbuhan (Z-Score WHO/CDC)",
+          description: "Menentukan status gizi balita 0–60 bulan (BB/U, PB/TB-U, BB/TB) untuk mendeteksi stunting, wasting, atau obesitas.",
+          meta: "WHO 2006 · Permenkes RI",
+          icon: TrendingUp,
+          accentClass: "bg-emerald-50 text-emerald-700",
+        },
+      ],
+    },
+    {
+      id: "kemoterapi",
+      index: "05",
+      title: "Kemoterapi",
+      subtitle: "Perhitungan dosis individual onkologi berbasis LPT/BSA dan Calvert AUC serta protokol regimen kanker.",
+      items: [
+        {
+          id: "chemo",
+          title: "Kalkulator Kemoterapi",
+          description: "Dosis individual berbasis LPT/AUC, penyesuaian obesitas, urutan infus, dan protokol premedikasi.",
+          meta: `${CHEMO_REGIMENS_DATA.length} Regimen Kanker`,
+          icon: Activity,
+          accentClass: "bg-teal-50 text-teal-700",
+        },
+        {
+          id: "regimen",
+          title: "Regimen Kemoterapi",
+          description: "Hitung dosis spesifik protokol kemoterapi (7+3, ABVD, R-CHOP, FOLFIRINOX, BEP, CAPOX, dan lainnya).",
+          meta: `${CHEMOTHERAPY_REGIMENS.length} Protokol Onkologi`,
+          icon: Layers,
+          accentClass: "bg-indigo-50 text-indigo-700",
+        },
+      ],
+    },
+    {
+      id: "klinis_dosis",
+      index: "06",
+      title: "Kalkulator Klinis & Dosis Obat",
+      subtitle: "Perhitungan dosis pediatrik, terapi intravena, pengenceran, peracikan resep, farmakokinetika, pompa titrasi, dan cairan elektrolit.",
+      items: [
+        {
+          id: "pediatric",
+          title: "Konversi Dosis Anak",
+          description: "Menghitung takaran obat anak berdasarkan berat badan (mg/kgBB), luas permukaan tubuh (mg/m²), volume sirup, serta rumus klasik.",
+          meta: "mg/kgBB · BSA · Clark/Young",
+          icon: Pill,
+          accentClass: "bg-purple-50 text-purple-700",
+        },
+        {
+          id: "iv_infusion",
+          title: "Kalkulator Infus & IV (Intravena)",
+          description: "Menghitung kecepatan pompa infus (mL/jam), konsentrasi akhir campuran IV (mg/mL), dan laju pemberian obat intravena.",
+          meta: "mL/jam · mg/mL · mg/jam",
+          icon: Droplets,
+          accentClass: "bg-sky-50 text-sky-700",
+        },
+        {
+          id: "unit_dilution",
+          title: "Konversi Satuan & Pengenceran",
+          description: "Mengubah satuan massa/volume, persentase kadar (% b/v ↔ mg/mL), pengenceran C₁V₁=C₂V₂, dan aligasi larutan.",
+          meta: "Satuan · C₁V₁=C₂V₂ · Aligasi",
+          icon: FlaskConical,
+          accentClass: "bg-teal-50 text-teal-700",
+        },
+        {
+          id: "compounding",
+          title: "Kalkulator Resep & Sediaan Racikan",
+          description: "Menghitung jumlah tablet/bahan racikan puyer atau kapsul (d.t.d/non-d.t.d), pengisi SL, serta cek Dosis Maksimal (DM).",
+          meta: "Racikan · Verifikasi % DM",
+          icon: ClipboardList,
+          accentClass: "bg-indigo-50 text-indigo-700",
+        },
+        {
+          id: "pharmacokinetics",
+          title: "Farmakokinetika",
+          description: "Menghitung waktu paruh (t½), konstanta eliminasi (ke), kadar plasma C(t), klirens (Cl), Vd, Loading & Maintenance Dose.",
+          meta: "Logaritma & Eksponen · TDM",
+          icon: LineChart,
+          accentClass: "bg-sky-50 text-sky-700",
+        },
+        {
+          id: "drip_rate",
+          title: "Kalkulator Tetesan Infus",
+          description: "Menghitung kecepatan tetesan per menit (TPM) untuk makro drip (15/20), mikro drip (60), dan set transfusi darah.",
+          meta: "Makro · Mikro · TPM",
+          icon: Clock,
+          accentClass: "bg-emerald-50 text-emerald-700",
+        },
+        {
+          id: "syringe_pump",
+          title: "Kalkulator Syringe Pump / Infusion Pump",
+          description: "Mengonversi dosis obat titrasi (dopamin, norepinefrin, nitrogliserin, insulin, heparin) ke mililiter/jam dengan tabel titrasi.",
+          meta: "mcg/kgBB/mnt → mL/jam",
+          icon: Syringe,
+          accentClass: "bg-rose-50 text-rose-700",
+        },
+        {
+          id: "fluid_electrolyte",
+          title: "Kalkulator Kebutuhan Cairan & Elektrolit",
+          description: "Rumus Holliday-Segar (anak), Baxter/Parkland (luka bakar), serta koreksi hiponatremia (Adrogué-Madias) & hipokalemia.",
+          meta: "Holliday-Segar · Parkland · Na/K",
+          icon: Droplet,
+          accentClass: "bg-amber-50 text-amber-700",
+        },
+        {
+          id: "lab",
+          title: "Interpretasi Nilai Laboratorium",
+          description: "Evaluasi cepat nilai rujukan darah lengkap, elektrolit, profil lipid, gula darah, fungsi hati, dan fungsi ginjal.",
+          meta: "Nilai Rujukan Klinis",
+          icon: Microscope,
+          accentClass: "bg-slate-100 text-slate-700",
+        },
+      ],
+    },
+  ];
 
-      <button onClick={() => setActiveCalc("bmi")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-          <Weight className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">BMI & IBW</h3>
-          <p className="text-slate-500 text-sm mt-1">Indeks Massa Tubuh & Berat Badan Ideal</p>
-        </div>
-      </button>
-      
-      <button onClick={() => setActiveCalc("bsa")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-          <Calculator className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">Body Surface Area</h3>
-          <p className="text-slate-500 text-sm mt-1">Luas Permukaan Tubuh (Mosteller)</p>
-        </div>
-      </button>
+  const activeGroupOfCalc = activeCalc
+    ? calculatorGroups.find((g) => g.items.some((item) => item.id === activeCalc))
+    : null;
 
-      <button onClick={() => setActiveCalc("cha2ds2vasc")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
-          <Heart className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">CHA₂DS₂-VASc</h3>
-          <p className="text-slate-500 text-sm mt-1">Risiko Stroke pada Fibrilasi Atrium</p>
-        </div>
-      </button>
+  const renderCalculatorList = () => {
+    const query = catalogSearch.trim().toLowerCase();
+    const visibleGroups = calculatorGroups
+      .filter((g) => selectedGroup === "all" || g.id === selectedGroup)
+      .map((g) => ({
+        ...g,
+        items: g.items.filter(
+          (item) =>
+            !query ||
+            item.title.toLowerCase().includes(query) ||
+            item.description.toLowerCase().includes(query) ||
+            (item.meta && item.meta.toLowerCase().includes(query)) ||
+            g.title.toLowerCase().includes(query)
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
 
-      <button onClick={() => setActiveCalc("crcl")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-          <Activity className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">Creatinine Clearance</h3>
-          <p className="text-slate-500 text-sm mt-1">Klirens Kreatinin (Cockcroft-Gault)</p>
-        </div>
-      </button>
+    const totalShown = visibleGroups.reduce((sum, g) => sum + g.items.length, 0);
 
-      <button onClick={() => setActiveCalc("gcs")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
-          <Brain className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">GCS Score</h3>
-          <p className="text-slate-500 text-sm mt-1">Glasgow Coma Scale</p>
-        </div>
-      </button>
-      <button onClick={() => setActiveCalc("chemo")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center">
-          <Activity className="w-6 h-6" />
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="font-bold text-slate-800 text-lg">Kalkulator Kemoterapi</h3>
-            <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-teal-100 text-teal-800 rounded uppercase">{CHEMO_REGIMENS_DATA.length} Regimen Kanker</span>
+    return (
+      <div className="space-y-8">
+        {/* Filter & Search Toolbar */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={catalogSearch}
+                onChange={(e) => setCatalogSearch(e.target.value)}
+                placeholder="Cari kalkulator (mis. eGFR, Syringe Pump, Parkland, Z-Score)..."
+                className="w-full pl-10 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none"
+              />
+              {catalogSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCatalogSearch("")}
+                  aria-label="Hapus pencarian"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="text-xs text-slate-500 font-mono tabular-nums whitespace-nowrap">
+              Menampilkan {totalShown} kalkulator · 6 kelompok klinis
+            </div>
           </div>
-          <p className="text-slate-500 text-sm mt-1">Dosis Individual LPT/AUC, Urutan Infus & Protokol Kanker</p>
-        </div>
-      </button>
-      <button onClick={() => setActiveCalc("regimen")} className="bg-white p-6 rounded-2xl border border-indigo-200 hover:border-indigo-400 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-          <Layers className="w-6 h-6" />
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="font-bold text-slate-800 text-lg">Regimen Kemoterapi</h3>
-            <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-indigo-100 text-indigo-800 rounded uppercase">{CHEMOTHERAPY_REGIMENS.length} Protokol</span>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+            <button
+              type="button"
+              onClick={() => setSelectedGroup("all")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+                selectedGroup === "all"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
+              }`}
+            >
+              Semua Kategori
+            </button>
+            {calculatorGroups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => setSelectedGroup(group.id)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+                  selectedGroup === group.id
+                    ? "bg-teal-700 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
+                }`}
+              >
+                {group.title}
+              </button>
+            ))}
           </div>
-          <p className="text-slate-500 text-sm mt-1">Hitung Dosis Spesifik Regimen (7+3, ABVD, R-CHOP, FOLFIRINOX, BEP, CAPOX, dll.)</p>
         </div>
-      </button>
-      <button onClick={() => setActiveCalc("pediatric")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
-          <Pill className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">Konversi Dosis Anak</h3>
-          <p className="text-slate-500 text-sm mt-1">Young, Dilling, Fried, Clark</p>
-        </div>
-      </button>
-      <button onClick={() => setActiveCalc("egfr")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
-          <Droplet className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">eGFR (CKD-EPI)</h3>
-          <p className="text-slate-500 text-sm mt-1">Fungsi Ginjal CKD-EPI 2021</p>
-        </div>
-      </button>
-      <button onClick={() => setActiveCalc("lab")} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all text-left flex flex-col items-start gap-4">
-        <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center">
-          <Microscope className="w-6 h-6" />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">Interpretasi Lab</h3>
-          <p className="text-slate-500 text-sm mt-1">Elektrolit & Fungsi Organ</p>
-        </div>
-      </button>
-    </div>
-  );
+
+        {/* Grouped Calculator Sections */}
+        {visibleGroups.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+            <p className="text-sm font-semibold text-slate-800">Kalkulator tidak ditemukan</p>
+            <p className="text-xs text-slate-500">
+              Coba kata kunci lain atau klik Reset untuk melihat seluruh 6 kelompok kalkulator medis.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setCatalogSearch("");
+                setSelectedGroup("all");
+              }}
+              className="mt-2 px-4 py-2 text-xs font-semibold text-white bg-teal-700 hover:bg-teal-800 rounded-lg transition-colors"
+            >
+              Tampilkan Semua Kalkulator
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-9">
+            {visibleGroups.map((group) => (
+              <section key={group.id} className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pb-2.5 border-b border-slate-200">
+                  <div>
+                    <h3 className="text-base md:text-lg font-bold text-slate-900 tracking-tight">
+                      <span className="font-mono text-teal-700 mr-2">{group.index}.</span>
+                      {group.title}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{group.subtitle}</p>
+                  </div>
+                  <div className="text-xs font-mono text-slate-400 tabular-nums whitespace-nowrap shrink-0">
+                    {group.items.length} kalkulator
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setActiveCalc(item.id)}
+                        className="group bg-white p-5 rounded-2xl border border-slate-200 hover:border-teal-500 transition-colors text-left flex flex-col justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.accentClass}`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-teal-600 transition-transform group-hover:translate-x-0.5 mt-1 shrink-0" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-900 text-[15px] leading-snug group-hover:text-teal-800 transition-colors">
+                              {item.title}
+                            </h4>
+                            <p className="text-slate-600 text-xs mt-1.5 leading-relaxed">
+                              {item.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        {item.meta && (
+                          <div className="pt-2.5 border-t border-slate-100 text-[11px] font-medium text-slate-400">
+                            {item.meta}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderEgfrCalculator = () => {
     let egfr = 0;
@@ -781,6 +1171,27 @@ export function MedicalCalculators() {
   };
 
   const renderPediatricDoseCalculator = () => {
+    // Mode 1: Direct Weight / BSA + Syrup volume
+    const tDose = parseFloat(pedTargetDose) || 0;
+    const wDir = parseFloat(pedWeightDirect) || 0;
+    const hDir = parseFloat(pedHeightDirect) || 0;
+    const freq = Math.max(1, parseFloat(pedFreqPerDay) || 1);
+    const syrStr = parseFloat(pedSyrupStrength) || 0;
+    const syrVol = parseFloat(pedSyrupVol) || 0;
+
+    const bsaChild = wDir > 0 && hDir > 0 ? Math.sqrt((wDir * hDir) / 3600) : 0;
+    const singleDoseMg =
+      pedDoseMethod === "mg_kg"
+        ? tDose > 0 && wDir > 0
+          ? tDose * wDir
+          : 0
+        : tDose > 0 && bsaChild > 0
+        ? tDose * bsaChild
+        : 0;
+    const dailyDoseMg = singleDoseMg * freq;
+    const syrupMlPerDose = singleDoseMg > 0 && syrStr > 0 && syrVol > 0 ? (singleDoseMg / syrStr) * syrVol : 0;
+
+    // Mode 2: Classical Empirical formulas
     let young = 0;
     let dilling = 0;
     let fried = 0;
@@ -803,70 +1214,238 @@ export function MedicalCalculators() {
     }
 
     return (
-      <div className="bg-white p-6 rounded-2xl border border-slate-200">
-        <h3 className="text-xl font-bold text-slate-800 mb-6">Konversi Dosis Anak dari Dosis Dewasa</h3>
-        <p className="text-sm text-slate-500 mb-6">Perkiraan dosis anak berdasarkan berbagai rumus empiris klasik. Rumus ini hanya digunakan jika informasi dosis anak spesifik tidak tersedia.</p>
-        <div className="space-y-4 max-w-md">
-           <div>
-             <label className="block text-sm font-semibold text-slate-700 mb-2">Dosis Dewasa</label>
-             <input type="number" value={pedAdultDose} onChange={(e) => setPedAdultDose(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Misal: 500 (mg)" />
-           </div>
-           <div>
-             <label className="block text-sm font-semibold text-slate-700 mb-2">Usia (Bulan)</label>
-             <input type="number" value={pedAgeMonths} onChange={(e) => setPedAgeMonths(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Misal: 24 (2 tahun)" />
-           </div>
-           <div>
-             <label className="block text-sm font-semibold text-slate-700 mb-2">Berat Badan (kg)</label>
-             <input type="number" value={pedWeight} onChange={(e) => setPedWeight(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Misal: 12" />
-           </div>
+      <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 space-y-6">
+        <div className="pb-4 border-b border-slate-100">
+          <div className="text-xs font-medium text-teal-700 mb-1">Kalkulator Klinis &amp; Dosis Obat</div>
+          <h3 className="text-xl md:text-2xl font-bold text-slate-900">Konversi &amp; Perhitungan Dosis Anak</h3>
+          <p className="text-sm text-slate-600 mt-1">
+            Menghitung takaran obat pediatrik berdasarkan berat badan (mg/kgBB), luas permukaan tubuh (mg/m²), konversi volume sediaan cair (mL), atau konversi empiris dari dosis dewasa.
+          </p>
+        </div>
 
-           {(young > 0 || clark > 0) && (
-             <div className="mt-6 bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
-                <p className="text-sm text-slate-500 font-semibold mb-2">Hasil Estimasi Dosis Anak:</p>
-                
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+          <button
+            type="button"
+            onClick={() => setPedTab("weight_bsa")}
+            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              pedTab === "weight_bsa" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600"
+            }`}
+          >
+            Berdasarkan BB / BSA &amp; Sediaan Sirup
+          </button>
+          <button
+            type="button"
+            onClick={() => setPedTab("empirical")}
+            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
+              pedTab === "empirical" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600"
+            }`}
+          >
+            Konversi Dosis Dewasa (Clark / Young / Dilling / Fried)
+          </button>
+        </div>
+
+        {pedTab === "weight_bsa" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Basis Perhitungan</label>
+                <div className="flex bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setPedDoseMethod("mg_kg")}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
+                      pedDoseMethod === "mg_kg" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600"
+                    }`}
+                  >
+                    Berat Badan (mg/kgBB)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPedDoseMethod("mg_m2")}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
+                      pedDoseMethod === "mg_m2" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600"
+                    }`}
+                  >
+                    Luas Permukaan Tubuh (mg/m²)
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Dosis Anjuran ({pedDoseMethod === "mg_kg" ? "mg/kgBB/kali" : "mg/m²/kali"})
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={pedTargetDose}
+                    onChange={(e) => setPedTargetDose(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:bg-white focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Frekuensi / Hari (×)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={pedFreqPerDay}
+                    onChange={(e) => setPedFreqPerDay(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:bg-white focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Berat Badan Anak (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={pedWeightDirect}
+                    onChange={(e) => setPedWeightDirect(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:bg-white focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Tinggi Badan (cm){pedDoseMethod === "mg_m2" ? " — Wajib" : " — Opsional"}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={pedHeightDirect}
+                    onChange={(e) => setPedHeightDirect(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:bg-white focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <div className="text-xs font-semibold text-slate-700 mb-2">Konversi Sediaan Sirup / Suspensi</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">Kekuatan Sediaan (mg)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={pedSyrupStrength}
+                      onChange={(e) => setPedSyrupStrength(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:bg-white focus:ring-2 focus:ring-teal-500"
+                      placeholder="mis. 120"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">Per Volume (mL)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      value={pedSyrupVol}
+                      onChange={(e) => setPedSyrupVol(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:bg-white focus:ring-2 focus:ring-teal-500"
+                      placeholder="mis. 5"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-6 space-y-4">
+              {singleDoseMg > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
+                      <div className="text-xs font-medium text-slate-600 mb-1">Dosis Tunggal (1× Pakai)</div>
+                      <div className="text-3xl font-bold font-mono tabular-nums text-emerald-800">
+                        {singleDoseMg.toFixed(1)} <span className="text-xs font-normal text-slate-500">mg</span>
+                      </div>
+                      <div className="text-xs text-emerald-700 mt-1">
+                        Total harian ({freq}×/hr): {dailyDoseMg.toFixed(1)} mg/hari
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4">
+                      <div className="text-xs font-medium text-slate-600 mb-1">Volume Takaran Sirup</div>
+                      <div className="text-3xl font-bold font-mono tabular-nums text-sky-800">
+                        {syrupMlPerDose > 0 ? syrupMlPerDose.toFixed(2) : "—"} <span className="text-xs font-normal text-slate-500">mL</span>
+                      </div>
+                      <div className="text-xs text-sky-700 mt-1">
+                        {syrupMlPerDose > 0 ? `≈ ${(syrupMlPerDose / 5).toFixed(2)} sendok takar (5 mL)` : "Isi konsentrasi sediaan"}
+                      </div>
+                    </div>
+                  </div>
+                  {bsaChild > 0 && (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-600 font-mono">
+                      BSA Anak (Mosteller): <strong className="text-slate-900">{bsaChild.toFixed(2)} m²</strong> · Sediaan: {syrStr} mg / {syrVol} mL
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600">
+                  Masukkan dosis anjuran dan berat badan (serta tinggi badan bila menggunakan basis mg/m²) untuk melihat hasil perhitungan.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 max-w-md">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Dosis Dewasa (mg)</label>
+              <input type="number" value={pedAdultDose} onChange={(e) => setPedAdultDose(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Misal: 500" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Usia Anak (Bulan)</label>
+              <input type="number" value={pedAgeMonths} onChange={(e) => setPedAgeMonths(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Misal: 24 (2 tahun)" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Berat Badan Anak (kg)</label>
+              <input type="number" value={pedWeight} onChange={(e) => setPedWeight(e.target.value)} className="w-full px-4 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Misal: 12" />
+            </div>
+
+            {(young > 0 || clark > 0) && (
+              <div className="mt-6 bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
+                <p className="text-xs text-slate-500 font-semibold">Hasil Estimasi Rumus Klasik:</p>
                 {clark > 0 && (
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <div>
-                      <span className="block text-slate-700 font-semibold">Rumus Clark</span>
-                      <span className="text-xs text-slate-500">(Berdasarkan Berat Badan)</span>
+                      <span className="block text-sm text-slate-800 font-semibold">Rumus Clark</span>
+                      <span className="text-xs text-slate-500">Berdasarkan Berat Badan (BB / 70 × Dosis Dewasa)</span>
                     </div>
-                    <span className="text-xl font-black text-purple-600">{clark.toFixed(2)}</span>
+                    <span className="text-xl font-bold font-mono tabular-nums text-purple-700">{clark.toFixed(2)}</span>
                   </div>
                 )}
-                
                 {young > 0 && (
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <div>
-                      <span className="block text-slate-700 font-semibold">Rumus Young</span>
-                      <span className="text-xs text-slate-500">(Usia 1-12 Tahun)</span>
+                      <span className="block text-sm text-slate-800 font-semibold">Rumus Young</span>
+                      <span className="text-xs text-slate-500">Usia 1–12 Tahun</span>
                     </div>
-                    <span className="text-xl font-black text-purple-600">{young.toFixed(2)}</span>
+                    <span className="text-xl font-bold font-mono tabular-nums text-purple-700">{young.toFixed(2)}</span>
                   </div>
                 )}
-
                 {dilling > 0 && (
                   <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                     <div>
-                      <span className="block text-slate-700 font-semibold">Rumus Dilling</span>
-                      <span className="text-xs text-slate-500">(Berdasarkan Usia)</span>
+                      <span className="block text-sm text-slate-800 font-semibold">Rumus Dilling</span>
+                      <span className="text-xs text-slate-500">Usia ≥ 8 Tahun</span>
                     </div>
-                    <span className="text-xl font-black text-purple-600">{dilling.toFixed(2)}</span>
+                    <span className="text-xl font-bold font-mono tabular-nums text-purple-700">{dilling.toFixed(2)}</span>
                   </div>
                 )}
-
                 {fried > 0 && (
                   <div className="flex justify-between items-center">
                     <div>
-                      <span className="block text-slate-700 font-semibold">Rumus Fried</span>
-                      <span className="text-xs text-slate-500">(Bayi &lt; 2 Tahun)</span>
+                      <span className="block text-sm text-slate-800 font-semibold">Rumus Fried</span>
+                      <span className="text-xs text-slate-500">Bayi &lt; 2 Tahun (Usia bulan / 150)</span>
                     </div>
-                    <span className="text-xl font-black text-purple-600">{fried.toFixed(2)}</span>
+                    <span className="text-xl font-bold font-mono tabular-nums text-purple-700">{fried.toFixed(2)}</span>
                   </div>
                 )}
-             </div>
-           )}
-        </div>
-      
+              </div>
+            )}
+          </div>
+        )}
+
         <ReferenceFooter references={["Taketomo CK, Hodding JH, Kraus DM. Pediatric & Neonatal Dosage Handbook. 26th ed. Lexicomp; 2019-2020.", "Kliegman RM, St. Geme JW, Blum NJ, Shah SS, Tasker RC, Wilson KM. Nelson Textbook of Pediatrics. 21st ed. Elsevier; 2020."]} />
       </div>
     );
@@ -2601,44 +3180,73 @@ export function MedicalCalculators() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
-      <div className="bg-white border-b border-slate-200 p-6">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="bg-white border-b border-slate-200 px-6 py-5">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2 mb-2">
-              <Calculator className="w-6 h-6 text-emerald-600" />
-              Kalkulator Medis
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2.5 tracking-tight">
+              <Calculator className="w-6 h-6 text-teal-600 shrink-0" />
+              <span>Kalkulator Medis</span>
             </h2>
-            <p className="text-slate-500 text-sm">
-              Kumpulan alat ukur klinis, skor, dan persamaan medis berbasis bukti seperti pada panduan klinis global.
+            <p className="text-slate-500 text-xs sm:text-sm mt-1">
+              {activeGroupOfCalc
+                ? `Kelompok ${activeGroupOfCalc.index} · ${activeGroupOfCalc.title}`
+                : "Kumpulan kalkulator klinis, skor medis, farmakokinetika, infus, dan dosis obat berbasis bukti."}
             </p>
           </div>
           {activeCalc && (
-            <button 
+            <button
+              type="button"
               onClick={() => setActiveCalc(null)}
-              className="text-sm font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-4 py-2 rounded-lg"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-4 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0 self-start sm:self-auto"
             >
+              <ArrowLeft className="w-3.5 h-3.5" />
               Kembali ke Daftar
             </button>
           )}
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {!activeCalc ? (
             renderCalculatorList()
           ) : (
             <div>
-              {activeCalc === "bmi" && renderBMICalculator()}
+              {/* 01. Ginjal & Cairan */}
+              {activeCalc === "egfr" && renderEgfrCalculator()}
               {activeCalc === "crcl" && renderCrClCalculator()}
-              {activeCalc === "bsa" && renderBSACalculator()}
-              {activeCalc === "gcs" && renderGCSCalculator()}
-              {activeCalc === "apgar" && renderApgarCalculator()}
+              {activeCalc === "map" && <MapCalculator />}
+
+              {/* 02. Jantung, Pembuluh Darah & Infeksi */}
               {activeCalc === "cha2ds2vasc" && renderCha2ds2vasc()}
-              {activeCalc === "pediatric" && renderPediatricDoseCalculator()}
+              {activeCalc === "ascvd" && <PreventAscvdCalculator />}
+              {activeCalc === "qsofa_curb65" && <QsofaCurb65Calculator />}
+
+              {/* 03. Neurologi, Paru & Gawat Darurat */}
+              {activeCalc === "gcs" && renderGCSCalculator()}
+              {activeCalc === "sf_ratio" && <Spo2Fio2Calculator />}
+
+              {/* 04. Nutrisi, Metabolisme & Kehamilan */}
+              {activeCalc === "bmi" && renderBMICalculator()}
+              {activeCalc === "bmr_tdee" && <CalorieBmrTdeeCalculator />}
+              {activeCalc === "bsa" && renderBSACalculator()}
+              {activeCalc === "hpl" && <HplCalculator />}
+              {activeCalc === "apgar" && renderApgarCalculator()}
+              {activeCalc === "zscore_who" && <WhoZScoreCalculator />}
+
+              {/* 05. Kemoterapi */}
               {activeCalc === "chemo" && renderChemoCalculator()}
               {activeCalc === "regimen" && renderRegimenKemoterapiCalculator()}
-              {activeCalc === "egfr" && renderEgfrCalculator()}
+
+              {/* 06. Kalkulator Klinis & Dosis Obat */}
+              {activeCalc === "pediatric" && renderPediatricDoseCalculator()}
+              {activeCalc === "iv_infusion" && <IvInfusionCalculator />}
+              {activeCalc === "unit_dilution" && <UnitDilutionCalculator />}
+              {activeCalc === "compounding" && <CompoundingPrescriptionCalculator />}
+              {activeCalc === "pharmacokinetics" && <PharmacokineticsCalculator />}
+              {activeCalc === "drip_rate" && <InfusionDripRateCalculator />}
+              {activeCalc === "syringe_pump" && <SyringePumpCalculator />}
+              {activeCalc === "fluid_electrolyte" && <FluidElectrolyteCalculator />}
               {activeCalc === "lab" && renderLabCalculator()}
             </div>
           )}

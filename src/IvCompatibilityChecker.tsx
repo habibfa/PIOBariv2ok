@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, Save, X, Download, Trash2, Sparkles, Layers, ArrowRight, ArrowLeft, Table } from 'lucide-react';
+import { Upload, Save, X, Download, Trash2, Layers, ArrowRight, ArrowLeft, Table } from 'lucide-react';
 import { Droplets, Info, Search, AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
-import { ChemoRegimensView } from './components/ChemoRegimensView';
+import { pushSiteUpdate } from './utils/siteUpdates';
 
 type CompatibilityStatus = "C" | "I" | "U"; // Compatible, Incompatible, Uncertain/Variable
 
@@ -2597,7 +2597,6 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvError, setCsvError] = useState("");
 
-  const [mainViewMode, setMainViewMode] = useState<"iv_checker" | "chemo_regimens">("iv_checker");
   const [activeTab, setActiveTab] = useState<"drugs" | "matrix">("drugs");
   const [mobileIvTab, setMobileIvTab] = useState<"drugs" | "results">("drugs");
 
@@ -2676,27 +2675,6 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     }
   };
 
-  const handleSelectRegimenForIvCheck = (drugIds: string[]) => {
-    const validIds: string[] = [];
-    drugIds.forEach(targetId => {
-      const match = ivDrugsState.find(d => 
-        d.id.toLowerCase() === targetId.toLowerCase() || 
-        d.name.toLowerCase().includes(targetId.toLowerCase()) ||
-        targetId.toLowerCase().includes(d.id.toLowerCase())
-      );
-      if (match && !validIds.includes(match.id)) {
-        validIds.push(match.id);
-      }
-    });
-
-    if (validIds.length > 0) {
-      setSelectedDrugs(validIds.slice(0, 8));
-    }
-    setMainViewMode("iv_checker");
-    setMobileIvTab("results");
-    scrollToTop();
-  };
-
   useEffect(() => {
     localStorage.setItem("ivDrugsData_v2", JSON.stringify(ivDrugsState));
     localStorage.setItem("ivMatrixData_v2", JSON.stringify(matrixState));
@@ -2756,6 +2734,12 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
         setIsUpdateModalOpen(false);
         setCsvError("");
         setCsvFile(null);
+        pushSiteUpdate({
+          title: "Daftar Obat IV Diperbarui",
+          description: `${parsed.length} entri obat intravena berhasil diperbarui pada menu Kompatibilitas IV.`,
+          category: "data",
+          targetTab: "iv",
+        });
       } else {
         setCsvError("Format file Obat tidak valid. Pastikan ada kolom id dan name.");
       }
@@ -2771,6 +2755,12 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
         setIsUpdateModalOpen(false);
         setCsvError("");
         setCsvFile(null);
+        pushSiteUpdate({
+          title: "Matriks Kompatibilitas IV Diperbarui",
+          description: `${parsed.length} pasangan kompatibilitas Y-Site/pelarut berhasil ditambahkan atau diperbarui.`,
+          category: "data",
+          targetTab: "iv",
+        });
       } else {
         setCsvError("Format file Matriks tidak valid. Pastikan ada kolom drug1, drug2, status.");
       }
@@ -2828,56 +2818,25 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
   return (
     <div className="w-full flex flex-col gap-6">
 
-      {/* TOP NAVIGATION: IV COMPATIBILITY vs CHEMO REGIMENS */}
-      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xs">
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setMainViewMode("iv_checker")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              mainViewMode === "iv_checker"
-                ? "bg-white text-emerald-700 shadow-xs ring-1 ring-slate-200/80"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Droplets className="w-4 h-4 text-emerald-600" />
-            <span>Kompatibilitas IV (Y-Site & Pelarut)</span>
-            {selectedDrugs.length > 0 && (
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full ml-1">
-                {selectedDrugs.length} Dipilih
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMainViewMode("chemo_regimens")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              mainViewMode === "chemo_regimens"
-                ? "bg-white text-indigo-700 shadow-xs ring-1 ring-slate-200/80"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-indigo-600" />
-            <span>Regimen Kemoterapi & Protokol Kanker</span>
-            <span className="hidden sm:inline-flex bg-indigo-100 text-indigo-800 text-[10px] font-black px-2 py-0.5 rounded-full ml-1">
-              ABVD • R-CHOP • FOLFOX • TCHP • FAC
+      {/* HEADER: KOMPATIBILITAS IV */}
+      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-xs">
+        <div className="flex items-center gap-2.5 text-sm font-bold text-slate-800">
+          <Droplets className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Kompatibilitas IV (Y-Site &amp; Pelarut)</span>
+          {selectedDrugs.length > 0 && (
+            <span className="text-xs font-semibold text-emerald-700">
+              · {selectedDrugs.length} Dipilih
             </span>
-          </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 px-2 text-xs text-slate-500 font-sans">
+        <div className="flex items-center gap-2 text-xs text-slate-500 font-sans">
           <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span>Clinical Decision Support System Apoteker & Tenaga Medis</span>
+          <span>Clinical Decision Support System Apoteker &amp; Tenaga Medis</span>
         </div>
       </div>
 
-      {mainViewMode === "chemo_regimens" ? (
-        <div className="w-full">
-          <ChemoRegimensView onSelectRegimenForIvCheck={handleSelectRegimenForIvCheck} />
-        </div>
-      ) : (
-        <div className="w-full space-y-6">
+      <div className="w-full space-y-6">
           {/* MOBILE SUB-NAVIGATION (Hanya terlihat di layar ponsel < lg) */}
           <div className="lg:hidden sticky top-0 z-20 bg-slate-50/95 backdrop-blur-md py-1.5 -mx-1 px-1">
             <div className="flex items-center p-1 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-2xs">
@@ -3302,7 +3261,6 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
             </div>
           )}
         </div>
-      )}
 
       {isConfirmClearOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">

@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { Upload, Save, X, Edit, Download } from 'lucide-react';
 import { User, Phone, MapPin, Calendar, FileText, Award, ShieldCheck } from 'lucide-react';
+import { pushSiteUpdate } from './utils/siteUpdates';
 
 interface Pharmacist {
   id: string;
@@ -25,7 +26,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Dharmilis, S.Farm",
     nip: "198202242010012014",
     str: "NI00000819195315",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "440/IPA/0148/DPMPTSP-PPK/2026",
     sipaValidity: "24 April 2030",
     phone: "6281367281183",
@@ -39,7 +40,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Ester Tampubolon, S.Farm",
     nip: "198110192010012020",
     str: "EA00001152127890",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "440/SIPA/0263/DPMPTSP-PPK/2026",
     sipaValidity: "31 Juli 2031",
     phone: "628129603330",
@@ -53,7 +54,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Gita Reflika, S.Farm",
     nip: "199105042024212031",
     str: "GB00001122525689",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "446/IPA/0098/DPMPTSP-PPK/2021",
     sipaValidity: "29 April 2030",
     phone: "6285269394414",
@@ -81,7 +82,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Lely Anggraeni, S.Farm",
     nip: "198510162023212003",
     str: "SN00000135311419",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "446/IPA/0280/DPMPTSP-PPK/2023",
     sipaValidity: "6 November 2028",
     phone: "6281373370606",
@@ -95,7 +96,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Suci Permata Sari, S.Farm",
     nip: "199606122020122024",
     str: "HI00001514507310",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "446/IPA/0128/DPMPTSP-PPK/2021",
     sipaValidity: "26 Mei 2030",
     phone: "6281377526026",
@@ -109,7 +110,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Dian Pratiwi, S.Farm",
     nip: "198803292024212015",
     str: "JI00001093288072",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "446/IPA/0059/DPMPTSP-PPK/2023",
     sipaValidity: "29 Maret 2028",
     phone: "6281373413627",
@@ -123,7 +124,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Muhammad Awaluddin, S.Farm",
     nip: "198407272006041006",
     str: "OL00000478386606",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "446/IPA/0187/DPMPTSP-PPK/2024",
     sipaValidity: "23 Juli 2029",
     phone: "6282372729927",
@@ -137,7 +138,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Sri Hartati, S.Farm",
     nip: "199308162019022003",
     str: "XP00000934296315",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "440/SIPA/0260/DPMPTSP-PPK/2026",
     sipaValidity: "30 Juli 2031",
     phone: "6281287376506",
@@ -151,7 +152,7 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Siti Adilah, S.Farm",
     nip: "199005222019022001",
     str: "OT00001130620320",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "446/IPA/0085/DPMPTSP-PPK/2025",
     sipaValidity: "5 Mei 2030",
     phone: "6282183844485",
@@ -165,11 +166,11 @@ const INITIAL_PHARMACISTS: Pharmacist[] = [
     name: "apt. Mery Dwi Susanti, S.Farm",
     nip: "198405252023212003",
     str: "GI00001966373573",
-    strValidity: "Seumur hidup",
+    strValidity: "Seumur Hidup",
     sipa: "440/SIPA/0162/DPMPTSP-PPK/2026",
     sipaValidity: "11 Mei 2031",
     phone: "6281930288078",
-    room: "VVIP,VIP, dan Kelas 1",
+    room: "VVIP, VIP, dan Kelas 1",
     schedule: "Senin - Jumat, 08:00 - 14:00",
     imageUrl: "/merry.jpg",
     specialty: "Farmasi Klinis Rawat Inap"
@@ -260,6 +261,12 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
       setIsUpdateModalOpen(false);
       setCsvError("");
       setCsvFile(null);
+      pushSiteUpdate({
+        title: "Data Apoteker Diperbarui",
+        description: `${parsed.length} data profil apoteker baru berhasil diimpor ke menu Konsultasi Apoteker.`,
+        category: "data",
+        targetTab: "pharmacist",
+      });
     } else {
       setCsvError("Format file tidak valid. Pastikan baris pertama berisi header yang tepat.");
     }
@@ -276,6 +283,12 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
     e.preventDefault();
     if (!editingPharmacist) return;
     setPharmacists(prev => prev.map(p => p.id === editingPharmacist.id ? editingPharmacist : p));
+    pushSiteUpdate({
+      title: `Profil ${editingPharmacist.name} Diperbarui`,
+      description: `Informasi ruangan (${editingPharmacist.room}) dan jadwal praktek telah diperbarui.`,
+      category: "data",
+      targetTab: "pharmacist",
+    });
     setIsEditModalOpen(false);
   };
 
@@ -309,50 +322,58 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-5 items-stretch">
         {pharmacists.map((pharmacist) => (
           <div
             key={pharmacist.id}
-            className="bg-white border border-slate-200 rounded-2xl p-5 lg:p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row gap-6"
+            className="h-full bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-emerald-300 transition-colors flex flex-col sm:flex-row gap-5"
           >
-            {/* Photo & Action Column */}
-            <div className="flex flex-col items-center gap-4 sm:w-48 shrink-0">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-emerald-50 shadow-sm bg-slate-100 shrink-0">
+            {/* Photo & Action Column (fixed width & pinned alignment) */}
+            <div className="flex flex-col items-center justify-between gap-4 sm:w-40 shrink-0 sm:border-r sm:border-slate-100 sm:pr-5">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-emerald-50 bg-slate-100 shrink-0">
                 <img
                   src={pharmacist.imageUrl}
                   alt={`Foto ${pharmacist.name}`}
-                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover object-top"
                 />
               </div>
-              <div className="text-center w-full">
-                <button
-                  onClick={() => handleWhatsAppClick(pharmacist.phone, pharmacist.name)}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
-                >
-                  <Phone className="w-4 h-4" />
-                  Hubungi via WA
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleWhatsAppClick(pharmacist.phone, pharmacist.name)}
+                className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors whitespace-nowrap shrink-0"
+              >
+                <Phone className="w-3.5 h-3.5 shrink-0" />
+                <span>Hubungi via WA</span>
+              </button>
             </div>
 
-            {/* Details Column */}
-            <div className="flex-1 min-w-0 space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800 leading-tight">
+            {/* Details Column (strictly locked row alignment) */}
+            <div className="flex-1 min-w-0 flex flex-col justify-between gap-3.5">
+              {/* Header: Name & Specialty (uniform height) */}
+              <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100 min-h-[3.5rem]">
+                <div className="min-w-0">
+                  <h3
+                    className="text-base font-bold text-slate-900 leading-snug truncate"
+                    title={pharmacist.name}
+                  >
                     {pharmacist.name}
                   </h3>
-                  <p className="text-sm text-emerald-600 font-medium mt-0.5">
+                  <p
+                    className="text-xs text-emerald-700 font-semibold mt-0.5 truncate"
+                    title={pharmacist.specialty}
+                  >
                     {pharmacist.specialty}
                   </p>
                 </div>
                 {isAdmin && (
                   <button
+                    type="button"
                     onClick={() => {
                       setEditingPharmacist(pharmacist);
                       setIsEditModalOpen(true);
                     }}
-                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors ml-auto"
+                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors shrink-0"
                     title="Edit Profil"
                   >
                     <Edit className="w-4 h-4" />
@@ -360,51 +381,66 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-xs">
-                <div className="flex items-start gap-2">
-                  <Award className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="text-slate-500 block font-medium">NIP</span>
-                    <span className="text-slate-800 font-semibold">{pharmacist.nip}</span>
-                  </div>
+              {/* Structured Key-Value Rows: Locked label column + clean value column */}
+              <div className="space-y-2.5 text-xs">
+                <div className="grid grid-cols-[104px_1fr] items-baseline gap-x-2">
+                  <span className="inline-flex items-center gap-1.5 text-slate-500 font-medium whitespace-nowrap">
+                    <Award className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    NIP
+                  </span>
+                  <span className="font-mono tabular-nums font-semibold text-slate-800 truncate" title={pharmacist.nip}>
+                    {pharmacist.nip}
+                  </span>
                 </div>
 
-                <div className="flex items-start gap-2">
-                  <ShieldCheck className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="text-slate-500 block font-medium">Nomor STR</span>
-                    <span className="text-slate-800 font-semibold">{pharmacist.str}</span>
-                    <span className="text-slate-500 block mt-0.5 text-[10px]">
+                <div className="grid grid-cols-[104px_1fr] items-baseline gap-x-2">
+                  <span className="inline-flex items-center gap-1.5 text-slate-500 font-medium whitespace-nowrap">
+                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    Nomor STR
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-mono tabular-nums font-semibold text-slate-800 truncate" title={pharmacist.str}>
+                      {pharmacist.str}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
                       Berlaku: {pharmacist.strValidity}
-                    </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2">
-                  <FileText className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <div className="pr-2">
-                    <span className="text-slate-500 block font-medium">Nomor SIPA</span>
-                    <span className="text-slate-800 font-semibold break-words">{pharmacist.sipa}</span>
-                    <span className="text-slate-500 block mt-0.5 text-[10px]">
+                <div className="grid grid-cols-[104px_1fr] items-baseline gap-x-2">
+                  <span className="inline-flex items-center gap-1.5 text-slate-500 font-medium whitespace-nowrap">
+                    <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    Nomor SIPA
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-mono tabular-nums font-semibold text-slate-800 truncate" title={pharmacist.sipa}>
+                      {pharmacist.sipa}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
                       Berlaku: {pharmacist.sipaValidity}
-                    </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="text-slate-500 block font-medium">Ruangan</span>
-                    <span className="text-slate-800 font-semibold">{pharmacist.room}</span>
-                  </div>
+                <div className="grid grid-cols-[104px_1fr] items-baseline gap-x-2">
+                  <span className="inline-flex items-center gap-1.5 text-slate-500 font-medium whitespace-nowrap">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    Ruangan
+                  </span>
+                  <span className="font-semibold text-slate-800 truncate" title={pharmacist.room}>
+                    {pharmacist.room}
+                  </span>
                 </div>
 
-                <div className="flex items-start gap-2 sm:col-span-2">
-                  <Calendar className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="text-slate-500 block font-medium">Hari Praktek</span>
-                    <span className="text-slate-800 font-semibold">{pharmacist.schedule}</span>
-                  </div>
+                <div className="grid grid-cols-[104px_1fr] items-baseline gap-x-2">
+                  <span className="inline-flex items-center gap-1.5 text-slate-500 font-medium whitespace-nowrap">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    Hari Praktek
+                  </span>
+                  <span className="font-semibold text-slate-800 tabular-nums truncate" title={pharmacist.schedule}>
+                    {pharmacist.schedule}
+                  </span>
                 </div>
               </div>
             </div>
