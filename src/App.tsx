@@ -1194,13 +1194,6 @@ export default function App() {
     return saved ? parseInt(saved, 10) : 16;
   });
 
-  const [gmpQuotaExceeded, setGmpQuotaExceeded] = useState(false);
-
-  useEffect(() => {
-    const handleQuotaExceeded = () => setGmpQuotaExceeded(true);
-    window.addEventListener("gmp-quota-exceeded", handleQuotaExceeded);
-    return () => window.removeEventListener("gmp-quota-exceeded", handleQuotaExceeded);
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("piobari_glass_opacity", glassOpacity.toString());
@@ -2239,22 +2232,6 @@ export default function App() {
 
   return (
     <div className="h-screen medical-ambient-bg flex flex-col font-sans text-slate-900 selection:bg-teal-100 overflow-hidden">
-      {gmpQuotaExceeded && (
-        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm shrink-0">
-          <span>
-            Google Maps Platform quota reached. If you are the app owner, visit{' '}
-            <a
-              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline font-semibold text-amber-950 hover:text-amber-800"
-            >
-              maps developer site
-            </a>{' '}
-            for instructions to update your account.
-          </span>
-        </div>
-      )}
       <div className="flex-1 min-h-0 flex overflow-hidden">
       
       {/* Mobile Sidebar Overlay */}

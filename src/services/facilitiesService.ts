@@ -15,9 +15,9 @@ export interface Facility {
   userRatingCount?: number;
   businessStatus?: string;
   openingHours?: string[];
-  googleMapsUri?: string;
+  osmId?: string;
   websiteUri?: string;
-  source?: 'google_maps' | 'admin';
+  source?: 'builtin' | 'osm' | 'admin';
   locked?: boolean;
 }
 
@@ -25,8 +25,7 @@ const ADMIN_FACILITIES_STORAGE_KEY = 'piobari_admin_custom_facilities_v1';
 
 /**
  * Loads optional admin-imported custom institutional facilities from browser storage.
- * Live Sumatera Selatan facilities are fetched directly from Google Maps Platform Places API (New)
- * without persisting Google Maps content to Firestore.
+ * Core Sumatera Selatan facilities come from the built-in curated directory and optional OpenStreetMap live sync.
  */
 export const getFacilitiesFromDb = async (): Promise<Facility[]> => {
   if (typeof window === 'undefined') return [];

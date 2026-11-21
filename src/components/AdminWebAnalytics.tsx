@@ -1052,8 +1052,8 @@ export const AdminWebAnalytics: React.FC = () => {
             </span>
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72 w-full min-w-0 pt-2">
+            <ResponsiveContainer width="100%" height={280} minWidth={0} debounce={50}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorPageViews" x1="0" y1="0" x2="0" y2="1">
@@ -1717,8 +1717,8 @@ export const AdminWebAnalytics: React.FC = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-7 h-52 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="lg:col-span-7 h-52 w-full min-w-0">
+            <ResponsiveContainer width="100%" height={208} minWidth={0} debounce={50}>
               <BarChart data={categoryCounts} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />

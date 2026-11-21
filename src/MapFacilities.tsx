@@ -2,14 +2,17 @@ import React, { useEffect, useState, useMemo, useCallback, useDeferredValue, use
 import { motion, AnimatePresence } from 'framer-motion';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
-  APIProvider,
-  Map as GoogleMap,
-  AdvancedMarker,
-  InfoWindow,
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  CircleMarker,
   useMap,
-  useMapsLibrary,
-} from '@vis.gl/react-google-maps';
+} from 'react-leaflet';
 import {
   Upload,
   Save,
@@ -34,12 +37,11 @@ import {
   Phone,
   ArrowUpDown,
   ListFilter,
-  Clock,
-  Star,
   Globe,
   RefreshCw,
   MapPinned,
   AlertCircle,
+  Route as RouteIcon,
 } from 'lucide-react';
 import {
   PieChart,
@@ -69,133 +71,92 @@ import {
   getRegionBoundsLiteral,
   SumselRegion,
 } from './data/sumselRegions';
+import { SUMSEL_CURATED_FACILITIES } from './data/sumselFacilitiesData';
 
-function getInitialGoogleMapsApiKey(): string {
-  const buildKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) || '';
-  if (buildKey.trim()) return buildKey.trim();
-  if (typeof window !== 'undefined') {
-    const runtimeKey = (window as unknown as { __PIOBARI_MAPS_API_KEY__?: string }).__PIOBARI_MAPS_API_KEY__;
-    if (typeof runtimeKey === 'string' && runtimeKey.trim()) {
-      return runtimeKey.trim();
-    }
-  }
-  return '';
-}
-
-const GMP_ATTRIBUTION_IDS = ['gmp_mcp_codeassist_v1_aistudio'];
 const RSUD_BARI_COORDS = { lat: -3.010222, lng: 104.768972 };
 
 type FacilityCategory = 'Hospital' | 'Puskesmas' | 'Clinic' | 'Pharmacy';
 type FilterCategory = 'Semua' | FacilityCategory;
-type MapStyleKey = 'roadmap' | 'hybrid' | 'terrain';
+type MapStyleKey = 'osm' | 'street' | 'satellite';
 
-const ALL_CATEGORIES: FacilityCategory[] = ['Hospital', 'Puskesmas', 'Clinic', 'Pharmacy'];
+interface TileLayerConfig {
+  id: MapStyleKey;
+  label: string;
+  url: string;
+  overlayUrl?: string;
+  attribution: string;
+  maxZoom: number;
+}
 
-const CATEGORY_QUERY_CONFIG: Record<
-  FacilityCategory,
-  {
-    label: string;
-    shortLabel: string;
-    queryPrefix: string;
-    includedType?: string;
-    colorHex: string;
-  }
-> = {
-  Hospital: {
-    label: 'Rumah Sakit (RS)',
-    shortLabel: 'RS',
-    queryPrefix: 'Rumah Sakit di',
-    includedType: 'hospital',
-    colorHex: '#ef4444',
+const TILE_LAYERS: Record<MapStyleKey, TileLayerConfig> = {
+  osm: {
+    id: 'osm',
+    label: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
   },
-  Puskesmas: {
-    label: 'Puskesmas',
-    shortLabel: 'Puskesmas',
-    queryPrefix: 'Puskesmas di',
-    colorHex: '#f97316',
+  street: {
+    id: 'street',
+    label: 'Peta Bersih',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri — Esri, TomTom, Garmin, FAO, NOAA, USGS',
+    maxZoom: 18,
   },
-  Clinic: {
-    label: 'Klinik',
-    shortLabel: 'Klinik',
-    queryPrefix: 'Klinik Kesehatan di',
-    colorHex: '#3b82f6',
-  },
-  Pharmacy: {
-    label: 'Apotek',
-    shortLabel: 'Apotek',
-    queryPrefix: 'Apotek di',
-    includedType: 'pharmacy',
-    colorHex: '#10b981',
+  satellite: {
+    id: 'satellite',
+    label: 'Satelit',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    overlayUrl:
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri — Maxar, Earthstar Geographics',
+    maxZoom: 18,
   },
 };
+
+const MAP_STYLE_OPTIONS: { id: MapStyleKey; label: string }[] = [
+  { id: 'osm', label: 'Peta Jalan' },
+  { id: 'street', label: 'Peta Bersih' },
+  { id: 'satellite', label: 'Satelit' },
+];
 
 const QUICK_CATEGORY_CHIPS = [
   {
     id: 'Semua' as const,
     shortLabel: 'Semua',
     fullLabel: 'Semua Faskes',
-    dot: 'bg-teal-500',
-    activeClass: 'bg-slate-900 text-white border-slate-900 shadow-xs',
-    inactiveClass: 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/90',
-    badgeActive: 'bg-white/20 text-white',
-    badgeInactive: 'bg-slate-100 text-slate-600',
+    activeClass: 'bg-slate-900 text-white border-slate-900',
+    inactiveClass: 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200',
   },
   {
     id: 'Hospital' as const,
     shortLabel: 'RS',
     fullLabel: 'Rumah Sakit (RS)',
-    dot: 'bg-red-500',
-    activeClass: 'bg-red-600 text-white border-red-600 shadow-xs',
-    inactiveClass: 'bg-red-50/60 hover:bg-red-50 text-red-800 border-red-200/80',
-    badgeActive: 'bg-white/20 text-white',
-    badgeInactive: 'bg-red-100/80 text-red-700',
+    activeClass: 'bg-red-600 text-white border-red-600',
+    inactiveClass: 'bg-white hover:bg-red-50/70 text-red-800 border-slate-200',
   },
   {
     id: 'Puskesmas' as const,
     shortLabel: 'Puskesmas',
     fullLabel: 'Puskesmas',
-    dot: 'bg-orange-500',
-    activeClass: 'bg-orange-500 text-white border-orange-500 shadow-xs',
-    inactiveClass: 'bg-orange-50/60 hover:bg-orange-50 text-orange-800 border-orange-200/80',
-    badgeActive: 'bg-white/20 text-white',
-    badgeInactive: 'bg-orange-100/80 text-orange-700',
+    activeClass: 'bg-orange-600 text-white border-orange-600',
+    inactiveClass: 'bg-white hover:bg-orange-50/70 text-orange-800 border-slate-200',
   },
   {
     id: 'Clinic' as const,
     shortLabel: 'Klinik',
     fullLabel: 'Klinik',
-    dot: 'bg-blue-500',
-    activeClass: 'bg-blue-600 text-white border-blue-600 shadow-xs',
-    inactiveClass: 'bg-blue-50/60 hover:bg-blue-50 text-blue-800 border-blue-200/80',
-    badgeActive: 'bg-white/20 text-white',
-    badgeInactive: 'bg-blue-100/80 text-blue-700',
+    activeClass: 'bg-blue-600 text-white border-blue-600',
+    inactiveClass: 'bg-white hover:bg-blue-50/70 text-blue-800 border-slate-200',
   },
   {
     id: 'Pharmacy' as const,
     shortLabel: 'Apotek',
     fullLabel: 'Apotek',
-    dot: 'bg-emerald-500',
-    activeClass: 'bg-emerald-600 text-white border-emerald-600 shadow-xs',
-    inactiveClass: 'bg-emerald-50/60 hover:bg-emerald-50 text-emerald-800 border-emerald-200/80',
-    badgeActive: 'bg-white/20 text-white',
-    badgeInactive: 'bg-emerald-100/80 text-emerald-700',
+    activeClass: 'bg-emerald-600 text-white border-emerald-600',
+    inactiveClass: 'bg-white hover:bg-emerald-50/70 text-emerald-800 border-slate-200',
   },
 ];
-
-const MAP_STYLE_OPTIONS: { id: MapStyleKey; label: string }[] = [
-  { id: 'roadmap', label: 'Peta Jalan' },
-  { id: 'hybrid', label: 'Satelit' },
-  { id: 'terrain', label: 'Medan' },
-];
-
-// Deterministic numeric hash from Google Place ID so Facility.id stays compatible with numeric IDs
-function hashPlaceIdToNumber(placeId: string): number {
-  let hash = 5381;
-  for (let i = 0; i < placeId.length; i++) {
-    hash = ((hash << 5) + hash + placeId.charCodeAt(i)) >>> 0;
-  }
-  return 100000 + (hash % 900000000);
-}
 
 // Haversine geodesic distance in kilometers
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -212,245 +173,385 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
-// Tier 2 Quota Error Detector (avoids false positives on empty results or generic network issues)
-function isGoogleMapsQuotaError(err: unknown): boolean {
-  if (!err) return false;
-  const status = (err as { status?: number | string; code?: number | string })?.status;
-  const code = (err as { code?: number | string })?.code;
-  const message = String(
-    (err as { message?: string })?.message || err
-  ).toUpperCase();
-
-  return (
-    status === 429 ||
-    code === 429 ||
-    status === 'RESOURCE_EXHAUSTED' ||
-    status === 'OVER_QUERY_LIMIT' ||
-    message.includes('RESOURCE_EXHAUSTED') ||
-    message.includes('OVER_QUERY_LIMIT') ||
-    message.includes('QUOTA')
-  );
+function hashStringToNumber(input: string): number {
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash + input.charCodeAt(i)) >>> 0;
+  }
+  return 200000 + (hash % 700000000);
 }
 
-function classifyPlaceCategory(
-  name: string,
-  types: string[] | undefined,
-  fallback: FacilityCategory
-): FacilityCategory {
-  const lower = name.toLowerCase();
-  const typeSet = types || [];
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  if (lower.includes('puskesmas') || lower.includes('pusat kesehatan masyarakat') || lower.includes('pustu')) {
+function classifyOsmElement(tags: Record<string, string | undefined>): FacilityCategory {
+  const name = (tags.name || '').toLowerCase();
+  const amenity = (tags.amenity || '').toLowerCase();
+  const healthcare = (tags.healthcare || '').toLowerCase();
+
+  if (
+    name.includes('puskesmas') ||
+    name.includes('pusat kesehatan masyarakat') ||
+    name.includes('pustu') ||
+    name.includes('puskesdes')
+  ) {
     return 'Puskesmas';
   }
-  if (lower.includes('apotek') || lower.includes('apotik') || lower.includes('kimia farma') || lower.includes('k-24') || typeSet.includes('pharmacy')) {
+  if (
+    amenity === 'pharmacy' ||
+    healthcare === 'pharmacy' ||
+    name.includes('apotek') ||
+    name.includes('apotik') ||
+    name.includes('kimia farma') ||
+    name.includes('k-24')
+  ) {
     return 'Pharmacy';
   }
   if (
-    lower.includes('rumah sakit') ||
-    /\brs\b/.test(lower) ||
-    /\brsud\b/.test(lower) ||
-    /\brsup\b/.test(lower) ||
-    /\brsia\b/.test(lower) ||
-    /\brsu\b/.test(lower) ||
-    lower.includes('hospital')
+    amenity === 'hospital' ||
+    healthcare === 'hospital' ||
+    name.includes('rumah sakit') ||
+    /\brs\b/.test(name) ||
+    /\brsud\b/.test(name) ||
+    /\brsup\b/.test(name) ||
+    /\brsia\b/.test(name) ||
+    /\brsu\b/.test(name)
   ) {
     return 'Hospital';
   }
-  if (lower.includes('klinik') || lower.includes('clinic') || lower.includes('balai pengobatan')) {
-    return 'Clinic';
-  }
-  if (typeSet.includes('hospital')) return 'Hospital';
-  if (typeSet.includes('pharmacy')) return 'Pharmacy';
-  if (typeSet.includes('medical_clinic') || typeSet.includes('doctor')) return 'Clinic';
-
-  return fallback;
+  return 'Clinic';
 }
 
-function getTypeLabel(type: string) {
+function getTypeMeta(type: string) {
   switch (type) {
     case 'Hospital':
-      return { label: 'Rumah Sakit', dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50' };
+      return { label: 'Rumah Sakit', textClass: 'text-red-700', hex: '#ef4444' };
     case 'Puskesmas':
-      return { label: 'Puskesmas', dot: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50' };
+      return { label: 'Puskesmas', textClass: 'text-orange-700', hex: '#f97316' };
     case 'Clinic':
-      return { label: 'Klinik', dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50' };
+      return { label: 'Klinik', textClass: 'text-blue-700', hex: '#2563eb' };
     case 'Pharmacy':
-      return { label: 'Apotek', dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50' };
+      return { label: 'Apotek', textClass: 'text-emerald-700', hex: '#059669' };
     default:
-      return { label: type, dot: 'bg-slate-500', text: 'text-slate-700', bg: 'bg-slate-50' };
+      return { label: type, textClass: 'text-slate-700', hex: '#475569' };
   }
 }
 
-interface FacilityPinProps {
-  facility: Facility & { distanceKm: number };
-  isSelected: boolean;
-  onClick: () => void;
+function formatDurationMinutes(seconds: number): string {
+  const totalMinutes = Math.max(1, Math.round(seconds / 60));
+  if (totalMinutes < 60) return `${totalMinutes} menit`;
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  return mins > 0 ? `${hours} jam ${mins} mnt` : `${hours} jam`;
 }
 
-const FacilityMarkerPin: React.FC<FacilityPinProps> = React.memo(({ facility, isSelected, onClick }) => {
-  const isRSUDBari = (facility.name || '').toUpperCase().includes('PALEMBANG BARI');
+// Cached Leaflet custom SVG marker icons (zero broken default PNG icons)
+const iconCache = new Map<string, L.DivIcon>();
+
+function getFacilityDivIcon(type: Facility['type'], isRSUDBari: boolean, isSelected: boolean): L.DivIcon {
+  const key = `${type}_${isRSUDBari ? 'bari' : 'std'}_${isSelected ? 'sel' : 'norm'}`;
+  const cached = iconCache.get(key);
+  if (cached) return cached;
+
   const bgColor = isRSUDBari
     ? '#e11d48'
-    : facility.type === 'Hospital'
+    : type === 'Hospital'
     ? '#ef4444'
-    : facility.type === 'Puskesmas'
+    : type === 'Puskesmas'
     ? '#f97316'
-    : facility.type === 'Clinic'
-    ? '#3b82f6'
-    : '#10b981';
+    : type === 'Clinic'
+    ? '#2563eb'
+    : '#059669';
 
   const size = isRSUDBari ? 38 : isSelected ? 36 : 30;
-  const borderRadius = isRSUDBari || facility.type === 'Hospital' ? '10px' : '9999px';
+  const radius = isRSUDBari || type === 'Hospital' ? '10px' : '9999px';
+  const border = isSelected ? '3px solid #0f172a' : '2.5px solid #ffffff';
+  const shadow = isSelected
+    ? '0 0 0 4px rgba(13, 148, 136, 0.32), 0 6px 14px rgba(15, 23, 42, 0.35)'
+    : '0 3px 9px rgba(15, 23, 42, 0.28)';
 
-  return (
-    <AdvancedMarker
-      position={{ lat: facility.lat, lng: facility.lng }}
-      title={facility.name}
-      zIndex={isRSUDBari ? 1000 : isSelected ? 800 : 100}
-      onClick={onClick}
-    >
-      <div
-        className="flex items-center justify-center transition-transform duration-150 cursor-pointer"
-        style={{
-          width: size,
-          height: size,
-          borderRadius,
-          backgroundColor: bgColor,
-          border: isSelected ? '3px solid #0f172a' : '2.5px solid #ffffff',
-          boxShadow: isSelected
-            ? '0 0 0 4px rgba(13, 148, 136, 0.35), 0 6px 14px rgba(15, 23, 42, 0.35)'
-            : '0 4px 10px rgba(15, 23, 42, 0.28)',
-          transform: isSelected ? 'scale(1.12)' : 'scale(1)',
-        }}
-      >
-        {facility.type === 'Hospital' || isRSUDBari ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white">
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
-          </svg>
-        ) : facility.type === 'Puskesmas' ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 4v16" />
-            <path d="M4 12h16" />
-          </svg>
-        ) : facility.type === 'Clinic' ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
-            <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" />
-            <circle cx="20" cy="10" r="2" />
-          </svg>
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M10.5 20.5 19 12a4.95 4.95 0 1 0-7-7L3.5 13.5a4.95 4.95 0 1 0 7 7Z" />
-            <path d="m8.5 8.5 7 7" />
-          </svg>
-        )}
-      </div>
-    </AdvancedMarker>
-  );
-});
+  let svgInner = '';
+  if (type === 'Hospital' || isRSUDBari) {
+    svgInner = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>`;
+  } else if (type === 'Puskesmas') {
+    svgInner = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16"/><path d="M4 12h16"/></svg>`;
+  } else if (type === 'Clinic') {
+    svgInner = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>`;
+  } else {
+    svgInner = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 19 12a4.95 4.95 0 1 0-7-7L3.5 13.5a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>`;
+  }
 
-interface MapCameraControllerProps {
-  targetCenter: { lat: number; lng: number } | null;
-  targetZoom: number;
-  cameraNonce: number;
+  const icon = L.divIcon({
+    className: 'piobari-leaflet-pin',
+    html: `<div style="width:${size}px;height:${size}px;border-radius:${radius};background:${bgColor};border:${border};box-shadow:${shadow};display:flex;align-items:center;justify-content:center;transition:transform 150ms ease;">${svgInner}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2 - 4],
+  });
+
+  iconCache.set(key, icon);
+  return icon;
 }
 
-const MapCameraController: React.FC<MapCameraControllerProps> = ({
-  targetCenter,
-  targetZoom,
-  cameraNonce,
-}) => {
-  const map = useMap();
-  useEffect(() => {
-    if (!map || !targetCenter) return;
-    map.panTo(targetCenter);
-    map.setZoom(targetZoom);
-  }, [map, targetCenter, targetZoom, cameraNonce]);
-  return null;
+const USER_GPS_PATH_OPTIONS: L.PathOptions = {
+  color: '#ffffff',
+  weight: 3,
+  fillColor: '#0d9488',
+  fillOpacity: 1,
 };
 
-interface MapCoordsHudProps {
-  mapStyleLabel: string;
-}
+const ROUTE_SHADOW_PATH_OPTIONS: L.PathOptions = {
+  color: '#0f172a',
+  weight: 8,
+  opacity: 0.2,
+};
 
-const MapCoordsHud: React.FC<MapCoordsHudProps> = ({ mapStyleLabel }) => {
+const ROUTE_SOLID_PATH_OPTIONS: L.PathOptions = {
+  color: '#0d9488',
+  weight: 5,
+  opacity: 0.92,
+};
+
+const ROUTE_DASHED_PATH_OPTIONS: L.PathOptions = {
+  color: '#0d9488',
+  weight: 5,
+  opacity: 0.92,
+  dashArray: '8 8',
+};
+
+// Isolated coordinates HUD rendered inside MapContainer so pan/zoom NEVER re-renders parent markers
+const MapCoordsHud: React.FC<{ mapStyleLabel: string }> = React.memo(({ mapStyleLabel }) => {
   const map = useMap();
-  const [coords, setCoords] = useState({ lat: -2.9761, lng: 104.7754, zoom: 12 });
+  const [coords, setCoords] = useState(() => {
+    const c = map.getCenter();
+    return { lat: c.lat, lng: c.lng, zoom: map.getZoom() };
+  });
 
   useEffect(() => {
-    if (!map) return;
-    const listener = map.addListener('idle', () => {
+    const update = () => {
       const c = map.getCenter();
       const z = map.getZoom();
-      if (c) {
-        setCoords({ lat: c.lat(), lng: c.lng(), zoom: z ?? 12 });
-      }
-    });
+      setCoords((prev) => {
+        if (
+          Math.abs(prev.lat - c.lat) < 0.00001 &&
+          Math.abs(prev.lng - c.lng) < 0.00001 &&
+          prev.zoom === z
+        ) {
+          return prev;
+        }
+        return { lat: c.lat, lng: c.lng, zoom: z };
+      });
+    };
+    map.on('moveend', update);
+    map.on('zoomend', update);
     return () => {
-      google.maps.event.removeListener(listener);
+      map.off('moveend', update);
+      map.off('zoomend', update);
     };
   }, [map]);
 
   return (
-    <div className="hidden md:flex absolute bottom-3 right-14 z-20 bg-slate-900/90 text-white px-3.5 py-1.5 rounded-xl border border-slate-700/80 shadow-md items-center gap-2.5 text-[11px] font-mono tabular-nums pointer-events-none">
-      <span>Lat: {coords.lat.toFixed(5)}</span>
+    <div className="hidden md:flex absolute bottom-4 right-3 z-[450] bg-slate-900/90 text-white px-3 py-1.5 rounded-lg border border-slate-700/80 shadow-md items-center gap-2 text-[11px] font-mono tabular-nums pointer-events-none">
+      <span>{coords.lat.toFixed(5)}</span>
+      <span className="text-slate-500">,</span>
+      <span>{coords.lng.toFixed(5)}</span>
       <span className="text-slate-500">·</span>
-      <span>Lng: {coords.lng.toFixed(5)}</span>
-      <span className="text-slate-500">·</span>
-      <span className="text-teal-300 font-sans font-semibold text-[10px]">
-        Google Maps · {mapStyleLabel} ({coords.zoom}x)
+      <span className="font-sans font-semibold text-teal-300 text-[10px]">
+        {mapStyleLabel} ({coords.zoom}x)
       </span>
     </div>
   );
-};
+});
 
-interface SumselMapInnerProps {
-  isAdmin: boolean;
+// Memoized facility marker so selection/pan/zoom never detaches refs or rebinds event handlers on all pins
+interface FacilityMarkerItemProps {
+  facility: Facility & { distanceKm: number };
+  isSelected: boolean;
+  originLat: number;
+  originLng: number;
+  onSelectId: (id: number) => void;
+  onComputeRoute: (dest: { lat: number; lng: number }, name: string) => void;
+  onRegisterRef: (id: number, marker: L.Marker | null) => void;
 }
 
-const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
-  const map = useMap();
-  const placesLib = useMapsLibrary('places');
-  const routesLib = useMapsLibrary('routes');
+const FacilityMarkerItem: React.FC<FacilityMarkerItemProps> = React.memo(
+  ({
+    facility,
+    isSelected,
+    originLat,
+    originLng,
+    onSelectId,
+    onComputeRoute,
+    onRegisterRef,
+  }) => {
+    const isRSUDBari = facility.name.toUpperCase().includes('PALEMBANG BARI');
+    const meta = getTypeMeta(facility.type);
 
-  // Selected Sumatera Selatan administrative region ('all-loaded' or one of 17 region IDs)
+    const position = useMemo<[number, number]>(
+      () => [facility.lat, facility.lng],
+      [facility.lat, facility.lng]
+    );
+
+    const icon = useMemo(
+      () => getFacilityDivIcon(facility.type, isRSUDBari, isSelected),
+      [facility.type, isRSUDBari, isSelected]
+    );
+
+    const eventHandlers = useMemo(
+      () => ({
+        click: () => {
+          onSelectId(facility.id);
+        },
+      }),
+      [facility.id, onSelectId]
+    );
+
+    const handleMarkerRef = useCallback(
+      (marker: L.Marker | null) => {
+        onRegisterRef(facility.id, marker);
+      },
+      [facility.id, onRegisterRef]
+    );
+
+    return (
+      <Marker
+        position={position}
+        icon={icon}
+        zIndexOffset={isRSUDBari ? 1000 : isSelected ? 800 : 100}
+        ref={handleMarkerRef}
+        eventHandlers={eventHandlers}
+      >
+        <Popup maxWidth={290} minWidth={230}>
+          <div className="p-1 font-sans">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span className={`font-bold ${meta.textClass}`}>{meta.label}</span>
+              <span>·</span>
+              <span>{facility.city || 'Sumatera Selatan'}</span>
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 mt-0.5 leading-snug">
+              {facility.name}
+            </h3>
+            {facility.kelas && (
+              <div className="text-[11px] text-slate-500 mt-0.5">{facility.kelas}</div>
+            )}
+            <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">{facility.address}</p>
+
+            {facility.contact && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-700">
+                <Phone className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <a
+                  href={`tel:${facility.contact.replace(/[^0-9+]/g, '')}`}
+                  className="font-mono font-medium hover:underline"
+                >
+                  {facility.contact}
+                </a>
+              </div>
+            )}
+
+            {facility.websiteUri && (
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-teal-700">
+                <Globe className="w-3.5 h-3.5 shrink-0" />
+                <a
+                  href={facility.websiteUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate hover:underline"
+                >
+                  Situs Web Resmi
+                </a>
+              </div>
+            )}
+
+            <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  onComputeRoute({ lat: facility.lat, lng: facility.lng }, facility.name)
+                }
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-semibold inline-flex items-center justify-center gap-1 transition-colors"
+              >
+                <Navigation className="w-3 h-3" />
+                <span>Hitung Rute</span>
+              </button>
+              <a
+                href={`https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${originLat}%2C${originLng}%3B${facility.lat}%2C${facility.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold inline-flex items-center justify-center gap-1 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Arah OSM</span>
+              </a>
+            </div>
+          </div>
+        </Popup>
+      </Marker>
+    );
+  }
+);
+
+// Controller for smooth flyTo, route bounds fitting, and resize invalidation
+interface LeafletControllerProps {
+  targetCenter: { lat: number; lng: number } | null;
+  targetZoom: number;
+  cameraNonce: number;
+  routeCoords: [number, number][] | null;
+  layoutSignal: boolean;
+}
+
+const LeafletMapController: React.FC<LeafletControllerProps> = React.memo(
+  ({ targetCenter, targetZoom, cameraNonce, routeCoords, layoutSignal }) => {
+    const map = useMap();
+    const lastFittedRouteRef = useRef<[number, number][] | null>(null);
+
+    useEffect(() => {
+      if (cameraNonce === 0 || !targetCenter) return;
+      map.flyTo([targetCenter.lat, targetCenter.lng], targetZoom, {
+        duration: 0.7,
+      });
+    }, [map, targetCenter, targetZoom, cameraNonce]);
+
+    useEffect(() => {
+      if (!routeCoords || routeCoords.length < 2) {
+        lastFittedRouteRef.current = null;
+        return;
+      }
+      if (lastFittedRouteRef.current === routeCoords) return;
+      lastFittedRouteRef.current = routeCoords;
+      const bounds = L.latLngBounds(routeCoords.map(([lat, lng]) => L.latLng(lat, lng)));
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [52, 52], maxZoom: 15 });
+      }
+    }, [map, routeCoords]);
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        map.invalidateSize();
+      }, 280);
+      return () => clearTimeout(timer);
+    }, [map, layoutSignal]);
+
+    return null;
+  }
+);
+
+interface MapFacilitiesProps {
+  isAdmin?: boolean;
+}
+
+export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false }) => {
+  // Default to Kota Palembang (user can switch to 'all-sumsel' or any of the 17 Kota/Kabupaten)
   const [selectedRegionId, setSelectedRegionId] = useState<string>('kota-palembang');
   const [typeFilter, setTypeFilter] = useState<FilterCategory>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
-  const [sortBy, setSortBy] = useState<'distance' | 'name' | 'rating'>('distance');
-  const [mapStyle, setMapStyle] = useState<MapStyleKey>('roadmap');
+  const [sortBy, setSortBy] = useState<'distance' | 'name'>('distance');
+  const [mapStyle, setMapStyle] = useState<MapStyleKey>('osm');
   const [panelTab, setPanelTab] = useState<'list' | 'regions' | 'stats'>('list');
   const [isDesktopPanelOpen, setIsDesktopPanelOpen] = useState(true);
   const [mobileDrawerState, setMobileDrawerState] = useState<'minimized' | 'half' | 'expanded'>('half');
@@ -458,29 +559,17 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
     typeof window !== 'undefined' ? window.innerWidth < 768 : false
   );
 
-  // In-memory session cache of live Google Maps Places results keyed by `${regionId}:${category}`
-  // (No persistent scraping/storage of Google Maps data; compliant with GMP ToS)
-  const [googlePlacesCache, setGooglePlacesCache] = useState<Record<string, Facility[]>>({});
-  // Custom keyword search results from Google Maps Places API (New)
-  const [customSearchResults, setCustomSearchResults] = useState<Facility[]>([]);
-  const [activeCustomSearchLabel, setActiveCustomSearchLabel] = useState<string>('');
-  // On-demand Place Details cache (phone, opening hours, website) keyed by placeId
-  const [placeDetailsCache, setPlaceDetailsCache] = useState<
-    Record<string, { contact?: string; openingHours?: string[]; websiteUri?: string }>
-  >({});
-  const [loadingDetailsPlaceId, setLoadingDetailsPlaceId] = useState<string | null>(null);
+  // Optional live OpenStreetMap Overpass API enrichment cache keyed by regionId
+  const [osmEnrichedByRegion, setOsmEnrichedByRegion] = useState<Record<string, Facility[]>>({});
+  const [isSyncingOsm, setIsSyncingOsm] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  const [syncError, setSyncError] = useState('');
 
-  // Admin-imported custom institutional facilities (optional supplement)
+  // Admin-imported custom institutional facilities
   const [adminFacilities, setAdminFacilities] = useState<Facility[]>([]);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvError, setCsvError] = useState('');
-
-  // Loading & feedback states
-  const [isFetchingPlaces, setIsFetchingPlaces] = useState(false);
-  const [fetchStatusText, setFetchStatusText] = useState('');
-  const [fetchError, setFetchError] = useState('');
-  const inFlightKeysRef = useRef<Record<string, boolean>>({});
 
   // Camera state
   const [targetCenter, setTargetCenter] = useState<{ lat: number; lng: number } | null>(
@@ -489,42 +578,43 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
   const [targetZoom, setTargetZoom] = useState<number>(SUMSEL_REGIONS[0].zoom);
   const [cameraNonce, setCameraNonce] = useState(0);
 
-  // Selected facility & InfoWindow state
+  // Selected facility & copy state
   const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(null);
-  const [infoWindowFacilityId, setInfoWindowFacilityId] = useState<number | null>(null);
   const [copiedCoordsId, setCopiedCoordsId] = useState<number | null>(null);
+  const markerRefs = useRef<Record<number, L.Marker | null>>({});
 
-  // Explicit, revocable GPS & Routes API states
+  const registerMarkerRef = useCallback((id: number, marker: L.Marker | null) => {
+    if (marker) {
+      markerRefs.current[id] = marker;
+    } else {
+      delete markerRefs.current[id];
+    }
+  }, []);
+
+  // GPS & Free OSRM Driving Route
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [isRouting, setIsRouting] = useState(false);
   const [routingError, setRoutingError] = useState('');
-  const [routeInfo, setRouteInfo] = useState<{
+  const [routeData, setRouteData] = useState<{
+    coordinates: [number, number][];
     distanceMeters: number;
-    durationMillis: number;
+    durationSeconds: number;
     destinationName: string;
     originLabel: string;
+    isApproximate: boolean;
   } | null>(null);
-  const routePolylinesRef = useRef<google.maps.Polyline[]>([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(max-width: 767px)');
     const handler = (e: MediaQueryListEvent) => setIsMobileViewport(e.matches);
-    setIsMobileViewport(mq.matches);
+    setIsMobileViewport((prev) => (prev === mq.matches ? prev : mq.matches));
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Cleanup route polylines on unmount
-  useEffect(() => {
-    return () => {
-      routePolylinesRef.current.forEach((p) => p.setMap(null));
-      routePolylinesRef.current = [];
-    };
-  }, []);
-
-  // Optionally load admin-uploaded custom facilities from Firestore (non-blocking)
+  // Load optional admin custom facilities from localStorage
   useEffect(() => {
     let active = true;
     getFacilitiesFromDb()
@@ -545,366 +635,180 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
     setCameraNonce((n) => n + 1);
   }, []);
 
-  // Fetch a single category for a specific Kota/Kabupaten via Google Maps Places API (New)
-  const fetchRegionCategoriesFromGoogleMaps = useCallback(
-    async (region: SumselRegion, categories: FacilityCategory[], forceRefresh = false) => {
-      if (!placesLib) return;
+  // Optional Live Sync with OpenStreetMap Overpass API (100% Free, No API Key)
+  const syncRegionWithOpenStreetMap = useCallback(async (region: SumselRegion) => {
+    setIsSyncingOsm(true);
+    setSyncError('');
+    setSyncMessage(`Mengambil data tambahan OpenStreetMap untuk ${region.name}...`);
 
-      const missingCategories = categories.filter((cat) => {
-        const cacheKey = `${region.id}:${cat}`;
-        if (!forceRefresh && googlePlacesCache[cacheKey]) return false;
-        if (inFlightKeysRef.current[cacheKey]) return false;
-        return true;
-      });
+    const bounds = getRegionBoundsLiteral(region);
+    const bbox = `${bounds.south.toFixed(4)},${bounds.west.toFixed(4)},${bounds.north.toFixed(4)},${bounds.east.toFixed(4)}`;
+    const overpassQuery = `[out:json][timeout:18];(nwr["amenity"~"hospital|clinic|pharmacy|doctors"](${bbox});nwr["healthcare"~"hospital|clinic|pharmacy|centre"](${bbox}););out center 120;`;
 
-      if (missingCategories.length === 0) return;
+    const endpoints = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+    ];
 
-      missingCategories.forEach((cat) => {
-        inFlightKeysRef.current[`${region.id}:${cat}`] = true;
-      });
-
-      setIsFetchingPlaces(true);
-      setFetchError('');
-      setFetchStatusText(
-        `Mengambil data ${missingCategories.map((c) => CATEGORY_QUERY_CONFIG[c].shortLabel).join(', ')} di ${region.name} dari Google Maps...`
-      );
-
-      const bounds = getRegionBoundsLiteral(region);
-      const updates: Record<string, Facility[]> = {};
-      let encounteredError = '';
-
-      await Promise.all(
-        missingCategories.map(async (cat) => {
-          const cfg = CATEGORY_QUERY_CONFIG[cat];
-          const cacheKey = `${region.id}:${cat}`;
-          try {
-            const request: google.maps.places.SearchByTextRequest & {
-              internalUsageAttributionIds?: string[];
-            } = {
-              textQuery: `${cfg.queryPrefix} ${region.searchLabel}`,
-              fields: [
-                'id',
-                'displayName',
-                'formattedAddress',
-                'location',
-                'businessStatus',
-                'googleMapsURI',
-                'rating',
-                'userRatingCount',
-                'types',
-              ],
-              locationBias: bounds,
-              language: 'id',
-              region: 'ID',
-              maxResultCount: 20,
-              ...(cfg.includedType
-                ? { includedType: cfg.includedType, useStrictTypeFiltering: false }
-                : {}),
-              internalUsageAttributionIds: GMP_ATTRIBUTION_IDS,
-            };
-
-            const { places } = await placesLib.Place.searchByText(request);
-            const mapped: Facility[] = (places || [])
-              .filter((p) => p && p.location && p.displayName)
-              .map((p) => {
-                const lat = typeof p.location!.lat === 'function' ? p.location!.lat() : Number(p.location!.lat);
-                const lng = typeof p.location!.lng === 'function' ? p.location!.lng() : Number(p.location!.lng);
-                const placeId = p.id || `${region.id}_${cat}_${lat}_${lng}`;
-                const displayName = p.displayName || 'Fasilitas Kesehatan';
-                const detectedType = classifyPlaceCategory(displayName, p.types, cat);
-                return {
-                  id: hashPlaceIdToNumber(placeId),
-                  placeId,
-                  name: displayName,
-                  type: detectedType,
-                  address: p.formattedAddress || region.searchLabel,
-                  lat,
-                  lng,
-                  city: region.name,
-                  regionId: region.id,
-                  rating: typeof p.rating === 'number' ? p.rating : undefined,
-                  userRatingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : undefined,
-                  businessStatus: p.businessStatus || undefined,
-                  googleMapsUri: p.googleMapsURI || undefined,
-                  source: 'google_maps',
-                };
-              });
-
-            updates[cacheKey] = mapped;
-          } catch (err) {
-            if (isGoogleMapsQuotaError(err)) {
-              window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
-              encounteredError =
-                'Batas kuota Google Maps Platform tercapai untuk saat ini. Data wilayah yang sudah dimuat tetap dapat dilihat.';
-            } else {
-              console.warn(`Places searchByText failed for ${region.name} (${cat}):`, err);
-              encounteredError = `Sebagian data Google Maps di ${region.name} gagal dimuat. Silakan coba muat ulang.`;
-            }
-          } finally {
-            delete inFlightKeysRef.current[cacheKey];
-          }
-        })
-      );
-
-      if (Object.keys(updates).length > 0) {
-        setGooglePlacesCache((prev) => ({ ...prev, ...updates }));
-      }
-      if (encounteredError) {
-        setFetchError(encounteredError);
-      }
-      setIsFetchingPlaces(false);
-      setFetchStatusText('');
-    },
-    [placesLib, googlePlacesCache]
-  );
-
-  // Automatically fetch live Google Maps Places for the selected Sumatera Selatan region & active category
-  useEffect(() => {
-    if (!placesLib) return;
-    if (selectedRegionId === 'all-loaded') return;
-    const region = getSumselRegionById(selectedRegionId);
-    if (!region) return;
-
-    const categoriesToLoad: FacilityCategory[] =
-      typeFilter === 'Semua' ? ALL_CATEGORIES : [typeFilter];
-
-    fetchRegionCategoriesFromGoogleMaps(region, categoriesToLoad, false);
-  }, [placesLib, selectedRegionId, typeFilter, fetchRegionCategoriesFromGoogleMaps]);
-
-  // Live Google Maps keyword search scoped to active Kota/Kabupaten or seluruh Sumatera Selatan
-  const handleLiveGoogleMapsSearch = useCallback(async () => {
-    const trimmed = searchQuery.trim();
-    if (!trimmed || !placesLib) return;
-
-    const activeRegion =
-      selectedRegionId !== 'all-loaded' ? getSumselRegionById(selectedRegionId) : undefined;
-    const scopeLabel = activeRegion ? activeRegion.searchLabel : 'Sumatera Selatan';
-    const typeHint =
-      typeFilter !== 'Semua' ? `${CATEGORY_QUERY_CONFIG[typeFilter].shortLabel} ` : '';
-
-    setIsFetchingPlaces(true);
-    setFetchError('');
-    setFetchStatusText(`Mencari "${trimmed}" di ${scopeLabel} melalui Google Maps...`);
-
-    try {
-      const request: google.maps.places.SearchByTextRequest & {
-        internalUsageAttributionIds?: string[];
-      } = {
-        textQuery: `${typeHint}${trimmed} ${scopeLabel}`,
-        fields: [
-          'id',
-          'displayName',
-          'formattedAddress',
-          'location',
-          'businessStatus',
-          'googleMapsURI',
-          'rating',
-          'userRatingCount',
-          'types',
-        ],
-        locationBias: activeRegion
-          ? getRegionBoundsLiteral(activeRegion)
-          : { north: -1.6, south: -4.95, east: 106.2, west: 102.05 },
-        language: 'id',
-        region: 'ID',
-        maxResultCount: 20,
-        internalUsageAttributionIds: GMP_ATTRIBUTION_IDS,
-      };
-
-      const { places } = await placesLib.Place.searchByText(request);
-      const fallbackCat: FacilityCategory = typeFilter === 'Semua' ? 'Hospital' : typeFilter;
-
-      const mapped: Facility[] = (places || [])
-        .filter((p) => p && p.location && p.displayName)
-        .map((p) => {
-          const lat = typeof p.location!.lat === 'function' ? p.location!.lat() : Number(p.location!.lat);
-          const lng = typeof p.location!.lng === 'function' ? p.location!.lng() : Number(p.location!.lng);
-          const placeId = p.id || `search_${lat}_${lng}`;
-          const displayName = p.displayName || trimmed;
-          const address = p.formattedAddress || scopeLabel;
-          // Try inferring region from formattedAddress if searching province-wide
-          const matchedRegion =
-            activeRegion ||
-            SUMSEL_REGIONS.find(
-              (r) =>
-                address.toLowerCase().includes(r.shortName.toLowerCase()) ||
-                address.toLowerCase().includes(r.capital.toLowerCase())
-            );
-
-          return {
-            id: hashPlaceIdToNumber(placeId),
-            placeId,
-            name: displayName,
-            type: classifyPlaceCategory(displayName, p.types, fallbackCat),
-            address,
-            lat,
-            lng,
-            city: matchedRegion?.name || 'Sumatera Selatan',
-            regionId: matchedRegion?.id,
-            rating: typeof p.rating === 'number' ? p.rating : undefined,
-            userRatingCount: typeof p.userRatingCount === 'number' ? p.userRatingCount : undefined,
-            businessStatus: p.businessStatus || undefined,
-            googleMapsUri: p.googleMapsURI || undefined,
-            source: 'google_maps',
-          };
-        });
-
-      setCustomSearchResults(mapped);
-      setActiveCustomSearchLabel(`Hasil Google Maps: "${trimmed}" (${mapped.length})`);
-
-      if (mapped.length > 0) {
-        flyToLocation(mapped[0].lat, mapped[0].lng, 13);
-        setSelectedFacilityId(mapped[0].id);
-        setInfoWindowFacilityId(mapped[0].id);
-      }
-    } catch (err) {
-      if (isGoogleMapsQuotaError(err)) {
-        window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
-        setFetchError('Batas kuota pencarian Google Maps tercapai.');
-      } else {
-        setFetchError('Gagal melakukan pencarian langsung di Google Maps. Periksa koneksi Anda.');
-      }
-    } finally {
-      setIsFetchingPlaces(false);
-      setFetchStatusText('');
-    }
-  }, [searchQuery, placesLib, selectedRegionId, typeFilter, flyToLocation]);
-
-  // On-demand Place Details (phone, opening hours, website) when user inspects a specific place
-  const loadOnDemandPlaceDetails = useCallback(
-    async (facility: Facility) => {
-      if (!placesLib || !facility.placeId) return;
-      if (placeDetailsCache[facility.placeId]) return;
-
-      setLoadingDetailsPlaceId(facility.placeId);
+    let elements: any[] | null = null;
+    for (const url of endpoints) {
       try {
-        const place = new placesLib.Place({ id: facility.placeId });
-        await place.fetchFields({
-          fields: ['nationalPhoneNumber', 'regularOpeningHours', 'websiteURI'],
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 14000);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: `data=${encodeURIComponent(overpassQuery)}`,
+          signal: controller.signal,
         });
-        const details = {
-          contact: place.nationalPhoneNumber || undefined,
-          openingHours: place.regularOpeningHours?.weekdayDescriptions || undefined,
-          websiteUri: place.websiteURI || undefined,
-        };
-        setPlaceDetailsCache((prev) => ({
-          ...prev,
-          [facility.placeId!]: details,
-        }));
-      } catch (err) {
-        if (isGoogleMapsQuotaError(err)) {
-          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
-        }
-      } finally {
-        setLoadingDetailsPlaceId(null);
-      }
-    },
-    [placesLib, placeDetailsCache]
-  );
-
-  // Select region handler: pans map smoothly to chosen Kota/Kabupaten
-  const handleSelectRegion = useCallback(
-    (regionId: string) => {
-      setSelectedRegionId(regionId);
-      setCustomSearchResults([]);
-      setActiveCustomSearchLabel('');
-      setSelectedFacilityId(null);
-      setInfoWindowFacilityId(null);
-
-      if (regionId === 'all-loaded') {
-        flyToLocation(SUMSEL_PROVINCE_CENTER.lat, SUMSEL_PROVINCE_CENTER.lng, 8);
-        return;
-      }
-      const region = getSumselRegionById(regionId);
-      if (region) {
-        flyToLocation(region.center.lat, region.center.lng, region.zoom);
-      }
-    },
-    [flyToLocation]
-  );
-
-  // Deduplicated pool of facilities for the currently selected region (or all loaded regions)
-  const regionFacilities = useMemo(() => {
-    const dedupRecord: Record<string, Facility> = {};
-
-    const addItem = (item: Facility) => {
-      const key = item.placeId || `id_${item.id}`;
-      const detail = item.placeId ? placeDetailsCache[item.placeId] : undefined;
-      dedupRecord[key] = detail
-        ? {
-            ...item,
-            contact: detail.contact || item.contact,
-            openingHours: detail.openingHours || item.openingHours,
-            websiteUri: detail.websiteUri || item.websiteUri,
+        clearTimeout(timer);
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json?.elements)) {
+            elements = json.elements;
+            break;
           }
-        : item;
+        }
+      } catch {
+        // Try next mirror
+      }
+    }
+
+    if (!elements) {
+      setSyncError(
+        `Server OpenStreetMap sedang sibuk untuk ${region.shortName}. Basis data lokal Sumatera Selatan tetap aktif penuh.`
+      );
+      setIsSyncingOsm(false);
+      setSyncMessage('');
+      return;
+    }
+
+    const mapped: Facility[] = [];
+    const seenKeys = new Set<string>();
+
+    for (const el of elements) {
+      const tags = el.tags || {};
+      const rawName = (tags.name || tags['name:id'] || '').trim();
+      if (!rawName) continue;
+
+      const lat = typeof el.lat === 'number' ? el.lat : el.center?.lat;
+      const lng = typeof el.lon === 'number' ? el.lon : el.center?.lon;
+      if (typeof lat !== 'number' || typeof lng !== 'number') continue;
+
+      const norm = normalizeName(rawName);
+      if (seenKeys.has(norm)) continue;
+      seenKeys.add(norm);
+
+      const addressParts = [
+        tags['addr:street'],
+        tags['addr:housenumber'],
+        tags['addr:suburb'] || tags['addr:village'],
+        tags['addr:city'] || region.name,
+      ].filter(Boolean);
+
+      const detectedType = classifyOsmElement(tags);
+      const osmId = `${el.type}/${el.id}`;
+
+      mapped.push({
+        id: hashStringToNumber(`osm_${osmId}`),
+        osmId,
+        name: rawName,
+        type: detectedType,
+        kelas:
+          detectedType === 'Hospital'
+            ? 'Rumah Sakit · OpenStreetMap'
+            : detectedType === 'Puskesmas'
+            ? 'Puskesmas · OpenStreetMap'
+            : detectedType === 'Pharmacy'
+            ? 'Apotek · OpenStreetMap'
+            : 'Klinik · OpenStreetMap',
+        address: addressParts.length > 0 ? addressParts.join(', ') : region.searchLabel,
+        lat,
+        lng,
+        contact: tags.phone || tags['contact:phone'] || undefined,
+        websiteUri: tags.website || tags['contact:website'] || undefined,
+        city: region.name,
+        regionId: region.id,
+        source: 'osm',
+      });
+    }
+
+    setOsmEnrichedByRegion((prev) => ({
+      ...prev,
+      [region.id]: mapped,
+    }));
+
+    setSyncMessage(
+      mapped.length > 0
+        ? `Berhasil memuat ${mapped.length} titik tambahan OpenStreetMap di ${region.shortName}.`
+        : `Tidak ada titik tambahan baru di OpenStreetMap untuk ${region.shortName}.`
+    );
+    setTimeout(() => setSyncMessage(''), 4000);
+    setIsSyncingOsm(false);
+  }, []);
+
+  // Merge built-in curated Sumatera Selatan database + optional OSM sync + admin custom CSV
+  const allProvinceFacilities = useMemo(() => {
+    const merged: Facility[] = [...SUMSEL_CURATED_FACILITIES];
+    const existingNormNames = new Map<string, { lat: number; lng: number }[]>();
+
+    const register = (f: Facility) => {
+      const key = normalizeName(f.name);
+      const arr = existingNormNames.get(key) || [];
+      arr.push({ lat: f.lat, lng: f.lng });
+      existingNormNames.set(key, arr);
     };
 
-    if (customSearchResults.length > 0 && activeCustomSearchLabel) {
-      customSearchResults.forEach(addItem);
-    } else {
-      Object.entries(googlePlacesCache).forEach(([cacheKey, list]) => {
-        const regionIdFromKey = cacheKey.split(':')[0];
-        if (selectedRegionId === 'all-loaded' || regionIdFromKey === selectedRegionId) {
-          list.forEach(addItem);
+    merged.forEach(register);
+
+    // Add OSM enriched items without duplicating curated entries nearby
+    Object.values(osmEnrichedByRegion).forEach((list) => {
+      list.forEach((item) => {
+        const key = normalizeName(item.name);
+        const sameNames = existingNormNames.get(key);
+        if (sameNames && sameNames.some((p) => calculateDistanceKm(p.lat, p.lng, item.lat, item.lng) < 1.5)) {
+          return;
         }
-      });
-
-      // Also include any admin-uploaded custom facilities matching selected region
-      adminFacilities.forEach((f) => {
-        if (
-          selectedRegionId === 'all-loaded' ||
-          f.regionId === selectedRegionId ||
-          (f.city &&
-            getSumselRegionById(selectedRegionId)?.shortName &&
-            f.city.toLowerCase().includes(getSumselRegionById(selectedRegionId)!.shortName.toLowerCase()))
-        ) {
-          addItem(f);
-        }
-      });
-    }
-
-    return Object.values(dedupRecord);
-  }, [
-    googlePlacesCache,
-    customSearchResults,
-    activeCustomSearchLabel,
-    selectedRegionId,
-    placeDetailsCache,
-    adminFacilities,
-  ]);
-
-  // All facilities loaded across the entire province so far (for regional breakdown & badges)
-  const allLoadedProvinceFacilities = useMemo(() => {
-    const dedup: Record<string, Facility> = {};
-    Object.values(googlePlacesCache).forEach((list) => {
-      list.forEach((f) => {
-        dedup[f.placeId || `id_${f.id}`] = f;
+        merged.push(item);
+        register(item);
       });
     });
-    return Object.values(dedup);
-  }, [googlePlacesCache]);
 
-  const loadedCountByRegion = useMemo(() => {
+    // Add Admin CSV facilities
+    adminFacilities.forEach((f) => {
+      const inferredRegion =
+        f.regionId ||
+        SUMSEL_REGIONS.find(
+          (r) =>
+            (f.city || '').toLowerCase().includes(r.shortName.toLowerCase()) ||
+            (f.address || '').toLowerCase().includes(r.shortName.toLowerCase())
+        )?.id ||
+        'kota-palembang';
+      merged.push({ ...f, regionId: inferredRegion });
+    });
+
+    return merged;
+  }, [osmEnrichedByRegion, adminFacilities]);
+
+  const countByRegion = useMemo(() => {
     const counts: Record<string, number> = {};
-    const seenByRegion: Record<string, Record<string, boolean>> = {};
-    Object.entries(googlePlacesCache).forEach(([cacheKey, list]) => {
-      const regionId = cacheKey.split(':')[0];
-      if (!seenByRegion[regionId]) seenByRegion[regionId] = {};
-      list.forEach((f) => {
-        seenByRegion[regionId][f.placeId || String(f.id)] = true;
-      });
-    });
-    Object.entries(seenByRegion).forEach(([rId, idMap]) => {
-      counts[rId] = Object.keys(idMap).length;
+    allProvinceFacilities.forEach((f) => {
+      const rId = f.regionId || 'kota-palembang';
+      counts[rId] = (counts[rId] || 0) + 1;
     });
     return counts;
-  }, [googlePlacesCache]);
+  }, [allProvinceFacilities]);
 
   const activeRegionObj = useMemo(
-    () => (selectedRegionId === 'all-loaded' ? null : getSumselRegionById(selectedRegionId) || null),
+    () => (selectedRegionId === 'all-sumsel' ? null : getSumselRegionById(selectedRegionId) || null),
     [selectedRegionId]
   );
+
+  // Facilities scoped to active Kota/Kabupaten or Seluruh Sumatera Selatan
+  const regionFacilities = useMemo(() => {
+    if (selectedRegionId === 'all-sumsel') return allProvinceFacilities;
+    return allProvinceFacilities.filter((f) => f.regionId === selectedRegionId);
+  }, [allProvinceFacilities, selectedRegionId]);
 
   const referenceCoords = useMemo(() => {
     if (userLocation) return userLocation;
@@ -912,17 +816,34 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
     return RSUD_BARI_COORDS;
   }, [userLocation, activeRegionObj]);
 
-  // Local text filter on top of loaded Google Maps places
-  const searchFilteredFacilities = useMemo(() => {
+  // Text search filter (searches across current region; if user types and current region has 0 matches, searches whole province automatically!)
+  const { searchFilteredFacilities, expandedToProvinceSearch } = useMemo(() => {
     const q = (deferredSearchQuery || '').trim().toLowerCase();
-    if (!q || activeCustomSearchLabel) return regionFacilities;
-    return regionFacilities.filter(
+    if (!q) {
+      return { searchFilteredFacilities: regionFacilities, expandedToProvinceSearch: false };
+    }
+    const localMatches = regionFacilities.filter(
       (f) =>
         f.name.toLowerCase().includes(q) ||
         f.address.toLowerCase().includes(q) ||
-        (f.city || '').toLowerCase().includes(q)
+        (f.city || '').toLowerCase().includes(q) ||
+        (f.kelas || '').toLowerCase().includes(q)
     );
-  }, [regionFacilities, deferredSearchQuery, activeCustomSearchLabel]);
+    if (localMatches.length > 0 || selectedRegionId === 'all-sumsel') {
+      return { searchFilteredFacilities: localMatches, expandedToProvinceSearch: false };
+    }
+    const provinceMatches = allProvinceFacilities.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.address.toLowerCase().includes(q) ||
+        (f.city || '').toLowerCase().includes(q) ||
+        (f.kelas || '').toLowerCase().includes(q)
+    );
+    return {
+      searchFilteredFacilities: provinceMatches,
+      expandedToProvinceSearch: provinceMatches.length > 0,
+    };
+  }, [regionFacilities, allProvinceFacilities, deferredSearchQuery, selectedRegionId]);
 
   const categoryCounts = useMemo(
     () => ({
@@ -944,60 +865,70 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
       }));
 
     return list.sort((a, b) => {
-      if (sortBy === 'rating') {
-        return (b.rating || 0) - (a.rating || 0);
-      }
-      if (sortBy === 'name') {
-        return a.name.localeCompare(b.name);
-      }
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
       return a.distanceKm - b.distanceKm;
     });
   }, [searchFilteredFacilities, typeFilter, referenceCoords, sortBy]);
 
-  const selectedFacility = useMemo(() => {
-    if (selectedFacilityId === null) return null;
-    const found = filteredFacilities.find((f) => f.id === selectedFacilityId);
-    if (found) return found;
-    const fallback = regionFacilities.find((f) => f.id === selectedFacilityId);
-    if (!fallback) return null;
-    return {
-      ...fallback,
-      distanceKm: calculateDistanceKm(
-        referenceCoords.lat,
-        referenceCoords.lng,
-        fallback.lat,
-        fallback.lng
-      ),
-    };
-  }, [filteredFacilities, regionFacilities, selectedFacilityId, referenceCoords]);
-
-  const infoWindowFacility = useMemo(() => {
-    if (infoWindowFacilityId === null) return null;
-    return filteredFacilities.find((f) => f.id === infoWindowFacilityId) || null;
-  }, [filteredFacilities, infoWindowFacilityId]);
-
-  // Charts Data
+  // Charts data
   const pieDataCategory = useMemo(
     () =>
       [
         { name: 'Rumah Sakit', value: categoryCounts.Hospital, color: '#ef4444' },
         { name: 'Puskesmas', value: categoryCounts.Puskesmas, color: '#f97316' },
-        { name: 'Klinik', value: categoryCounts.Clinic, color: '#3b82f6' },
-        { name: 'Apotek', value: categoryCounts.Pharmacy, color: '#10b981' },
+        { name: 'Klinik', value: categoryCounts.Clinic, color: '#2563eb' },
+        { name: 'Apotek', value: categoryCounts.Pharmacy, color: '#059669' },
       ].filter((d) => d.value > 0),
     [categoryCounts]
   );
 
-  const barDataByRegion = useMemo(() => {
-    return SUMSEL_REGIONS.map((r) => ({
-      name: r.shortName,
-      value: loadedCountByRegion[r.id] || 0,
-    }))
-      .filter((item) => item.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [loadedCountByRegion]);
+  const barDataByRegion = useMemo(
+    () =>
+      SUMSEL_REGIONS.map((r) => ({
+        name: r.shortName,
+        value: countByRegion[r.id] || 0,
+      })).sort((a, b) => b.value - a.value),
+    [countByRegion]
+  );
 
-  // Explicit, user-initiated GPS detection (revocable consent)
+  const handleSelectRegion = useCallback(
+    (regionId: string) => {
+      setSelectedRegionId(regionId);
+      setSelectedFacilityId(null);
+      setSyncError('');
+      setRouteData(null);
+
+      if (regionId === 'all-sumsel') {
+        flyToLocation(SUMSEL_PROVINCE_CENTER.lat, SUMSEL_PROVINCE_CENTER.lng, 8);
+        return;
+      }
+      const region = getSumselRegionById(regionId);
+      if (region) {
+        flyToLocation(region.center.lat, region.center.lng, region.zoom);
+      }
+    },
+    [flyToLocation]
+  );
+
+  const handleSelectFacility = useCallback(
+    (facility: Facility & { distanceKm: number }, shouldFly = true) => {
+      setSelectedFacilityId(facility.id);
+      setPanelTab('list');
+      setIsDesktopPanelOpen(true);
+      setMobileDrawerState((prev) => (prev === 'minimized' ? 'half' : prev));
+      if (shouldFly) {
+        flyToLocation(facility.lat, facility.lng, 15);
+      }
+      setTimeout(() => {
+        const marker = markerRefs.current[facility.id];
+        if (marker) {
+          marker.openPopup();
+        }
+      }, 350);
+    },
+    [flyToLocation]
+  );
+
   const locateUser = () => {
     setIsLocating(true);
     setRoutingError('');
@@ -1009,7 +940,7 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
             lng: position.coords.longitude,
           };
           setUserLocation(coords);
-          flyToLocation(coords.lat, coords.lng, 15);
+          flyToLocation(coords.lat, coords.lng, 14);
           setIsLocating(false);
         },
         () => {
@@ -1024,95 +955,64 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
     }
   };
 
-  const clearRoute = useCallback(() => {
-    routePolylinesRef.current.forEach((p) => p.setMap(null));
-    routePolylinesRef.current = [];
-    setRouteInfo(null);
-    setRoutingError('');
-  }, []);
-
-  // Modern Google Maps Routes API (`Route.computeRoutes`) via `useMapsLibrary('routes')`
+  // Free Road Routing via OSRM (Open Source Routing Machine) with automatic direct-line fallback
   const computeRouteToFacility = useCallback(
     async (destination: { lat: number; lng: number }, facilityName: string) => {
-      if (!routesLib || !map) {
-        setRoutingError('Layanan rute Google Maps sedang dimuat. Silakan coba sesaat lagi.');
-        return;
-      }
-
       const origin = userLocation || RSUD_BARI_COORDS;
       const originLabel = userLocation ? 'Lokasi GPS Anda' : 'RSUD Palembang BARI';
 
-      clearRoute();
       setIsRouting(true);
+      setRoutingError('');
+      setRouteData(null);
 
       try {
-        const request = {
-          origin,
-          destination,
-          travelMode: 'DRIVING',
-          fields: ['path', 'distanceMeters', 'durationMillis', 'viewport', 'legs'],
-        };
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 9000);
+        const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
 
-        const response = await (routesLib.Route as any).computeRoutes(request);
-        const routes = response?.routes;
-
-        if (!routes || routes.length === 0) {
-          setRoutingError('Rute jalan tidak ditemukan menuju faskes ini.');
-          return;
+        if (res.ok) {
+          const data = await res.json();
+          const primary = data?.routes?.[0];
+          if (primary?.geometry?.coordinates?.length >= 2) {
+            const latLngs: [number, number][] = primary.geometry.coordinates.map(
+              ([lng, lat]: [number, number]) => [lat, lng]
+            );
+            setRouteData({
+              coordinates: latLngs,
+              distanceMeters: primary.distance || 0,
+              durationSeconds: primary.duration || 0,
+              destinationName: facilityName,
+              originLabel,
+              isApproximate: false,
+            });
+            setIsRouting(false);
+            return;
+          }
         }
-
-        const primaryRoute = routes[0];
-        const polylines: google.maps.Polyline[] = primaryRoute.createPolylines();
-        polylines.forEach((poly) => {
-          poly.setOptions({
-            strokeColor: '#0d9488',
-            strokeWeight: 6,
-            strokeOpacity: 0.9,
-          });
-          poly.setMap(map);
-        });
-        routePolylinesRef.current = polylines;
-
-        if (primaryRoute.viewport) {
-          map.fitBounds(primaryRoute.viewport);
-        }
-
-        setRouteInfo({
-          distanceMeters: primaryRoute.distanceMeters ?? 0,
-          durationMillis: primaryRoute.durationMillis ?? 0,
+        throw new Error('OSRM unavailable');
+      } catch {
+        // Resilient direct-line estimation fallback (zero broken UX)
+        const km = calculateDistanceKm(origin.lat, origin.lng, destination.lat, destination.lng);
+        const estRoadKm = km * 1.25;
+        const estSeconds = (estRoadKm / 42) * 3600;
+        setRouteData({
+          coordinates: [
+            [origin.lat, origin.lng],
+            [destination.lat, destination.lng],
+          ],
+          distanceMeters: Math.round(estRoadKm * 1000),
+          durationSeconds: Math.round(estSeconds),
           destinationName: facilityName,
           originLabel,
+          isApproximate: true,
         });
-      } catch (err) {
-        if (isGoogleMapsQuotaError(err)) {
-          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
-          setRoutingError('Kuota Routes API Google Maps tercapai. Gunakan tombol "Google Maps" untuk navigasi eksternal.');
-        } else {
-          console.error('Error computing Google Maps route:', err);
-          setRoutingError('Gagal menghitung rute melalui Google Maps Routes API.');
-        }
       } finally {
         setIsRouting(false);
       }
     },
-    [routesLib, map, userLocation, clearRoute]
-  );
-
-  const handleSelectFacility = useCallback(
-    (facility: Facility & { distanceKm: number }, shouldFly = true) => {
-      setSelectedFacilityId(facility.id);
-      setInfoWindowFacilityId(facility.id);
-      setPanelTab('list');
-      setIsDesktopPanelOpen(true);
-      setMobileDrawerState((prev) => (prev === 'minimized' ? 'half' : prev));
-      if (shouldFly) {
-        flyToLocation(facility.lat, facility.lng, 16);
-      }
-      if (facility.placeId) {
-        void loadOnDemandPlaceDetails(facility);
-      }
-    },
-    [flyToLocation, loadOnDemandPlaceDetails]
+    [userLocation]
   );
 
   const handleCopyCoords = (lat: number, lng: number, id: number) => {
@@ -1129,14 +1029,15 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        id: 101,
+        id: 90001,
         name: 'Contoh RS Daerah',
         type: 'Hospital',
         address: 'Jl. Contoh No. 1, Palembang, Sumatera Selatan',
         lat: -2.9761,
         lng: 104.7754,
-        contact: '0711-000000',
+        contact: '(0711) 000000',
         city: 'Kota Palembang',
+        regionId: 'kota-palembang',
       },
     ];
     const ws = XLSX.utils.json_to_sheet(template);
@@ -1147,7 +1048,13 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
 
   const validateAndSetAdminData = async (parsed: any[]) => {
     if (parsed.length > 0 && parsed[0].id !== undefined && parsed[0].name !== undefined) {
-      const newData: Facility[] = parsed.map((item) => ({ ...item, source: 'admin', locked: false }));
+      const newData: Facility[] = parsed.map((item) => ({
+        ...item,
+        lat: Number(item.lat),
+        lng: Number(item.lng),
+        source: 'admin',
+        locked: false,
+      }));
       setAdminFacilities((prev) => {
         const filtered = prev.filter((p) => !newData.some((n) => n.id === p.id));
         return [...filtered, ...newData];
@@ -1157,7 +1064,9 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
       setCsvFile(null);
       await saveFacilitiesToDb(newData);
     } else {
-      setCsvError('Format file tidak valid. Pastikan baris pertama berisi kolom id, name, type, address, lat, lng.');
+      setCsvError(
+        'Format file tidak valid. Pastikan baris pertama berisi kolom id, name, type, address, lat, lng.'
+      );
     }
   };
 
@@ -1190,975 +1099,921 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
     }
   };
 
-  const currentMapStyleLabel =
-    MAP_STYLE_OPTIONS.find((s) => s.id === mapStyle)?.label || 'Peta Jalan';
-
-  const loadedRegionsCount = Object.keys(loadedCountByRegion).length;
+  const activeTileConfig = TILE_LAYERS[mapStyle];
+  const originForExternalNav = userLocation || RSUD_BARI_COORDS;
 
   const renderPanelContent = () => (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Sub-navigation Tabs */}
-      <div className="px-3.5 pt-2.5 pb-2 border-b border-slate-200/80 bg-white/90 shrink-0 flex flex-col gap-2">
+      <div className="px-3.5 pt-2.5 pb-2 border-b border-slate-200/80 bg-white shrink-0 flex flex-col gap-2">
         <div className="grid grid-cols-3 p-1 bg-slate-100 rounded-xl w-full gap-0.5">
           <button
             type="button"
             onClick={() => setPanelTab('list')}
-            className={`min-h-[34px] px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap ${
               panelTab === 'list'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <ListFilter className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-            <span>Faskes ({filteredFacilities.length})</span>
+            <ListFilter className="w-3.5 h-3.5 shrink-0" />
+            <span>Daftar ({filteredFacilities.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setPanelTab('regions')}
-            className={`min-h-[34px] px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap ${
               panelTab === 'regions'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <MapPinned className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <MapPinned className="w-3.5 h-3.5 shrink-0" />
             <span>17 Wilayah</span>
           </button>
           <button
             type="button"
             onClick={() => setPanelTab('stats')}
-            className={`min-h-[34px] px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap ${
               panelTab === 'stats'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <BarChart3 className="w-3.5 h-3.5 shrink-0" />
             <span>Statistik</span>
           </button>
         </div>
 
-        {/* Active Region Banner inside panel */}
-        <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-teal-50/80 border border-teal-200/70 rounded-xl">
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block leading-none">
-              Wilayah Aktif · Google Maps Live
-            </span>
-            <span className="text-xs font-extrabold text-slate-900 truncate block mt-0.5">
-              {activeRegionObj
-                ? `${activeRegionObj.name} (${activeRegionObj.capital})`
-                : `Sumatera Selatan (${loadedRegionsCount}/17 Wilayah Dimuat)`}
-            </span>
-          </div>
-          {activeRegionObj && (
-            <button
-              type="button"
-              onClick={() =>
-                fetchRegionCategoriesFromGoogleMaps(
-                  activeRegionObj,
-                  typeFilter === 'Semua' ? ALL_CATEGORIES : [typeFilter],
-                  true
-                )
-              }
-              disabled={isFetchingPlaces}
-              className="p-1.5 rounded-lg bg-white hover:bg-teal-100 text-teal-700 border border-teal-200 transition-colors cursor-pointer disabled:opacity-50 shrink-0"
-              title={`Muat ulang data Google Maps untuk ${activeRegionObj.name}`}
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isFetchingPlaces ? 'animate-spin' : ''}`} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait" initial={false}>
-        {panelTab === 'list' ? (
-          <motion.div
-            key="panel-list"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.16 }}
-            className="flex flex-col flex-1 min-h-0"
-          >
-            {/* Sort & Reference Bar */}
-            <div className="px-3.5 py-2 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between gap-2 text-[11px] text-slate-500 shrink-0">
-              <span className="truncate">
-                Acuan:{' '}
-                <strong className="text-slate-700">
-                  {userLocation ? 'GPS Anda' : activeRegionObj ? activeRegionObj.shortName : 'RSUD BARI'}
-                </strong>
+        {/* Sort & Optional OpenStreetMap Live Sync Bar */}
+        {panelTab === 'list' && (
+          <div className="flex items-center justify-between gap-2 text-[11px] text-slate-600">
+            <div className="flex items-center gap-1.5 min-w-0 truncate">
+              <span className="font-semibold text-slate-800 truncate">
+                {activeRegionObj ? activeRegionObj.name : 'Seluruh Sumatera Selatan'}
               </span>
+              {expandedToProvinceSearch && (
+                <span className="text-teal-700 font-medium shrink-0">· se-Sumsel</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {activeRegionObj && (
+                <button
+                  type="button"
+                  onClick={() => void syncRegionWithOpenStreetMap(activeRegionObj)}
+                  disabled={isSyncingOsm}
+                  title="Muat tambahan fasilitas dari OpenStreetMap (Overpass API)"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-teal-200 bg-teal-50/80 hover:bg-teal-100/70 text-teal-800 font-semibold transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isSyncingOsm ? 'animate-spin' : ''}`} />
+                  <span>{osmEnrichedByRegion[activeRegionObj.id] ? 'Perbarui OSM' : '+ OSM'}</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() =>
-                  setSortBy((prev) =>
-                    prev === 'distance' ? 'rating' : prev === 'rating' ? 'name' : 'distance'
-                  )
-                }
-                className="inline-flex items-center gap-1 font-bold text-teal-700 hover:text-teal-800 bg-teal-50/80 hover:bg-teal-100/80 px-2 py-1 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                onClick={() => setSortBy((prev) => (prev === 'distance' ? 'name' : 'distance'))}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition-colors whitespace-nowrap"
               >
-                <ArrowUpDown className="w-3 h-3" />
-                <span>
-                  {sortBy === 'distance' ? 'Terdekat' : sortBy === 'rating' ? 'Rating Tertinggi' : 'Abjad A-Z'}
-                </span>
+                <ArrowUpDown className="w-3 h-3 text-slate-500" />
+                <span>{sortBy === 'distance' ? 'Terdekat' : 'A-Z'}</span>
               </button>
             </div>
+          </div>
+        )}
+      </div>
 
-            {activeCustomSearchLabel && (
-              <div className="px-3.5 py-2 bg-indigo-50 border-b border-indigo-200/70 flex items-center justify-between gap-2 text-[11px]">
-                <span className="font-bold text-indigo-900 truncate">{activeCustomSearchLabel}</span>
+      {/* Sync / Error Notices */}
+      {(syncMessage || syncError || routingError) && (
+        <div
+          className={`px-3.5 py-2 text-[11px] border-b flex items-start justify-between gap-2 shrink-0 ${
+            syncError || routingError
+              ? 'bg-amber-50 border-amber-200 text-amber-900'
+              : 'bg-teal-50 border-teal-200 text-teal-900'
+          }`}
+        >
+          <div className="flex items-start gap-1.5 leading-snug">
+            {isSyncingOsm ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 mt-0.5 text-teal-700" />
+            ) : (
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            )}
+            <span>{routingError || syncError || syncMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSyncError('');
+              setSyncMessage('');
+              setRoutingError('');
+            }}
+            className="text-current opacity-60 hover:opacity-100 shrink-0"
+            aria-label="Tutup pemberitahuan"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* TAB 1: FACILITY DIRECTORY LIST */}
+      {panelTab === 'list' && (
+        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100 bg-white">
+          {filteredFacilities.length === 0 ? (
+            <div className="p-8 text-center">
+              <MapPin className="w-8 h-8 text-slate-300 mx-auto mb-2.5" />
+              <p className="text-sm font-semibold text-slate-800">Tidak ada faskes yang cocok</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Coba ubah kata kunci pencarian, kategori, atau pilih wilayah Kota/Kabupaten lain.
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    setCustomSearchResults([]);
-                    setActiveCustomSearchLabel('');
                     setSearchQuery('');
+                    setTypeFilter('Semua');
                   }}
-                  className="text-indigo-700 hover:text-indigo-900 font-bold underline shrink-0 cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 >
-                  Kembali
+                  Reset Filter
                 </button>
+                {activeRegionObj && (
+                  <button
+                    type="button"
+                    onClick={() => void syncRegionWithOpenStreetMap(activeRegionObj)}
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors"
+                  >
+                    Cari di OpenStreetMap
+                  </button>
+                )}
               </div>
-            )}
+            </div>
+          ) : (
+            filteredFacilities.map((facility) => {
+              const isSelected = selectedFacilityId === facility.id;
+              const meta = getTypeMeta(facility.type);
+              const isRSUDBari = facility.name.toUpperCase().includes('PALEMBANG BARI');
 
-            {/* Selected Facility Detail Card */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
-              {selectedFacility && (
-                <div className="p-3.5 bg-gradient-to-b from-teal-50/70 via-white to-white border-b-2 border-teal-500/30 space-y-2.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {(() => {
-                          const tm = getTypeLabel(selectedFacility.type);
-                          return (
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${tm.bg} ${tm.text}`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${tm.dot}`} />
-                              {tm.label}
-                            </span>
-                          );
-                        })()}
-                        {selectedFacility.city && (
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold">
-                            {selectedFacility.city}
+              return (
+                <div
+                  key={`${facility.source || 'b'}_${facility.id}`}
+                  onClick={() => handleSelectFacility(facility, true)}
+                  className={`px-4 py-3 cursor-pointer transition-colors ${
+                    isSelected ? 'bg-teal-50/75' : 'hover:bg-slate-50/90'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 mb-0.5">
+                        <span className={`font-semibold ${meta.textClass}`}>{meta.label}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="truncate">{facility.city || 'Sumatera Selatan'}</span>
+                        {facility.source === 'osm' && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="text-teal-700">OSM</span>
+                          </>
+                        )}
+                      </div>
+                      <h4 className="text-[13px] font-bold text-slate-900 leading-snug">
+                        {facility.name}
+                        {isRSUDBari && (
+                          <span className="ml-1.5 text-[11px] font-semibold text-rose-600">
+                            (Rujukan Utama)
                           </span>
                         )}
-                        {selectedFacility.rating !== undefined && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
-                            <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                            {selectedFacility.rating.toFixed(1)}
-                            {selectedFacility.userRatingCount ? ` (${selectedFacility.userRatingCount})` : ''}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-sm font-extrabold text-slate-900 leading-snug">
-                        {selectedFacility.name}
-                      </h3>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedFacilityId(null);
-                        setInfoWindowFacilityId(null);
-                      }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
-                      title="Tutup detail"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 space-y-2 text-[11px]">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                      <span className="text-slate-700 leading-relaxed">{selectedFacility.address}</span>
-                    </div>
-
-                    {loadingDetailsPlaceId === selectedFacility.placeId && (
-                      <div className="flex items-center gap-1.5 text-teal-700 font-semibold pt-1 border-t border-slate-100">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        <span>Memuat nomor telepon & jam buka dari Google Maps...</span>
-                      </div>
-                    )}
-
-                    {selectedFacility.contact && (
-                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
-                        <div className="flex items-center gap-1.5 text-slate-800 font-mono font-bold">
-                          <Phone className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                          <span>{selectedFacility.contact}</span>
-                        </div>
-                        <a
-                          href={`tel:${selectedFacility.contact.replace(/[^0-9+]/g, '')}`}
-                          className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold"
-                        >
-                          Hubungi
-                        </a>
-                      </div>
-                    )}
-
-                    {selectedFacility.openingHours && selectedFacility.openingHours.length > 0 && (
-                      <div className="pt-1.5 border-t border-slate-100 space-y-1">
-                        <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                          <Clock className="w-3.5 h-3.5 text-teal-600" />
-                          <span>Jam Operasional (Google Maps)</span>
-                        </div>
-                        <div className="pl-5 space-y-0.5 text-[10px] text-slate-600">
-                          {selectedFacility.openingHours.slice(0, 3).map((line, i) => (
-                            <div key={i}>{line}</div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
-                      <span className="font-mono tabular-nums text-[10px] text-slate-500">
-                        {selectedFacility.lat.toFixed(6)}, {selectedFacility.lng.toFixed(6)} ·{' '}
-                        <strong className="text-teal-700">
-                          {selectedFacility.distanceKm < 1
-                            ? `${Math.round(selectedFacility.distanceKm * 1000)} m`
-                            : `${selectedFacility.distanceKm.toFixed(1)} km`}
-                        </strong>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleCopyCoords(selectedFacility.lat, selectedFacility.lng, selectedFacility.id)
-                        }
-                        className="text-teal-600 hover:text-teal-700 font-bold text-[10px] inline-flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedCoordsId === selectedFacility.id ? (
-                          <Check className="w-3 h-3" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                        <span>{copiedCoordsId === selectedFacility.id ? 'Tersalin' : 'Salin'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        computeRouteToFacility(
-                          { lat: selectedFacility.lat, lng: selectedFacility.lng },
-                          selectedFacility.name
-                        )
-                      }
-                      disabled={isRouting}
-                      className="min-h-[36px] px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-60"
-                    >
-                      {isRouting ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Navigation className="w-3.5 h-3.5" />
-                      )}
-                      <span>Rute Navigasi</span>
-                    </button>
-                    <a
-                      href={
-                        selectedFacility.googleMapsUri ||
-                        `https://www.google.com/maps/search/?api=1&query=${selectedFacility.lat},${selectedFacility.lng}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Google Maps</span>
-                    </a>
-                  </div>
-
-                  {selectedFacility.websiteUri && (
-                    <a
-                      href={selectedFacility.websiteUri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] font-semibold text-slate-700 flex items-center justify-center gap-1.5"
-                    >
-                      <Globe className="w-3.5 h-3.5 text-teal-600" />
-                      <span>Kunjungi Situs Resmi Faskes</span>
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {isFetchingPlaces && filteredFacilities.length === 0 ? (
-                <div className="p-8 text-center space-y-3">
-                  <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
-                  <p className="text-xs font-bold text-slate-700">
-                    {fetchStatusText || 'Mengambil data faskes dari Google Maps...'}
-                  </p>
-                </div>
-              ) : filteredFacilities.length === 0 ? (
-                <div className="p-8 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                    <MapPin className="w-6 h-6" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-700">Belum Ada Faskes Tampil</p>
-                    <p className="text-[11px] text-slate-500">
-                      Pilih Kota/Kabupaten di Sumatera Selatan atau tekan tombol Cari di Google Maps.
-                    </p>
-                  </div>
-                  {searchQuery.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => void handleLiveGoogleMapsSearch()}
-                      className="px-3.5 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold hover:bg-teal-700 transition-colors cursor-pointer"
-                    >
-                      Cari "{searchQuery.trim()}" di Google Maps
-                    </button>
-                  )}
-                </div>
-              ) : (
-                filteredFacilities.map((facility) => {
-                  const isSelected = selectedFacilityId === facility.id;
-                  const typeMeta = getTypeLabel(facility.type);
-
-                  return (
-                    <div
-                      key={`${facility.placeId || facility.id}`}
-                      onClick={() => handleSelectFacility(facility, true)}
-                      className={`p-3.5 transition-all cursor-pointer hover:bg-slate-50/90 ${
-                        isSelected ? 'bg-teal-50/60 ring-1 ring-inset ring-teal-500/30' : 'bg-white/70'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium mb-0.5 flex-wrap">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${typeMeta.dot}`} />
-                            <span className="font-bold text-slate-700">{typeMeta.label}</span>
-                            {facility.city && (
-                              <>
-                                <span>·</span>
-                                <span className="text-slate-600">{facility.city}</span>
-                              </>
-                            )}
-                            {facility.rating !== undefined && (
-                              <>
-                                <span>·</span>
-                                <span className="inline-flex items-center gap-0.5 text-amber-700 font-bold">
-                                  <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                                  {facility.rating.toFixed(1)}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          <h4 className="text-xs sm:text-sm font-bold leading-snug text-slate-900 truncate">
-                            {facility.name}
-                          </h4>
-                        </div>
-
-                        <span className="inline-block font-mono tabular-nums text-[11px] font-bold text-teal-700 bg-teal-50/90 px-2 py-0.5 rounded-md border border-teal-200/60 shrink-0">
-                          {facility.distanceKm < 1
-                            ? `${Math.round(facility.distanceKm * 1000)} m`
-                            : `${facility.distanceKm.toFixed(1)} km`}
-                        </span>
-                      </div>
-
-                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
                         {facility.address}
                       </p>
+                      {facility.kelas && (
+                        <p className="text-[11px] text-slate-500 mt-1">{facility.kelas}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-mono font-semibold text-slate-700 tabular-nums">
+                        {facility.distanceKm < 1
+                          ? `${Math.round(facility.distanceKm * 1000)} m`
+                          : `${facility.distanceKm.toFixed(1)} km`}
+                      </span>
+                    </div>
+                  </div>
 
-                      <div className="mt-2 flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80">
-                        <span className="text-[10px] font-mono tabular-nums text-slate-400">
-                          {facility.lat.toFixed(5)}, {facility.lng.toFixed(5)}
-                        </span>
-                        <div
-                          className="flex items-center gap-1.5 shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSelectFacility(facility, false);
-                              void computeRouteToFacility(
-                                { lat: facility.lat, lng: facility.lng },
-                                facility.name
-                              );
-                            }}
-                            disabled={isRouting}
-                            className="min-h-[30px] px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Navigation className="w-3 h-3" />
-                            <span>Rute</span>
-                          </button>
-                          <a
-                            href={
-                              facility.googleMapsUri ||
-                              `https://www.google.com/maps/search/?api=1&query=${facility.lat},${facility.lng}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="min-h-[30px] px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold inline-flex items-center gap-1 transition-colors"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>Maps</span>
-                          </a>
-                        </div>
+                  {/* Action row visible on selected or quick hover */}
+                  <div className="mt-2.5 flex items-center flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectFacility(facility, true);
+                        void computeRouteToFacility({ lat: facility.lat, lng: facility.lng }, facility.name);
+                      }}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-semibold transition-colors whitespace-nowrap"
+                    >
+                      <RouteIcon className="w-3 h-3" />
+                      <span>Rute Jalan</span>
+                    </button>
+
+                    <a
+                      href={`https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${originForExternalNav.lat}%2C${originForExternalNav.lng}%3B${facility.lat}%2C${facility.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold transition-colors whitespace-nowrap"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Buka OSM</span>
+                    </a>
+
+                    {facility.contact && (
+                      <a
+                        href={`tel:${facility.contact.replace(/[^0-9+]/g, '')}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-teal-700 whitespace-nowrap"
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span className="font-mono tabular-nums">{facility.contact}</span>
+                      </a>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyCoords(facility.lat, facility.lng, facility.id);
+                      }}
+                      className="ml-auto inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap"
+                      title="Salin koordinat geografis"
+                    >
+                      {copiedCoordsId === facility.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span className="text-emerald-700">Tersalin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Koordinat</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: 17 KOTA & KABUPATEN SUMATERA SELATAN */}
+      {panelTab === 'regions' && (
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 space-y-4 bg-white">
+          <button
+            type="button"
+            onClick={() => {
+              handleSelectRegion('all-sumsel');
+              setPanelTab('list');
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-colors ${
+              selectedRegionId === 'all-sumsel'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
+            }`}
+          >
+            <div>
+              <div className="text-xs font-bold">Seluruh Provinsi Sumatera Selatan</div>
+              <div
+                className={`text-[11px] mt-0.5 ${
+                  selectedRegionId === 'all-sumsel' ? 'text-slate-300' : 'text-slate-500'
+                }`}
+              >
+                4 Kota Otonom · 13 Kabupaten
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold tabular-nums">
+              {allProvinceFacilities.length} faskes
+            </span>
+          </button>
+
+          {/* 4 Kota */}
+          <div>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h4 className="text-xs font-bold text-slate-900">Kota Otonom (4)</h4>
+              <span className="text-[11px] text-slate-500">Klik wilayah untuk pindah peta</span>
+            </div>
+            <div className="grid grid-cols-1 gap-1.5">
+              {SUMSEL_KOTA_REGIONS.map((region) => {
+                const active = selectedRegionId === region.id;
+                const total = countByRegion[region.id] || 0;
+                const hasOsm = Boolean(osmEnrichedByRegion[region.id]?.length);
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => {
+                      handleSelectRegion(region.id);
+                      setPanelTab('list');
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                      active
+                        ? 'bg-teal-50 border-teal-500 text-teal-950'
+                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold truncate">{region.name}</div>
+                      <div className="text-[11px] text-slate-500">
+                        Ibu Kota: {region.capital}
+                        {hasOsm ? ' · Tersinkron OSM' : ''}
                       </div>
                     </div>
-                  );
-                })
-              )}
+                    <span className="text-xs font-mono font-semibold text-slate-700 tabular-nums shrink-0 ml-2">
+                      {total}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </motion.div>
-        ) : panelTab === 'regions' ? (
-          /* 17 Kota & Kabupaten Sumatera Selatan Directory Tab */
-          <motion.div
-            key="panel-regions"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.16 }}
-            className="flex-1 overflow-y-auto custom-scrollbar p-3.5 space-y-4"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                handleSelectRegion('all-loaded');
-                setPanelTab('list');
-              }}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                selectedRegionId === 'all-loaded'
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
-              }`}
-            >
-              <div>
-                <div className="text-xs font-extrabold">Semua Wilayah Sumsel (Terkumpul)</div>
-                <div
-                  className={`text-[10px] mt-0.5 ${
-                    selectedRegionId === 'all-loaded' ? 'text-slate-300' : 'text-slate-500'
-                  }`}
-                >
-                  {loadedRegionsCount} dari 17 Kota/Kabupaten telah dimuat dari Google Maps
-                </div>
-              </div>
-              <span className="font-mono text-xs font-black px-2 py-0.5 rounded-lg bg-teal-500/20 text-teal-600">
-                {allLoadedProvinceFacilities.length}
-              </span>
-            </button>
+          </div>
 
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 px-1">
-                Kota Otonom (4 Kota)
-              </h4>
-              <div className="grid grid-cols-1 gap-1.5">
-                {SUMSEL_KOTA_REGIONS.map((region) => {
-                  const count = loadedCountByRegion[region.id] || 0;
-                  const isActive = selectedRegionId === region.id;
-                  return (
-                    <button
-                      key={region.id}
-                      type="button"
-                      onClick={() => {
-                        handleSelectRegion(region.id);
-                        setPanelTab('list');
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        isActive
-                          ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
-                          : 'bg-white hover:bg-teal-50/60 text-slate-800 border-slate-200/90'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold truncate">{region.name}</div>
-                        <div
-                          className={`text-[10px] ${
-                            isActive ? 'text-teal-100' : 'text-slate-500'
-                          }`}
-                        >
-                          RS · Puskesmas · Klinik · Apotek
-                        </div>
+          {/* 13 Kabupaten */}
+          <div>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h4 className="text-xs font-bold text-slate-900">Kabupaten (13)</h4>
+              <span className="text-[11px] text-slate-500">RS · Puskesmas · Klinik · Apotek</span>
+            </div>
+            <div className="grid grid-cols-1 gap-1.5">
+              {SUMSEL_KABUPATEN_REGIONS.map((region) => {
+                const active = selectedRegionId === region.id;
+                const total = countByRegion[region.id] || 0;
+                const hasOsm = Boolean(osmEnrichedByRegion[region.id]?.length);
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => {
+                      handleSelectRegion(region.id);
+                      setPanelTab('list');
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                      active
+                        ? 'bg-teal-50 border-teal-500 text-teal-950'
+                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold truncate">{region.name}</div>
+                      <div className="text-[11px] text-slate-500">
+                        Ibu Kota: {region.capital}
+                        {hasOsm ? ' · Tersinkron OSM' : ''}
                       </div>
-                      <span
-                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                          isActive
-                            ? 'bg-white/20 text-white'
-                            : count > 0
-                            ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {count > 0 ? `${count} faskes` : 'Muat Live'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                    <span className="text-xs font-mono font-semibold text-slate-700 tabular-nums shrink-0 ml-2">
+                      {total}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="space-y-2">
-              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 px-1">
-                Kabupaten (13 Kabupaten)
-              </h4>
-              <div className="grid grid-cols-1 gap-1.5">
-                {SUMSEL_KABUPATEN_REGIONS.map((region) => {
-                  const count = loadedCountByRegion[region.id] || 0;
-                  const isActive = selectedRegionId === region.id;
-                  return (
-                    <button
-                      key={region.id}
-                      type="button"
-                      onClick={() => {
-                        handleSelectRegion(region.id);
-                        setPanelTab('list');
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        isActive
-                          ? 'bg-teal-600 text-white border-teal-700 shadow-xs'
-                          : 'bg-white hover:bg-teal-50/60 text-slate-800 border-slate-200/90'
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold truncate">{region.name}</div>
-                        <div
-                          className={`text-[10px] ${
-                            isActive ? 'text-teal-100' : 'text-slate-500'
-                          }`}
-                        >
-                          Ibu Kota: {region.capital}
-                        </div>
-                      </div>
-                      <span
-                        className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                          isActive
-                            ? 'bg-white/20 text-white'
-                            : count > 0
-                            ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {count > 0 ? `${count} faskes` : 'Muat Live'}
-                      </span>
-                    </button>
-                  );
-                })}
+      {/* TAB 3: STATISTICS & CHARTS */}
+      {panelTab === 'stats' && (
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5 bg-white">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div className="text-[11px] text-slate-500 font-medium">Total Faskes Sumsel</div>
+              <div className="text-xl font-bold text-slate-900 font-mono tabular-nums mt-0.5">
+                {allProvinceFacilities.length}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">17 Kota & Kabupaten</div>
+            </div>
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+              <div className="text-[11px] text-slate-500 font-medium">Wilayah Aktif</div>
+              <div className="text-xl font-bold text-teal-700 font-mono tabular-nums mt-0.5">
+                {categoryCounts.Semua}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                {activeRegionObj ? activeRegionObj.shortName : 'Seluruh Provinsi'}
               </div>
             </div>
-          </motion.div>
-        ) : (
-          /* Statistics & Charts Tab */
-          <motion.div
-            key="panel-stats"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.16 }}
-            className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4"
-          >
-            <div className="grid grid-cols-2 gap-2.5">
-              {(
-                [
-                  { id: 'Hospital', label: 'Rumah Sakit', dot: 'bg-red-500', text: 'text-red-700', ring: 'bg-red-50 border-red-300' },
-                  { id: 'Puskesmas', label: 'Puskesmas', dot: 'bg-orange-500', text: 'text-orange-700', ring: 'bg-orange-50 border-orange-300' },
-                  { id: 'Clinic', label: 'Klinik', dot: 'bg-blue-500', text: 'text-blue-700', ring: 'bg-blue-50 border-blue-300' },
-                  { id: 'Pharmacy', label: 'Apotek', dot: 'bg-emerald-500', text: 'text-emerald-700', ring: 'bg-emerald-50 border-emerald-300' },
-                ] as const
-              ).map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => {
-                    handleToggleCategoryChip(c.id);
-                    setPanelTab('list');
-                  }}
-                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                    typeFilter === c.id ? c.ring : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80'
-                  }`}
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <h4 className="text-xs font-bold text-slate-900 mb-1">
+              Komposisi Kategori ({activeRegionObj ? activeRegionObj.shortName : 'Sumsel'})
+            </h4>
+            <p className="text-[11px] text-slate-500 mb-3">
+              Proporsi Rumah Sakit, Puskesmas, Klinik, dan Apotek
+            </p>
+            <div className="h-[208px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={208} minWidth={0} debounce={50}>
+                <PieChart>
+                  <Pie
+                    data={pieDataCategory}
+                    cx="50%"
+                    cy="48%"
+                    innerRadius={42}
+                    outerRadius={68}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {pieDataCategory.map((entry, idx) => (
+                      <Cell key={`cell-${idx}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: any) => [`${value} Faskes`, 'Jumlah']}
+                    contentStyle={{
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <h4 className="text-xs font-bold text-slate-900 mb-1">
+              Sebaran per Kota & Kabupaten (17 Wilayah)
+            </h4>
+            <p className="text-[11px] text-slate-500 mb-3">
+              Jumlah fasilitas terpetakan di setiap daerah Sumatera Selatan
+            </p>
+            <div className="h-[384px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={384} minWidth={0} debounce={50}>
+                <BarChart
+                  data={barDataByRegion}
+                  layout="vertical"
+                  margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
                 >
-                  <span className={`text-[11px] font-bold flex items-center gap-1.5 ${c.text}`}>
-                    <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-                    {c.label}
-                  </span>
-                  <span className="text-xl font-black font-mono tabular-nums text-slate-900 mt-0.5 block">
-                    {categoryCounts[c.id]}
-                  </span>
-                </button>
-              ))}
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={96}
+                    tick={{ fontSize: 10, fill: '#334155' }}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`${value} Faskes`, 'Terpetakan']}
+                    contentStyle={{
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Bar dataKey="value" fill="#0d9488" radius={[0, 4, 4, 0]} barSize={14} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-
-            {pieDataCategory.length > 0 && (
-              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
-                <h4 className="text-xs font-bold text-slate-800">
-                  Proporsi Kategori ({activeRegionObj ? activeRegionObj.shortName : 'Sumsel'})
-                </h4>
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieDataCategory}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={38}
-                        outerRadius={58}
-                        paddingAngle={2}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {pieDataCategory.map((entry, idx) => (
-                          <Cell key={idx} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '10px',
-                          border: '1px solid #e2e8f0',
-                          fontSize: '12px',
-                        }}
-                      />
-                      <Legend
-                        layout="horizontal"
-                        verticalAlign="bottom"
-                        align="center"
-                        iconType="circle"
-                        wrapperStyle={{ fontSize: '10px', paddingTop: '6px' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {barDataByRegion.length > 0 && (
-              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 space-y-2">
-                <h4 className="text-xs font-bold text-slate-800">
-                  Sebaran Faskes per Kota/Kabupaten Dimuat
-                </h4>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={barDataByRegion}
-                      layout="vertical"
-                      margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                      <XAxis type="number" hide />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fill: '#475569' }}
-                        width={86}
-                      />
-                      <Tooltip
-                        cursor={{ fill: '#f8fafc' }}
-                        contentStyle={{
-                          borderRadius: '10px',
-                          border: '1px solid #e2e8f0',
-                          fontSize: '12px',
-                        }}
-                      />
-                      <Bar dataKey="value" fill="#0d9488" radius={[0, 6, 6, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-148px)] lg:h-[calc(100vh-116px)] min-h-[620px] w-full bg-slate-900 rounded-3xl shadow-md border border-slate-200/90 overflow-hidden">
-      {/* FULL-SCREEN INTERACTIVE GOOGLE MAPS CANVAS */}
-      <div className="absolute inset-0 z-0 w-full h-full">
-        <GoogleMap
-          mapId="DEMO_MAP_ID"
-          defaultCenter={SUMSEL_REGIONS[0].center}
-          defaultZoom={SUMSEL_REGIONS[0].zoom}
-          mapTypeId={mapStyle}
-          gestureHandling="greedy"
-          disableDefaultUI={true}
-          zoomControl={true}
-          internalUsageAttributionIds={GMP_ATTRIBUTION_IDS}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <MapCameraController
-            targetCenter={targetCenter}
-            targetZoom={targetZoom}
-            cameraNonce={cameraNonce}
-          />
-
-          {/* User GPS Marker (only rendered when explicitly activated by user) */}
-          {userLocation && (
-            <AdvancedMarker position={userLocation} title="Lokasi GPS Anda" zIndex={1200}>
-              <div className="w-5 h-5 rounded-full bg-violet-600 border-3 border-white shadow-lg ring-4 ring-violet-500/30" />
-            </AdvancedMarker>
-          )}
-
-          {/* Facility AdvancedMarkers */}
-          {filteredFacilities.map((facility) => (
-            <FacilityMarkerPin
-              key={`${facility.placeId || facility.id}`}
-              facility={facility}
-              isSelected={selectedFacilityId === facility.id}
-              onClick={() => handleSelectFacility(facility, false)}
-            />
-          ))}
-
-          {/* Interactive InfoWindow for Active Facility */}
-          {infoWindowFacility && (
-            <InfoWindow
-              position={{ lat: infoWindowFacility.lat, lng: infoWindowFacility.lng }}
-              pixelOffset={[0, -34]}
-              maxWidth={290}
-              onCloseClick={() => setInfoWindowFacilityId(null)}
-            >
-              <div className="font-sans text-slate-800 space-y-2 pr-1">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-extrabold text-sm text-slate-900 leading-snug">
-                    {infoWindowFacility.name}
-                  </h3>
-                  <span className="font-mono text-[10px] font-bold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 shrink-0">
-                    {infoWindowFacility.distanceKm < 1
-                      ? `${Math.round(infoWindowFacility.distanceKm * 1000)} m`
-                      : `${infoWindowFacility.distanceKm.toFixed(1)} km`}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                  <span className="font-bold text-teal-700">
-                    {getTypeLabel(infoWindowFacility.type).label}
-                  </span>
-                  {infoWindowFacility.city && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-slate-600 font-semibold">{infoWindowFacility.city}</span>
-                    </>
-                  )}
-                  {infoWindowFacility.rating !== undefined && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className="font-bold text-amber-700">★ {infoWindowFacility.rating.toFixed(1)}</span>
-                    </>
-                  )}
-                </div>
-
-                <p className="text-[11px] text-slate-600 leading-relaxed m-0">
-                  {infoWindowFacility.address}
-                </p>
-
-                {infoWindowFacility.contact && (
-                  <p className="text-[11px] font-mono font-bold text-teal-700 m-0">
-                    Telp: {infoWindowFacility.contact}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      computeRouteToFacility(
-                        { lat: infoWindowFacility.lat, lng: infoWindowFacility.lng },
-                        infoWindowFacility.name
-                      )
-                    }
-                    disabled={isRouting}
-                    className="flex-1 py-1.5 px-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[11px] font-bold cursor-pointer disabled:opacity-60"
-                  >
-                    {isRouting ? 'Menghitung...' : 'Rute Google Maps'}
-                  </button>
-                  <a
-                    href={
-                      infoWindowFacility.googleMapsUri ||
-                      `https://www.google.com/maps/search/?api=1&query=${infoWindowFacility.lat},${infoWindowFacility.lng}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold"
-                  >
-                    Buka Maps
-                  </a>
-                </div>
+    <div className="w-full h-[calc(100vh-11.5rem)] min-h-[580px] max-h-[860px] flex flex-col bg-slate-50 border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+      {/* Top Toolbar */}
+      <div className="bg-white border-b border-slate-200 px-3.5 md:px-5 py-2.5 shrink-0 z-20">
+        <div className="flex flex-col gap-2.5">
+          {/* Row 1: Title + Region Selector + Search + Utility Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0">
+                <Compass className="w-4 h-4" />
               </div>
-            </InfoWindow>
-          )}
-        </GoogleMap>
-
-        <MapCoordsHud mapStyleLabel={currentMapStyleLabel} />
-      </div>
-
-      {/* FLOATING TOP BAR OVERLAY */}
-      <div className="relative z-20 p-3 sm:p-4 pointer-events-none flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {/* Left: Search Input + 17 Kota/Kabupaten Sumatera Selatan Selector */}
-          <div className="pointer-events-auto flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-lg border border-slate-200/90 w-full lg:w-auto lg:min-w-[520px] flex-1 max-w-3xl">
-            <div className="relative flex-1 min-w-[160px] flex items-center">
-              <Search className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Cari RS, Puskesmas, Klinik, Apotek di Sumsel..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    void handleLiveGoogleMapsSearch();
-                  }
-                }}
-                className="w-full pl-9 pr-7 py-2 bg-transparent text-xs sm:text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setCustomSearchResults([]);
-                    setActiveCustomSearchLabel('');
-                  }}
-                  className="absolute right-1.5 p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <div className="min-w-0">
+                <h2 className="text-sm md:text-base font-bold text-slate-900 leading-tight truncate">
+                  Peta Fasilitas Kesehatan Sumatera Selatan
+                </h2>
+                <p className="text-[11px] text-slate-500 truncate">
+                  OpenStreetMap · 17 Kota & Kabupaten · RS, Puskesmas, Klinik & Apotek
+                </p>
+              </div>
             </div>
 
-            {searchQuery.trim() && (
-              <button
-                type="button"
-                onClick={() => void handleLiveGoogleMapsSearch()}
-                disabled={isFetchingPlaces}
-                className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold whitespace-nowrap cursor-pointer disabled:opacity-50"
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap w-full lg:w-auto">
+              {/* Region Dropdown */}
+              <select
+                aria-label="Pilih Kota atau Kabupaten Sumatera Selatan"
+                value={selectedRegionId}
+                onChange={(e) => handleSelectRegion(e.target.value)}
+                className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 min-w-[180px] flex-1 sm:flex-initial"
               >
-                Cari Maps
-              </button>
-            )}
+                <option value="all-sumsel">
+                  Seluruh Sumatera Selatan ({allProvinceFacilities.length})
+                </option>
+                <optgroup label="Kota Otonom (4)">
+                  {SUMSEL_KOTA_REGIONS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({countByRegion[r.id] || 0})
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Kabupaten (13)">
+                  {SUMSEL_KABUPATEN_REGIONS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({countByRegion[r.id] || 0})
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
 
-            <div className="hidden sm:block h-5 w-px bg-slate-200 shrink-0" />
-
-            <select
-              value={selectedRegionId}
-              onChange={(e) => handleSelectRegion(e.target.value)}
-              aria-label="Pilih Kota atau Kabupaten di Sumatera Selatan"
-              className="py-2 pl-2.5 pr-7 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-teal-500 transition-all cursor-pointer max-w-[205px] truncate"
-            >
-              <option value="all-loaded">
-                Semua Sumsel Terkumpul ({allLoadedProvinceFacilities.length})
-              </option>
-              <optgroup label="Kota Otonom Sumatera Selatan (4)">
-                {SUMSEL_KOTA_REGIONS.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                    {loadedCountByRegion[r.id] ? ` (${loadedCountByRegion[r.id]})` : ''}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Kabupaten Sumatera Selatan (13)">
-                {SUMSEL_KABUPATEN_REGIONS.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                    {loadedCountByRegion[r.id] ? ` (${loadedCountByRegion[r.id]})` : ''}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-
-          {/* Right: Quick Focus Controls + Map Type Switcher + Admin */}
-          <div className="pointer-events-auto flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                handleSelectRegion('kota-palembang');
-                flyToLocation(RSUD_BARI_COORDS.lat, RSUD_BARI_COORDS.lng, 15);
-              }}
-              className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md border bg-rose-600 text-white border-rose-700 hover:bg-rose-700 active:scale-95 cursor-pointer whitespace-nowrap"
-              title="Pusatkan peta ke RSUD Palembang BARI"
-            >
-              <Building2 className="w-3.5 h-3.5 shrink-0" />
-              <span>RSUD BARI</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => flyToLocation(SUMSEL_PROVINCE_CENTER.lat, SUMSEL_PROVINCE_CENTER.lng, 8)}
-              className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md border bg-white/95 backdrop-blur-md text-slate-700 border-slate-200/90 hover:bg-white active:scale-95 cursor-pointer whitespace-nowrap"
-              title="Lihat seluruh Provinsi Sumatera Selatan"
-            >
-              <Compass className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-              <span className="hidden sm:inline">Peta Sumsel</span>
-            </button>
-
-            {userLocation ? (
-              <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200/90">
-                <button
-                  type="button"
-                  onClick={locateUser}
-                  disabled={isLocating}
-                  className="min-h-[30px] flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-600 text-white hover:bg-violet-700 transition-all disabled:opacity-70 cursor-pointer whitespace-nowrap"
-                >
-                  {isLocating ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5" />
-                  )}
-                  <span>GPS Aktif</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUserLocation(null);
-                    clearRoute();
-                  }}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                  title="Matikan lokasi GPS"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              {/* Search input */}
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari RS, Puskesmas, Klinik, Apotek..."
+                  className="w-full h-9 pl-8 pr-7 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    aria-label="Hapus pencarian"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-            ) : (
+
+              {/* GPS Button */}
               <button
                 type="button"
                 onClick={locateUser}
                 disabled={isLocating}
-                className="min-h-[38px] flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md border bg-teal-600 text-white border-teal-700 hover:bg-teal-700 disabled:opacity-70 active:scale-95 cursor-pointer whitespace-nowrap"
+                className={`h-9 px-3 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 ${
+                  userLocation
+                    ? 'bg-teal-50 border-teal-300 text-teal-800'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                }`}
               >
                 {isLocating ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Crosshair className="w-3.5 h-3.5" />
                 )}
-                <span>GPS Saya</span>
+                <span className="hidden sm:inline">{userLocation ? 'GPS Aktif' : 'Lokasi Saya'}</span>
               </button>
-            )}
 
-            {/* Google Maps Type Switcher */}
-            <div className="flex items-center bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-md border border-slate-200/90">
-              <Layers className="w-3.5 h-3.5 text-slate-400 ml-1.5 mr-1 hidden sm:block shrink-0" />
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="h-9 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Impor CSV</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Category Filter Buttons + Map Layer Switcher */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1.5 shrink-0">
+              {QUICK_CATEGORY_CHIPS.map((chip) => {
+                const isActive = typeFilter === chip.id;
+                const count = categoryCounts[chip.id];
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => handleToggleCategoryChip(chip.id)}
+                    className={`h-8 px-3 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 ${
+                      isActive ? chip.activeClass : chip.inactiveClass
+                    }`}
+                  >
+                    <span>{chip.shortLabel}</span>
+                    <span className="font-mono tabular-nums opacity-80">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Map Style Segmented Control */}
+            <div className="hidden sm:flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg shrink-0">
+              <Layers className="w-3.5 h-3.5 text-slate-500 ml-2 mr-1" />
               {MAP_STYLE_OPTIONS.map((opt) => (
                 <button
                   key={opt.id}
                   type="button"
                   onClick={() => setMapStyle(opt.id)}
-                  className={`min-h-[30px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors whitespace-nowrap ${
                     mapStyle === opt.id
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
 
-            {isAdmin && (
-              <div className="flex items-center gap-1.5">
+      {/* Main Split Area: Left Collapsible Directory + Full-Bleed Leaflet Map */}
+      <div className="flex-1 min-h-0 flex relative overflow-hidden">
+        {/* Desktop Sidebar */}
+        {!isMobileViewport && (
+          <div
+            className={`relative bg-white border-r border-slate-200 flex flex-col shrink-0 transition-[width] duration-200 z-10 ${
+              isDesktopPanelOpen ? 'w-[370px] xl:w-[400px]' : 'w-0 overflow-hidden border-r-0'
+            }`}
+          >
+            {isDesktopPanelOpen && renderPanelContent()}
+          </div>
+        )}
+
+        {/* Interactive Leaflet Map Canvas */}
+        <div className="flex-1 relative min-w-0 h-full bg-slate-100">
+          {/* Desktop Sidebar Collapse Toggle — cleanly anchored to map left edge without overlapping zoom controls */}
+          {!isMobileViewport && (
+            <button
+              type="button"
+              onClick={() => setIsDesktopPanelOpen((prev) => !prev)}
+              className="absolute top-1/2 -translate-y-1/2 left-0 z-[450] w-7 h-12 bg-white border border-l-0 border-slate-200 shadow-md rounded-r-xl flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+              aria-label={isDesktopPanelOpen ? 'Tutup panel daftar faskes' : 'Buka panel daftar faskes'}
+            >
+              {isDesktopPanelOpen ? (
+                <ChevronLeft className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
+          <MapContainer
+            center={[SUMSEL_REGIONS[0].center.lat, SUMSEL_REGIONS[0].center.lng]}
+            zoom={SUMSEL_REGIONS[0].zoom}
+            className="w-full h-full z-0"
+            zoomControl={true}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              key={activeTileConfig.id}
+              url={activeTileConfig.url}
+              attribution={activeTileConfig.attribution}
+              maxZoom={activeTileConfig.maxZoom}
+            />
+            {activeTileConfig.overlayUrl && (
+              <TileLayer
+                key={`${activeTileConfig.id}-labels`}
+                url={activeTileConfig.overlayUrl}
+                maxZoom={activeTileConfig.maxZoom}
+              />
+            )}
+
+            <LeafletMapController
+              targetCenter={targetCenter}
+              targetZoom={targetZoom}
+              cameraNonce={cameraNonce}
+              routeCoords={routeData?.coordinates || null}
+              layoutSignal={isDesktopPanelOpen}
+            />
+
+            <MapCoordsHud mapStyleLabel={activeTileConfig.label} />
+
+            {/* User GPS Marker */}
+            {userLocation && (
+              <CircleMarker
+                center={[userLocation.lat, userLocation.lng]}
+                radius={9}
+                pathOptions={USER_GPS_PATH_OPTIONS}
+              >
+                <Popup>
+                  <div className="text-xs font-semibold text-slate-900">Lokasi GPS Anda</div>
+                  <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                    {userLocation.lat.toFixed(5)}, {userLocation.lng.toFixed(5)}
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )}
+
+            {/* Active Driving Route Polyline (OSRM) */}
+            {routeData && routeData.coordinates.length >= 2 && (
+              <>
+                <Polyline
+                  positions={routeData.coordinates}
+                  pathOptions={ROUTE_SHADOW_PATH_OPTIONS}
+                />
+                <Polyline
+                  positions={routeData.coordinates}
+                  pathOptions={
+                    routeData.isApproximate ? ROUTE_DASHED_PATH_OPTIONS : ROUTE_SOLID_PATH_OPTIONS
+                  }
+                />
+              </>
+            )}
+
+            {/* Healthcare Facility Markers */}
+            {filteredFacilities.map((facility) => (
+              <FacilityMarkerItem
+                key={`${facility.source || 'b'}_${facility.id}`}
+                facility={facility}
+                isSelected={selectedFacilityId === facility.id}
+                originLat={originForExternalNav.lat}
+                originLng={originForExternalNav.lng}
+                onSelectId={setSelectedFacilityId}
+                onComputeRoute={computeRouteToFacility}
+                onRegisterRef={registerMarkerRef}
+              />
+            ))}
+          </MapContainer>
+
+          {/* Active Route Summary Overlay */}
+          <AnimatePresence>
+            {(routeData || isRouting) && (
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="absolute top-3 right-3 z-[450] max-w-xs bg-white/95 backdrop-blur-xs border border-slate-200 shadow-lg rounded-xl p-3"
+              >
+                {isRouting ? (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                    <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                    <span>Menghitung rute jalan tercepat...</span>
+                  </div>
+                ) : (
+                  routeData && (
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-teal-700">
+                            {routeData.isApproximate ? 'Estimasi Jalur Langsung' : 'Rute Jalan OSRM'}
+                          </div>
+                          <div className="text-xs font-bold text-slate-900 truncate mt-0.5">
+                            {routeData.destinationName}
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Dari: {routeData.originLabel}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setRouteData(null)}
+                          className="p-1 text-slate-400 hover:text-slate-700 rounded-md"
+                          aria-label="Hapus rute"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-3 text-xs font-mono tabular-nums">
+                        <span className="font-bold text-slate-900">
+                          {(routeData.distanceMeters / 1000).toFixed(1)} km
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <span className="font-semibold text-teal-700">
+                          ~{formatDurationMinutes(routeData.durationSeconds)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Quick Jump to RSUD Palembang BARI */}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRegionId('kota-palembang');
+              setTypeFilter('Semua');
+              flyToLocation(RSUD_BARI_COORDS.lat, RSUD_BARI_COORDS.lng, 15);
+              setSelectedFacilityId(1001);
+              setTimeout(() => markerRefs.current[1001]?.openPopup(), 450);
+            }}
+            className="absolute bottom-4 left-3 z-[450] bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-md rounded-xl px-3 py-2 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+          >
+            <Building2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>RSUD Palembang BARI</span>
+          </button>
+
+          {/* Mobile Layer Switcher */}
+          <div className="sm:hidden absolute top-3 right-3 z-[450] flex items-center gap-1 bg-white/95 border border-slate-200 shadow-sm rounded-lg p-1">
+            {MAP_STYLE_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setMapStyle(opt.id)}
+                className={`px-2 py-1 rounded-md text-[10px] font-semibold ${
+                  mapStyle === opt.id ? 'bg-slate-900 text-white' : 'text-slate-600'
+                }`}
+              >
+                {opt.label.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Bottom Drawer */}
+        {isMobileViewport && (
+          <div
+            className={`fixed inset-x-0 bottom-0 z-[500] bg-white border-t border-slate-200 rounded-t-2xl shadow-2xl flex flex-col transition-all duration-200 ${
+              mobileDrawerState === 'minimized'
+                ? 'h-14'
+                : mobileDrawerState === 'half'
+                ? 'h-[48vh]'
+                : 'h-[82vh]'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setMobileDrawerState((prev) =>
+                  prev === 'minimized' ? 'half' : prev === 'half' ? 'expanded' : 'minimized'
+                )
+              }
+              className="w-full px-4 py-3 flex items-center justify-between border-b border-slate-100 shrink-0"
+            >
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-teal-600" />
+                <span className="text-xs font-bold text-slate-900">
+                  {activeRegionObj ? activeRegionObj.shortName : 'Sumsel'} ·{' '}
+                  {filteredFacilities.length} Faskes
+                </span>
+              </div>
+              {mobileDrawerState === 'expanded' ? (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+            {mobileDrawerState !== 'minimized' && renderPanelContent()}
+          </div>
+        )}
+      </div>
+
+      {/* Admin CSV / Excel Import Modal */}
+      <AnimatePresence>
+        {isUpdateModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-5"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-base font-bold text-slate-900">Impor Data Faskes Tambahan</h3>
                 <button
                   type="button"
-                  onClick={() => setIsUpdateModalOpen(true)}
-                  className="min-h-[38px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
+                  onClick={() => setIsUpdateModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
                 >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Impor Faskes</span>
+                  <X className="w-4 h-4" />
                 </button>
+              </div>
+              <p className="text-xs text-slate-600 mt-3 leading-relaxed">
+                Tambahkan daftar faskes kustom dalam format CSV atau Excel (.xlsx) untuk melengkapi
+                basis data Sumatera Selatan.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="w-full py-2 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 inline-flex items-center justify-center gap-2"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh Template Excel (.xlsx)</span>
+                </button>
+
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={(e) => {
+                    setCsvFile(e.target.files?.[0] || null);
+                    setCsvError('');
+                  }}
+                  className="block w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                />
+
+                {csvError && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">
+                    {csvError}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                 {adminFacilities.length > 0 && (
                   <button
                     type="button"
@@ -2166,387 +2021,35 @@ const SumselMapInner: React.FC<SumselMapInnerProps> = ({ isAdmin }) => {
                       await deleteAllFacilities();
                       setAdminFacilities([]);
                     }}
-                    className="min-h-[38px] inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors cursor-pointer"
-                    title="Hapus Data Tambahan Admin"
+                    className="text-xs font-semibold text-red-600 hover:text-red-700"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    Hapus Impor ({adminFacilities.length})
                   </button>
                 )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Second Row: Category Filter Chips + Live Sync Indicator */}
-        <div className="pointer-events-auto flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {QUICK_CATEGORY_CHIPS.map((chip) => {
-            const count = categoryCounts[chip.id];
-            const active = typeFilter === chip.id;
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => handleToggleCategoryChip(chip.id)}
-                className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm border whitespace-nowrap shrink-0 cursor-pointer active:scale-95 ${
-                  active
-                    ? chip.activeClass
-                    : 'bg-white/95 backdrop-blur-md text-slate-700 border-slate-200/90 hover:bg-white'
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full ${active ? 'bg-white' : chip.dot}`} />
-                <span>{chip.shortLabel}</span>
-                <span
-                  className={`font-mono tabular-nums text-[11px] px-1.5 py-0.2 rounded-md font-extrabold ${
-                    active ? chip.badgeActive : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-
-          {isFetchingPlaces && (
-            <div className="min-h-[36px] px-3 py-1.5 rounded-xl bg-slate-900/90 text-white text-[11px] font-bold flex items-center gap-2 shrink-0 shadow-md">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-400" />
-              <span className="max-w-[240px] truncate">{fetchStatusText || 'Sinkronisasi Google Maps...'}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Status / Route / Error Banners */}
-        <AnimatePresence>
-          {fetchError && (
-            <motion.div
-              key="fetch-error"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="pointer-events-auto self-start bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{fetchError}</span>
-              <button
-                type="button"
-                onClick={() => setFetchError('')}
-                className="p-0.5 hover:bg-white/20 rounded cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          )}
-
-          {routingError && (
-            <motion.div
-              key="routing-error"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="pointer-events-auto self-start bg-rose-600 text-white px-4 py-2 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2"
-            >
-              <span>{routingError}</span>
-              <button
-                type="button"
-                onClick={() => setRoutingError('')}
-                className="p-0.5 hover:bg-white/20 rounded cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          )}
-
-          {routeInfo && (
-            <motion.div
-              key="route-info"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              className="pointer-events-auto self-start bg-teal-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-lg border border-teal-700/60 flex flex-wrap items-center gap-3"
-            >
-              <div className="text-xs">
-                Rute dari <span className="text-teal-300 font-semibold">{routeInfo.originLabel}</span> ke{' '}
-                <strong className="font-bold text-white">{routeInfo.destinationName}</strong>
-              </div>
-              <div className="flex items-center gap-2.5 font-mono tabular-nums text-xs font-bold bg-white/10 px-3 py-1 rounded-xl">
-                <span>{(routeInfo.distanceMeters / 1000).toFixed(1)} km</span>
-                <span className="text-teal-400">·</span>
-                <span>{Math.max(1, Math.round(routeInfo.durationMillis / 60000))} menit</span>
-              </div>
-              <button
-                type="button"
-                onClick={clearRoute}
-                className="text-[11px] font-bold text-teal-200 hover:text-white underline cursor-pointer"
-              >
-                Tutup Rute
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* DESKTOP FLOATING GLASS PANEL */}
-      <div className="hidden md:flex absolute top-28 bottom-12 left-4 z-20 pointer-events-none items-start">
-        <AnimatePresence initial={false} mode="popLayout">
-          {isDesktopPanelOpen && !isMobileViewport && (
-            <motion.aside
-              key="desktop-floating-panel"
-              initial={{ opacity: 0, x: -20, scale: 0.98 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -20, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="pointer-events-auto h-full w-80 lg:w-96 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden origin-top-left"
-            >
-              {renderPanelContent()}
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        <button
-          type="button"
-          onClick={() => setIsDesktopPanelOpen((prev) => !prev)}
-          className={`pointer-events-auto mt-3 bg-white/95 hover:bg-white text-slate-700 rounded-xl shadow-lg border border-slate-200/90 flex items-center justify-center gap-1.5 cursor-pointer transition-transform active:scale-95 ${
-            isDesktopPanelOpen ? 'ml-2 w-9 h-11' : 'px-3.5 h-11 text-xs font-bold text-teal-800'
-          }`}
-          title={isDesktopPanelOpen ? 'Sembunyikan Panel Daftar' : 'Tampilkan Panel Daftar Faskes'}
-        >
-          {isDesktopPanelOpen ? (
-            <ChevronLeft className="w-4 h-4 text-slate-700" />
-          ) : (
-            <>
-              <ListFilter className="w-4 h-4 text-teal-600" />
-              <span>Faskes Sumsel ({filteredFacilities.length})</span>
-              <ChevronRight className="w-4 h-4 text-slate-500" />
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* MOBILE INTERACTIVE BOTTOM DRAWER */}
-      <motion.div
-        initial={false}
-        animate={{
-          height:
-            mobileDrawerState === 'expanded'
-              ? '82%'
-              : mobileDrawerState === 'half'
-              ? '46%'
-              : '64px',
-        }}
-        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-        className="md:hidden absolute left-0 right-0 bottom-0 z-30 bg-white/95 rounded-t-3xl shadow-[0_-8px_30px_rgba(15,23,42,0.18)] border-t border-slate-200/90 flex flex-col overflow-hidden"
-      >
-        <div
-          onClick={() =>
-            setMobileDrawerState((prev) =>
-              prev === 'minimized' ? 'half' : prev === 'half' ? 'expanded' : 'minimized'
-            )
-          }
-          className="pt-2 pb-2.5 px-4 flex flex-col items-center cursor-pointer shrink-0 border-b border-slate-100"
-        >
-          <div className="w-10 h-1.5 bg-slate-300 rounded-full mb-2" />
-          <div className="w-full flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-extrabold text-slate-800 truncate">
-                {filteredFacilities.length} Faskes · {activeRegionObj ? activeRegionObj.shortName : 'Sumsel'}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-teal-700 shrink-0">
-              <span>
-                {mobileDrawerState === 'expanded'
-                  ? 'Kecilkan'
-                  : mobileDrawerState === 'half'
-                  ? 'Perluas'
-                  : 'Buka Daftar'}
-              </span>
-              {mobileDrawerState === 'expanded' ? (
-                <ChevronDown className="w-4 h-4" />
-              ) : (
-                <ChevronUp className="w-4 h-4" />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {mobileDrawerState !== 'minimized' && isMobileViewport && (
-            <motion.div
-              key="mobile-drawer-body"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.14 }}
-              className="flex flex-col flex-1 min-h-0 overflow-hidden"
-            >
-              {renderPanelContent()}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Admin CSV/Excel Import Modal */}
-      {isUpdateModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-800">Impor Data Faskes Tambahan (Admin)</h3>
-              <button
-                type="button"
-                onClick={() => setIsUpdateModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-5 flex-1 overflow-y-auto space-y-4">
-              <p className="text-sm text-slate-600">
-                Data utama Rumah Sakit, Puskesmas, Klinik, dan Apotek diambil secara langsung dari{' '}
-                <strong>Google Maps Platform (Places API New)</strong>. Unggah CSV/Excel hanya jika Admin ingin
-                menambahkan titik faskes internal khusus.
-              </p>
-              <button
-                type="button"
-                onClick={handleDownloadTemplate}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                Download Template Excel
-              </button>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700">Pilih File</label>
-                <input
-                  type="file"
-                  accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setCsvFile(file);
-                      setCsvError('');
-                    }
-                  }}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                />
-              </div>
-              {csvError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl">
-                  {csvError}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsUpdateModalOpen(false)}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleUpdateData()}
+                    className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Simpan Data</span>
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsUpdateModalOpen(false)}
-                className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleUpdateData}
-                className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-xs flex items-center gap-2 cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                Simpan Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-interface MapFacilitiesProps {
-  isAdmin?: boolean;
-}
-
-export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false }) => {
-  const [resolvedApiKey, setResolvedApiKey] = useState<string>(() => getInitialGoogleMapsApiKey());
-  const [isLoadingConfig, setIsLoadingConfig] = useState<boolean>(() => !getInitialGoogleMapsApiKey());
-
-  const loadRuntimeMapsConfig = useCallback(async () => {
-    const initial = getInitialGoogleMapsApiKey();
-    if (initial) {
-      setResolvedApiKey(initial);
-      setIsLoadingConfig(false);
-      return;
-    }
-
-    setIsLoadingConfig(true);
-    try {
-      const res = await fetch('/api/maps-config', { cache: 'no-store' });
-      if (res.ok) {
-        const data = (await res.json()) as { apiKey?: string };
-        const key = typeof data?.apiKey === 'string' ? data.apiKey.trim() : '';
-        if (key) {
-          setResolvedApiKey(key);
-        }
-      }
-    } catch (err) {
-      console.warn('Gagal memuat konfigurasi runtime Google Maps:', err);
-    } finally {
-      setIsLoadingConfig(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!resolvedApiKey) {
-      loadRuntimeMapsConfig();
-    }
-  }, [resolvedApiKey, loadRuntimeMapsConfig]);
-
-  if (isLoadingConfig) {
-    return (
-      <div className="min-h-[480px] rounded-3xl bg-white border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
-        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-        <p className="text-sm font-bold text-slate-800">Memuat Google Maps Platform...</p>
-        <p className="text-xs text-slate-500">
-          Menyiapkan peta interaktif 17 Kota &amp; Kabupaten Sumatera Selatan
-        </p>
-      </div>
-    );
-  }
-
-  if (!resolvedApiKey) {
-    return (
-      <div className="min-h-[480px] rounded-3xl bg-white border border-slate-200 p-8 flex flex-col items-center justify-center text-center space-y-4 shadow-xs">
-        <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
-          <MapPinned className="w-6 h-6" />
-        </div>
-        <h3 className="text-base font-extrabold text-slate-900">
-          Kunci API Google Maps Platform Belum Tersedia
-        </h3>
-        <p className="text-xs text-slate-600 max-w-md leading-relaxed">
-          Pastikan variabel lingkungan <code className="font-mono font-bold">VITE_GOOGLE_MAPS_API_KEY</code>{' '}
-          telah aktif pada proyek ini untuk memuat peta interaktif dan basis data Rumah Sakit, Puskesmas, Klinik,
-          serta Apotek di seluruh 17 Kota &amp; Kabupaten Sumatera Selatan dari Google Maps.
-        </p>
-        <button
-          type="button"
-          onClick={loadRuntimeMapsConfig}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Muat Ulang Konfigurasi Peta</span>
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <APIProvider
-      apiKey={resolvedApiKey}
-      language="id"
-      region="ID"
-      libraries={['places', 'marker', 'routes']}
-      onError={(err) => {
-        console.error('Google Maps APIProvider Error:', err);
-        if (isGoogleMapsQuotaError(err)) {
-          window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
-        }
-      }}
-    >
-      <SumselMapInner isAdmin={isAdmin} />
-    </APIProvider>
-  );
-};
+export default MapFacilities;

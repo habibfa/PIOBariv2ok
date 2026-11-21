@@ -221,11 +221,18 @@ export function getSumselRegionById(regionId: string): SumselRegion | undefined 
   return SUMSEL_REGIONS.find((r) => r.id === regionId);
 }
 
+export interface GeoBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 /**
- * Generates a compact LatLngBoundsLiteral box around a region's center
- * for Google Maps Places API (New) locationBias.
+ * Generates a compact geographic bounding box around a region's center
+ * for OpenStreetMap Overpass API queries and map viewport framing.
  */
-export function getRegionBoundsLiteral(region: SumselRegion): google.maps.LatLngBoundsLiteral {
+export function getRegionBoundsLiteral(region: SumselRegion): GeoBounds {
   const latDelta = region.biasRadiusMeters / 111320;
   const lngDelta = region.biasRadiusMeters / (111320 * Math.cos((region.center.lat * Math.PI) / 180));
   return {

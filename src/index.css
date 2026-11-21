@@ -158,6 +158,11 @@ body {
   box-shadow: 0 6px 12px rgba(15, 23, 42, 0.1) !important;
 }
 
+.leaflet-container .leaflet-tile-pane img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
 /* Anti-Duplication & Content Copy Protection */
 body,
 #root {

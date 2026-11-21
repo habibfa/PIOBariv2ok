@@ -101,35 +101,37 @@ export const DeviceGuideAnimated: React.FC<DeviceGuideAnimatedProps> = ({
     setAutoProgress(0);
   }, [currentItem.id]);
 
-  // Real clinical countdown timer interval
+  // Keep latest onSelectStep callback in a ref so auto-play effect never restarts on parent re-renders
+  const onSelectStepRef = useRef(onSelectStep);
+  useEffect(() => {
+    onSelectStepRef.current = onSelectStep;
+  }, [onSelectStep]);
+
+  // Real clinical countdown timer interval (pure state updater)
   useEffect(() => {
     if (!timerRunning) return;
-    if (timerRemaining <= 0) {
-      setTimerRunning(false);
-      setTimerCompleted(true);
-      return;
-    }
     const id = window.setInterval(() => {
-      setTimerRemaining((prev) => {
-        if (prev <= 1) {
-          setTimerRunning(false);
-          setTimerCompleted(true);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimerRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => window.clearInterval(id);
+  }, [timerRunning]);
+
+  // Mark timer complete cleanly once countdown reaches 0
+  useEffect(() => {
+    if (timerRunning && timerRemaining <= 0) {
+      setTimerRunning(false);
+      setTimerCompleted(true);
+    }
   }, [timerRunning, timerRemaining]);
 
   // Smooth auto-play walkthrough loop
   useEffect(() => {
     if (!isAutoPlaying) {
-      setAutoProgress(0);
+      setAutoProgress((prev) => (prev === 0 ? prev : 0));
       return;
     }
-    setStageMode("animasi");
-    setIsAnimPaused(false);
+    setStageMode((prev) => (prev === "animasi" ? prev : "animasi"));
+    setIsAnimPaused((prev) => (prev ? false : prev));
     const dwellMs = Math.max(2200, Math.round(currentStepData.autoPlayMs / speed));
     autoStartRef.current = performance.now();
 
@@ -141,7 +143,7 @@ export const DeviceGuideAnimated: React.FC<DeviceGuideAnimatedProps> = ({
       if (elapsed >= dwellMs) {
         if (safeStep < totalSteps - 1) {
           setStepDirection(1);
-          onSelectStep((prev) => Math.min(totalSteps - 1, prev + 1));
+          onSelectStepRef.current((prev) => Math.min(totalSteps - 1, prev + 1));
         } else {
           setIsAutoPlaying(false);
           setAutoProgress(0);
@@ -152,7 +154,7 @@ export const DeviceGuideAnimated: React.FC<DeviceGuideAnimatedProps> = ({
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [isAutoPlaying, safeStep, totalSteps, speed, currentStepData.autoPlayMs, onSelectStep]);
+  }, [isAutoPlaying, safeStep, totalSteps, speed, currentStepData.autoPlayMs]);
 
   const goToStep = useCallback(
     (targetIdx: number) => {

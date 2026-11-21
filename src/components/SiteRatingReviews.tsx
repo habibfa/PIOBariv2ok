@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Star,
   Send,
@@ -269,11 +269,16 @@ export default function SiteRatingReviews({ isAdmin = false, onStatsUpdated }: S
 
   const stats = useMemo(() => computeLocalStats(reviews), [reviews]);
 
+  const onStatsUpdatedRef = useRef(onStatsUpdated);
   useEffect(() => {
-    if (onStatsUpdated) {
-      onStatsUpdated(stats);
+    onStatsUpdatedRef.current = onStatsUpdated;
+  }, [onStatsUpdated]);
+
+  useEffect(() => {
+    if (onStatsUpdatedRef.current) {
+      onStatsUpdatedRef.current(stats);
     }
-  }, [stats, onStatsUpdated]);
+  }, [stats]);
 
   // Listen to Firebase Auth state for admin cloud moderation
   useEffect(() => {
