@@ -77,13 +77,19 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas')) {
               return 'vendor-pdf';
             }
-            if (id.includes('node_modules/@vis.gl/react-google-maps') || id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
+            if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
               return 'vendor-map';
             }
             if (id.includes('node_modules/recharts')) {
               return 'vendor-charts';
             }
-            if (id.includes('node_modules/motion')) {
+            if (id.includes('node_modules/firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('node_modules/react-markdown') || id.includes('node_modules/remark') || id.includes('node_modules/unified') || id.includes('node_modules/mdast') || id.includes('node_modules/hast')) {
+              return 'vendor-markdown';
+            }
+            if (id.includes('node_modules/motion') || id.includes('node_modules/framer-motion')) {
               return 'vendor-motion';
             }
             if (id.includes('node_modules/lucide-react')) {

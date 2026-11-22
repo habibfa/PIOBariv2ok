@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Save, X, Edit, Download } from 'lucide-react';
 import { User, Phone, MapPin, Calendar, FileText, Award, ShieldCheck } from 'lucide-react';
 import { pushSiteUpdate } from './utils/siteUpdates';
@@ -206,8 +204,17 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
     return [...INITIAL_PHARMACISTS].sort((a, b) => a.name.localeCompare(b.name));
   });
 
+  const hasMountedRef = useRef(false);
   useEffect(() => {
-    localStorage.setItem("pharmacistsData", JSON.stringify(pharmacists));
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem("pharmacistsData", JSON.stringify(pharmacists));
+    } catch {
+      // ignore storage quota errors
+    }
   }, [pharmacists]);
 
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -224,18 +231,24 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
     }
     const fileExt = csvFile.name.split('.').pop()?.toLowerCase();
     if (fileExt === 'csv' || fileExt === 'tsv') {
-      Papa.parse(csvFile, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          validateAndSetData(results.data as any[]);
-        },
-        error: (error) => {
-          setCsvError("Gagal membaca file CSV: " + error.message);
-        }
-      });
+      try {
+        const Papa = (await import('papaparse')).default;
+        Papa.parse(csvFile, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            validateAndSetData(results.data as any[]);
+          },
+          error: (error) => {
+            setCsvError("Gagal membaca file CSV: " + error.message);
+          }
+        });
+      } catch (err) {
+        setCsvError("Gagal memuat parser CSV: " + (err as Error).message);
+      }
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
+        const XLSX = await import('xlsx');
         const data = await csvFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheetName = workbook.SheetNames[0];
@@ -272,7 +285,8 @@ export default function PharmacistConsultation({ isAdmin = false }: PharmacistCo
     }
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(INITIAL_PHARMACISTS);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template_Apoteker");

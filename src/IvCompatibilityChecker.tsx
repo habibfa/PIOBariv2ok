@@ -1,6 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Upload, Save, X, Download, Trash2, Layers, ArrowRight, ArrowLeft, Table } from 'lucide-react';
 import { Droplets, Info, Search, AlertTriangle, CheckCircle2, ShieldAlert, Clock } from 'lucide-react';
 import { pushSiteUpdate } from './utils/siteUpdates';
@@ -2675,18 +2673,37 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     }
   };
 
+  const hasMountedStorageRef = useRef(false);
   useEffect(() => {
-    localStorage.setItem("ivDrugsData_v2", JSON.stringify(ivDrugsState));
-    localStorage.setItem("ivMatrixData_v2", JSON.stringify(matrixState));
-    localStorage.setItem("ivMatrixData", JSON.stringify(matrixState));
+    if (!hasMountedStorageRef.current) {
+      hasMountedStorageRef.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem("ivDrugsData_v2", JSON.stringify(ivDrugsState));
+      localStorage.setItem("ivMatrixData_v2", JSON.stringify(matrixState));
+      localStorage.setItem("ivMatrixData", JSON.stringify(matrixState));
+    } catch {
+      // ignore storage quota errors
+    }
   }, [ivDrugsState, matrixState]);
 
-  const checkCompatibility = (id1: string, id2: string): CompatibilityRecord => {
-    const record = matrixState.find(
-      r => (r.drug1 === id1 && r.drug2 === id2) || (r.drug1 === id2 && r.drug2 === id1)
-    );
-    return record || { drug1: id1, drug2: id2, status: "U" };
-  };
+  const compatibilityLookupMap = useMemo(() => {
+    const map = new Map<string, CompatibilityRecord>();
+    for (let i = 0; i < matrixState.length; i++) {
+      const r = matrixState[i];
+      map.set(`${r.drug1}\u0000${r.drug2}`, r);
+      map.set(`${r.drug2}\u0000${r.drug1}`, r);
+    }
+    return map;
+  }, [matrixState]);
+
+  const checkCompatibility = useCallback(
+    (id1: string, id2: string): CompatibilityRecord => {
+      return compatibilityLookupMap.get(`${id1}\u0000${id2}`) || { drug1: id1, drug2: id2, status: "U" };
+    },
+    [compatibilityLookupMap]
+  );
 
   const handleUpdateData = async () => {
     if (!csvFile) {
@@ -2695,19 +2712,25 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     }
     const fileExt = csvFile.name.split('.').pop()?.toLowerCase();
     if (fileExt === 'csv' || fileExt === 'tsv') {
-      Papa.parse(csvFile, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-        complete: (results) => {
-          validateAndSetData(results.data);
-        },
-        error: (error) => {
-          setCsvError("Gagal membaca file CSV: " + error.message);
-        }
-      });
+      try {
+        const Papa = (await import('papaparse')).default;
+        Papa.parse(csvFile, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true,
+          complete: (results) => {
+            validateAndSetData(results.data);
+          },
+          error: (error) => {
+            setCsvError("Gagal membaca file CSV: " + error.message);
+          }
+        });
+      } catch (err: any) {
+        setCsvError("Gagal memuat parser CSV: " + err?.message);
+      }
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
+        const XLSX = await import('xlsx');
         const data = await csvFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheetName = workbook.SheetNames[0];
@@ -2715,7 +2738,7 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
         const parsed = XLSX.utils.sheet_to_json(worksheet);
         validateAndSetData(parsed);
       } catch (err) {
-        setCsvError("Gagal membaca file Excel: " + err.message);
+        setCsvError("Gagal membaca file Excel: " + (err as Error).message);
       }
     } else {
       setCsvError("Format file tidak didukung. Gunakan CSV atau Excel (.xlsx)");
@@ -2767,7 +2790,8 @@ export const IvCompatibilityChecker: React.FC<IvCompatibilityCheckerProps> = ({ 
     }
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx');
     let dataToExport = activeTab === "drugs" ? [{ id: "contoh_id", name: "Contoh Nama", category: "Contoh Kategori", bud: "Contoh BUD", storageTemp: "Contoh Suhu", reference: "Contoh Ref" }] : [{ drug1: "contoh_id_1", drug2: "contoh_id_2", status: "C", notes: "Contoh Notes" }];
     let sheetName = activeTab === "drugs" ? "Template_Obat_IV" : "Template_Matriks_IV";
     const ws = XLSX.utils.json_to_sheet(dataToExport);

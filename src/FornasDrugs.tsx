@@ -1,11 +1,9 @@
-import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue, useRef } from 'react';
 import { 
   BookOpen, Search, Filter, ArrowUpDown, Download, Upload, X, Save, 
   FileSpreadsheet, Plus, Minus, Trash2, Info, ChevronDown, ChevronUp,
   AlertTriangle, Repeat, ShieldAlert, AlertCircle, Sparkles
 } from 'lucide-react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 
 import { INITIAL_FORNAS_DATA, FornasDrug } from './data/fornasData';
 import { getDrugSafetyAlert, DrugSafetyAlert } from './data/drugSafetyAlerts';
@@ -63,8 +61,17 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     return INITIAL_FORNAS_DATA;
   });
 
+  const hasMountedFornasRef = useRef(false);
   useEffect(() => {
-    localStorage.setItem("fornasData_v7_complete", JSON.stringify(fornasData));
+    if (!hasMountedFornasRef.current) {
+      hasMountedFornasRef.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem("fornasData_v7_complete", JSON.stringify(fornasData));
+    } catch {
+      // ignore storage quota errors
+    }
   }, [fornasData]);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,6 +80,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
   const [selectedFaskes, setSelectedFaskes] = useState("All");
   const [safetyFilter, setSafetyFilter] = useState<'ALL' | 'HIGH_ALERT' | 'LASA' | 'ANY_ALERT'>('ALL');
   const [selectedSafetyDrug, setSelectedSafetyDrug] = useState<{ drug: FornasDrug; safety: DrugSafetyAlert } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(40);
 
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -87,18 +96,24 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     const fileExt = csvFile.name.split('.').pop()?.toLowerCase();
 
     if (fileExt === 'csv' || fileExt === 'tsv') {
-      Papa.parse(csvFile, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          validateAndSetData(results.data as any[]);
-        },
-        error: (error) => {
-          setCsvError("Gagal membaca file CSV: " + error.message);
-        }
-      });
+      try {
+        const Papa = (await import('papaparse')).default;
+        Papa.parse(csvFile, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            validateAndSetData(results.data as any[]);
+          },
+          error: (error) => {
+            setCsvError("Gagal membaca file CSV: " + error.message);
+          }
+        });
+      } catch (err: any) {
+        setCsvError("Gagal memuat parser CSV: " + err?.message);
+      }
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
+        const XLSX = await import('xlsx');
         const data = await csvFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheetName = workbook.SheetNames[0];
@@ -129,7 +144,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     }
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx');
     const templateData = INITIAL_FORNAS_DATA.slice(0, 3);
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
@@ -137,7 +153,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
     XLSX.writeFile(workbook, "Template_Data_Fornas.xlsx");
   };
 
-  const handleExportFullData = () => {
+  const handleExportFullData = async () => {
+    const XLSX = await import('xlsx');
     const worksheet = XLSX.utils.json_to_sheet(fornasData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Fornas_KMK_1199_2025");
@@ -235,6 +252,17 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
 
     return Object.values(groups).sort((a, b) => a[0].namaObat.localeCompare(b[0].namaObat));
   }, [deferredSearchTerm, deferredNameFilter, selectedAlphabet, selectedFaskes, safetyFilter, fornasData, safetyAlertMap]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredSearchTerm, deferredNameFilter, selectedAlphabet, selectedFaskes, safetyFilter, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(groupedData.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedGroups = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return groupedData.slice(start, start + pageSize);
+  }, [groupedData, safePage, pageSize]);
 
   return (
     <div className="flex-1 p-4 lg:p-6 overflow-y-auto custom-scrollbar bg-slate-50 flex flex-col h-full">
@@ -517,8 +545,8 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {groupedData.length > 0 ? (
-                groupedData.map((group) => {
+              {paginatedGroups.length > 0 ? (
+                paginatedGroups.map((group) => {
                   const drug = group[0];
                   const hasMultiple = group.length > 1;
                   const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
@@ -577,10 +605,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                                 title={`LASA / NORUM: Waspada tertukar dengan ${safety.lasa.pairedWith.join(', ')}`}
                                 className="lasa-badge inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 transition-all cursor-pointer shadow-xs group"
                               >
-                                <span className="relative flex h-1.5 w-1.5">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-600"></span>
-                                </span>
+                                <span className="inline-flex rounded-full h-1.5 w-1.5 bg-amber-600 shrink-0"></span>
                                 <Repeat className="w-3 h-3 text-amber-700 shrink-0 group-hover:rotate-180 transition-transform duration-300" />
                                 <span>LASA</span>
                               </button>
@@ -653,10 +678,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                                   }}
                                   className="lasa-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 cursor-pointer"
                                 >
-                                  <span className="relative flex h-1.5 w-1.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-600"></span>
-                                  </span>
+                                  <span className="inline-flex rounded-full h-1.5 w-1.5 bg-amber-600 shrink-0"></span>
                                   <Repeat className="w-2.5 h-2.5 text-amber-700" />
                                   LASA
                                 </button>
@@ -699,13 +721,13 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
 
         {/* Mobile Cards */}
         <div className="md:hidden flex flex-col divide-y divide-slate-100">
-          {groupedData.length > 0 ? (
-            groupedData.map((group) => {
+          {paginatedGroups.length > 0 ? (
+            paginatedGroups.map((group) => {
               const drug = group[0];
               const hasMultiple = group.length > 1;
               const groupKey = `${drug.kelasTerapi}|${drug.namaObat}`;
               const isExpanded = expandedGroups[groupKey];
-              const safety = getDrugSafetyAlert(drug);
+              const safety = safetyAlertMap.get(drug.id) || getDrugSafetyAlert(drug);
               const isLasa = !!safety.lasa;
               
               return (
@@ -805,7 +827,7 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
                 )}
 
                 {hasMultiple && isExpanded && group.slice(1).map((subDrug) => {
-                  const subSafety = getDrugSafetyAlert(subDrug);
+                  const subSafety = safetyAlertMap.get(subDrug.id) || getDrugSafetyAlert(subDrug);
                   return (
                   <div key={`mob-${subDrug.id}`} className="mt-4 pt-4 border-t border-slate-100 space-y-3 relative">
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full"></div>
@@ -875,6 +897,51 @@ export default function FornasDrugs({ isAdmin = false }: FornasDrugsProps) {
             </div>
           )}
         </div>
+
+        {/* Fast Pagination Controls */}
+        {groupedData.length > 0 && (
+          <div className="px-4 py-3 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="text-slate-600 font-medium font-mono tabular-nums">
+              Menampilkan{" "}
+              <span className="font-bold text-slate-900">
+                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, groupedData.length)}
+              </span>{" "}
+              dari <span className="font-bold text-emerald-700">{groupedData.length}</span> obat generik
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                aria-label="Jumlah baris per halaman"
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700"
+              >
+                <option value={25}>25 / hal</option>
+                <option value={40}>40 / hal</option>
+                <option value={80}>80 / hal</option>
+                <option value={150}>150 / hal</option>
+              </select>
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 font-semibold text-slate-700 cursor-pointer disabled:cursor-not-allowed"
+              >
+                Sebelumnya
+              </button>
+              <span className="font-mono tabular-nums font-bold text-slate-700 px-1">
+                {safePage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 font-semibold text-slate-700 cursor-pointer disabled:cursor-not-allowed"
+              >
+                Berikutnya
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
 

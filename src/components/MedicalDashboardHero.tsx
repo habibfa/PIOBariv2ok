@@ -27,7 +27,7 @@ interface MedicalDashboardHeroProps {
   totalDrugsCount?: number;
 }
 
-export default function MedicalDashboardHero({
+function MedicalDashboardHero({
   onNavigateTab,
   searchQuery = "",
   onSearchChange,
@@ -36,11 +36,7 @@ export default function MedicalDashboardHero({
   return (
     <div className="w-full space-y-5 sm:space-y-6 mb-6 sm:mb-8">
       {/* Modern Clinical Hero Greeting & Search */}
-      <div className="relative overflow-hidden rounded-3xl bg-white/90 backdrop-blur-xl border border-slate-200/80 p-5 sm:p-7 lg:p-8 shadow-[0_14px_40px_-10px_rgba(13,148,136,0.08)]">
-        {/* Subtle Ambient Accents */}
-        <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-teal-200/25 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-16 w-72 h-72 rounded-full bg-emerald-200/20 blur-3xl pointer-events-none" />
-
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-white to-teal-50/40 border border-slate-200/80 p-5 sm:p-7 lg:p-8 shadow-[0_10px_28px_-10px_rgba(13,148,136,0.08)]">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2.5 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-teal-700">
@@ -329,3 +325,5 @@ export default function MedicalDashboardHero({
     </div>
   );
 }
+
+export default React.memo(MedicalDashboardHero);

@@ -29,6 +29,9 @@ export {
   type PolypharmacySyndromeAlert,
 };
 
+// Declared at top of module before deduplicateInteractions executes
+const CANONICAL_SUBSTANCE_CACHE = new Map<string, string>();
+
 const BASE_INTERACTION_DATABASE: DrugInteraction[] = [
   {
       "id": "amox_doxy",
@@ -878,10 +881,19 @@ export const FOOD_INTERACTION_DATABASE: FoodInteraction[] = [
 
 /**
  * Maps a drug ID and name to a canonical active substance key.
- * This guarantees consistent drug-drug interaction matching across generic,
- * brand names (e.g. Baquinor, Concor, Sanmol, Tiaryt), formulations, and age-specific presets.
+ * Cached in-memory for O(1) repeat lookups across 900+ drug presets and interactions.
  */
 export function getCanonicalSubstance(id: string, name: string): string {
+  const cacheKey = `${id}\u0000${name}`;
+  const cached = CANONICAL_SUBSTANCE_CACHE.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const result = computeCanonicalSubstance(id, name);
+  CANONICAL_SUBSTANCE_CACHE.set(cacheKey, result);
+  return result;
+}
+
+function computeCanonicalSubstance(id: string, name: string): string {
   const norm = `${id} ${name}`.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (norm.includes("amox") || norm.includes("amok")) return "amoxicillin";
   if (norm.includes("cipro") || norm.includes("sipro") || norm.includes("baquinor")) return "ciprofloxacin";
@@ -963,45 +975,168 @@ export function getCanonicalSubstance(id: string, name: string): string {
   return id.toLowerCase();
 }
 
+export interface DrugInteractionIndex {
+  byId: Map<string, DrugInteraction[]>;
+  bySubstance: Map<string, DrugInteraction[]>;
+  normalizedItems: Array<{ item: DrugInteraction; normA: string; normB: string }>;
+}
+
+const interactionIndexCache = new WeakMap<DrugInteraction[], DrugInteractionIndex>();
+
 /**
- * Retrieves all registered drug interactions that involve a given drug preset.
+ * Builds (and caches per array reference) an O(1) lookup index over a DDI database.
  */
-export function getInteractionsForDrug(id: string, name: string, db: DrugInteraction[] = INTERACTION_DATABASE): DrugInteraction[] {
-  const targetSubstance = getCanonicalSubstance(id, name);
-  const targetId = id.toLowerCase();
-  const targetNorm = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+export function getInteractionIndex(db: DrugInteraction[] = INTERACTION_DATABASE): DrugInteractionIndex {
+  const existing = interactionIndexCache.get(db);
+  if (existing) return existing;
 
-  return db.filter(item => {
-    if (item.drugAId === id || item.drugBId === id) return true;
-    const subA = getCanonicalSubstance(item.drugAId, item.drugAName);
-    const subB = getCanonicalSubstance(item.drugBId, item.drugBName);
-    if (subA === targetSubstance || subB === targetSubstance) return true;
+  const byId = new Map<string, DrugInteraction[]>();
+  const bySubstance = new Map<string, DrugInteraction[]>();
+  const normalizedItems: Array<{ item: DrugInteraction; normA: string; normB: string }> = new Array(db.length);
 
-    const normA = item.drugAName.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const normB = item.drugBName.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (targetNorm && targetNorm.length >= 4 && (targetNorm.includes(normA) || normA.includes(targetNorm) || targetNorm.includes(normB) || normB.includes(targetNorm))) {
-      return true;
+  const pushMap = (map: Map<string, DrugInteraction[]>, key: string, val: DrugInteraction) => {
+    const arr = map.get(key);
+    if (arr) arr.push(val);
+    else map.set(key, [val]);
+  };
+
+  for (let i = 0; i < db.length; i++) {
+    const item = db[i];
+    pushMap(byId, item.drugAId, item);
+    if (item.drugBId !== item.drugAId) {
+      pushMap(byId, item.drugBId, item);
     }
 
-    return false;
-  });
+    const subA = getCanonicalSubstance(item.drugAId, item.drugAName);
+    const subB = getCanonicalSubstance(item.drugBId, item.drugBName);
+    pushMap(bySubstance, subA, item);
+    if (subB !== subA) {
+      pushMap(bySubstance, subB, item);
+    }
+
+    normalizedItems[i] = {
+      item,
+      normA: item.drugAName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+      normB: item.drugBName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+    };
+  }
+
+  const index: DrugInteractionIndex = { byId, bySubstance, normalizedItems };
+  interactionIndexCache.set(db, index);
+  return index;
+}
+
+interface FoodInteractionIndex {
+  byId: Map<string, FoodInteraction[]>;
+  bySubstance: Map<string, FoodInteraction[]>;
+  byBaseToken: Map<string, FoodInteraction[]>;
+}
+
+const foodIndexCache = new WeakMap<FoodInteraction[], FoodInteractionIndex>();
+
+function getFoodInteractionIndex(db: FoodInteraction[] = FOOD_INTERACTION_DATABASE): FoodInteractionIndex {
+  const existing = foodIndexCache.get(db);
+  if (existing) return existing;
+
+  const byId = new Map<string, FoodInteraction[]>();
+  const bySubstance = new Map<string, FoodInteraction[]>();
+  const byBaseToken = new Map<string, FoodInteraction[]>();
+
+  const pushMap = (map: Map<string, FoodInteraction[]>, key: string, val: FoodInteraction) => {
+    const arr = map.get(key);
+    if (arr) arr.push(val);
+    else map.set(key, [val]);
+  };
+
+  for (let i = 0; i < db.length; i++) {
+    const item = db[i];
+    pushMap(byId, item.drugId, item);
+    pushMap(bySubstance, getCanonicalSubstance(item.drugId, item.drugName), item);
+    const base = item.drugId.toLowerCase().split("_")[0];
+    if (base && base !== "auto" && base.length >= 4) {
+      pushMap(byBaseToken, base, item);
+    }
+  }
+
+  const index: FoodInteractionIndex = { byId, bySubstance, byBaseToken };
+  foodIndexCache.set(db, index);
+  return index;
+}
+
+/**
+ * Retrieves all registered drug interactions that involve a given drug preset.
+ * Uses pre-built O(1) ID/substance maps with fast normalized substring check.
+ */
+export function getInteractionsForDrug(id: string, name: string, db: DrugInteraction[] = INTERACTION_DATABASE): DrugInteraction[] {
+  const index = getInteractionIndex(db);
+  const targetSubstance = getCanonicalSubstance(id, name);
+  const targetNorm = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  const result: DrugInteraction[] = [];
+  const seen = new Set<string>();
+
+  const addList = (list?: DrugInteraction[]) => {
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        result.push(item);
+      }
+    }
+  };
+
+  addList(index.byId.get(id));
+  addList(index.bySubstance.get(targetSubstance));
+
+  if (targetNorm && targetNorm.length >= 4) {
+    const items = index.normalizedItems;
+    for (let i = 0; i < items.length; i++) {
+      const entry = items[i];
+      if (seen.has(entry.item.id)) continue;
+      if (
+        (entry.normA && (targetNorm.includes(entry.normA) || entry.normA.includes(targetNorm))) ||
+        (entry.normB && (targetNorm.includes(entry.normB) || entry.normB.includes(targetNorm)))
+      ) {
+        seen.add(entry.item.id);
+        result.push(entry.item);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
  * Retrieves all registered food interactions that involve a given drug preset.
+ * O(1) indexed lookup.
  */
 export function getFoodInteractionsForDrug(id: string, name: string, db: FoodInteraction[] = FOOD_INTERACTION_DATABASE): FoodInteraction[] {
+  const index = getFoodInteractionIndex(db);
   const targetSubstance = getCanonicalSubstance(id, name);
-  const targetId = id.toLowerCase();
+  const baseA = id.toLowerCase().split("_")[0];
 
-  return db.filter(item => {
-    if (item.drugId === id) return true;
-    const sub = getCanonicalSubstance(item.drugId, item.drugName);
-    if (sub === targetSubstance) return true;
-    const baseA = targetId.split("_")[0];
-    const baseB = item.drugId.toLowerCase().split("_")[0];
-    return baseA !== "auto" && baseA.length >= 4 && baseA === baseB;
-  });
+  const result: FoodInteraction[] = [];
+  const seen = new Set<string>();
+
+  const addList = (list?: FoodInteraction[]) => {
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        result.push(item);
+      }
+    }
+  };
+
+  addList(index.byId.get(id));
+  addList(index.bySubstance.get(targetSubstance));
+  if (baseA && baseA !== "auto" && baseA.length >= 4) {
+    addList(index.byBaseToken.get(baseA));
+  }
+
+  return result;
 }
 
 /**
@@ -1013,25 +1148,32 @@ export function checkFoodInteractions(drugIds: string[], drugNamesById?: Record<
     return [];
   }
 
-  const selectedCanonicals = new Set(
-    drugIds.map(id => getCanonicalSubstance(id, drugNamesById?.[id] || id))
-  );
-
+  const index = getFoodInteractionIndex(FOOD_INTERACTION_DATABASE);
+  const result: FoodInteraction[] = [];
   const seen = new Set<string>();
-  return FOOD_INTERACTION_DATABASE.filter(interaction => {
-    if (seen.has(interaction.id)) return false;
-    const intSub = getCanonicalSubstance(interaction.drugId, interaction.drugName);
-    const matched = drugIds.some(id => {
-      if (id === interaction.drugId) return true;
-      if (selectedCanonicals.has(intSub)) return true;
-      const baseA = id.toLowerCase().split("_")[0];
-      const baseB = interaction.drugId.toLowerCase().split("_")[0];
-      return baseA !== "auto" && baseA.length >= 4 && baseA === baseB;
-    });
-    if (matched) {
-      seen.add(interaction.id);
+
+  const addList = (list?: FoodInteraction[]) => {
+    if (!list) return;
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        result.push(item);
+      }
     }
-    return matched;
-  });
+  };
+
+  for (let i = 0; i < drugIds.length; i++) {
+    const id = drugIds[i];
+    const name = drugNamesById?.[id] || id;
+    addList(index.byId.get(id));
+    addList(index.bySubstance.get(getCanonicalSubstance(id, name)));
+    const baseA = id.toLowerCase().split("_")[0];
+    if (baseA && baseA !== "auto" && baseA.length >= 4) {
+      addList(index.byBaseToken.get(baseA));
+    }
+  }
+
+  return result;
 }
 

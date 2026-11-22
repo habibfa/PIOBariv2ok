@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -1026,7 +1024,8 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
   };
 
   // Admin optional CSV/Excel import handlers
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx');
     const template = [
       {
         id: 90001,
@@ -1077,15 +1076,21 @@ export const MapFacilities: React.FC<MapFacilitiesProps> = ({ isAdmin = false })
     }
     const fileExt = csvFile.name.split('.').pop()?.toLowerCase();
     if (fileExt === 'csv' || fileExt === 'tsv') {
-      Papa.parse(csvFile, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-        complete: (results) => void validateAndSetAdminData(results.data),
-        error: (error) => setCsvError('Gagal membaca file CSV: ' + error.message),
-      });
+      try {
+        const Papa = (await import('papaparse')).default;
+        Papa.parse(csvFile, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: true,
+          complete: (results) => void validateAndSetAdminData(results.data),
+          error: (error) => setCsvError('Gagal membaca file CSV: ' + error.message),
+        });
+      } catch (err: any) {
+        setCsvError('Gagal memuat parser CSV: ' + err?.message);
+      }
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
       try {
+        const XLSX = await import('xlsx');
         const data = await csvFile.arrayBuffer();
         const workbook = XLSX.read(data);
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];

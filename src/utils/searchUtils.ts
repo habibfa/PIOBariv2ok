@@ -101,17 +101,33 @@ const BRAND_GENERIC_MAP: Record<string, string[]> = {
   zink: ["zinkid", "darya-zinc", "interzinc"]
 };
 
-// Helper to retrieve brand and generic alias tokens for a drug
+const BRAND_GENERIC_ENTRIES = Object.entries(BRAND_GENERIC_MAP);
+const ALIAS_CACHE = new Map<string, string>();
+
+interface NormalizedSearchCacheEntry {
+  nameText: string;
+  indicationText: string;
+  notesText: string;
+}
+
+const PRESET_SEARCH_CACHE = new WeakMap<DrugPreset, NormalizedSearchCacheEntry>();
+
+// Helper to retrieve brand and generic alias tokens for a drug (memoized)
 function getDrugAliases(name: string, id: string): string {
+  const cacheKey = `${name}\u0000${id}`;
+  const cached = ALIAS_CACHE.get(cacheKey);
+  if (cached !== undefined) return cached;
+
   const combined = `${name} ${id}`.toLowerCase();
   const aliases: string[] = [];
-  
-  for (const [key, values] of Object.entries(BRAND_GENERIC_MAP)) {
+
+  for (let i = 0; i < BRAND_GENERIC_ENTRIES.length; i++) {
+    const [key, values] = BRAND_GENERIC_ENTRIES[i];
     if (combined.includes(key)) {
       aliases.push(...values);
     } else {
-      for (const v of values) {
-        if (combined.includes(v)) {
+      for (let j = 0; j < values.length; j++) {
+        if (combined.includes(values[j])) {
           aliases.push(key);
           aliases.push(...values);
           break;
@@ -119,18 +135,33 @@ function getDrugAliases(name: string, id: string): string {
       }
     }
   }
-  return aliases.join(" ");
+  const joined = aliases.join(" ");
+  ALIAS_CACHE.set(cacheKey, joined);
+  return joined;
 }
+
+function getNormalizedPresetFields(preset: DrugPreset): NormalizedSearchCacheEntry {
+  const cached = PRESET_SEARCH_CACHE.get(preset);
+  if (cached) return cached;
+
+  const aliasesText = getDrugAliases(preset.name, preset.id);
+  const entry: NormalizedSearchCacheEntry = {
+    nameText: `${preset.name} ${preset.id} ${aliasesText}`.toLowerCase(),
+    indicationText: (preset.indication || "").toLowerCase(),
+    notesText: (preset.notes || "").toLowerCase(),
+  };
+  PRESET_SEARCH_CACHE.set(preset, entry);
+  return entry;
+}
+
+const EMPTY_MATCH_RESULT: DrugSearchMatchResult = {
+  isMatch: true,
+  matchedFields: { name: false, indication: false, category: false },
+};
 
 /**
  * Evaluates whether a drug preset satisfies search query tokens.
- * In "all" mode, search works simultaneously across:
- * 1. Drug Name (generic & brand)
- * 2. Indication
- * 3. Therapeutic Category
- *
- * Example: "antibiotik saluran kemih" -> "antibiotik" matched in Category, "saluran kemih" matched in Indication.
- * Both tokens are satisfied simultaneously!
+ * Uses cached normalized text and alias lookup for instant keystroke filtering.
  */
 export function matchDrugSimultaneous(
   preset: DrugPreset,
@@ -140,37 +171,23 @@ export function matchDrugSimultaneous(
 ): DrugSearchMatchResult {
   const trimmed = (query || "").trim();
   if (!trimmed) {
-    return {
-      isMatch: true,
-      matchedFields: { name: false, indication: false, category: false }
-    };
+    return EMPTY_MATCH_RESULT;
   }
 
-  const aliasesText = getDrugAliases(preset.name, preset.id);
-  const nameText = `${preset.name} ${preset.id} ${aliasesText}`.toLowerCase();
-  const indicationText = (preset.indication || "").toLowerCase();
+  const { nameText, indicationText, notesText } = getNormalizedPresetFields(preset);
   const catText = (categoryLabel || "").toLowerCase();
-  const notesText = (preset.notes || "").toLowerCase();
 
   const tokens = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
-
-  const matchedName = tokens.some(t => nameText.includes(t) || notesText.includes(t));
-  const matchedIndication = tokens.some(t => indicationText.includes(t));
-  const matchedCategory = tokens.some(t => catText.includes(t));
 
   let isMatch = false;
 
   if (searchScope === "indication") {
-    // Every token must be found in the indication field
-    isMatch = tokens.every(t => indicationText.includes(t));
+    isMatch = tokens.every((t) => indicationText.includes(t));
   } else if (searchScope === "category") {
-    // Every token must be found in the therapeutic category field
-    isMatch = tokens.every(t => catText.includes(t));
+    isMatch = tokens.every((t) => catText.includes(t));
   } else {
-    // SIMULTANEOUS / ALL FIELDS:
-    // Every token typed by the user must be satisfied by either the name (with generic & brand aliases), indication, or category
     isMatch = tokens.every(
-      t =>
+      (t) =>
         nameText.includes(t) ||
         indicationText.includes(t) ||
         catText.includes(t) ||
@@ -178,12 +195,23 @@ export function matchDrugSimultaneous(
     );
   }
 
+  if (!isMatch) {
+    return {
+      isMatch: false,
+      matchedFields: { name: false, indication: false, category: false },
+    };
+  }
+
+  const matchedName = tokens.some((t) => nameText.includes(t) || notesText.includes(t));
+  const matchedIndication = tokens.some((t) => indicationText.includes(t));
+  const matchedCategory = tokens.some((t) => catText.includes(t));
+
   return {
-    isMatch,
+    isMatch: true,
     matchedFields: {
       name: matchedName,
       indication: matchedIndication,
-      category: matchedCategory
-    }
+      category: matchedCategory,
+    },
   };
 }
