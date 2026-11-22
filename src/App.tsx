@@ -2535,20 +2535,20 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Header (Desktop and Mobile) */}
-        <header className="h-16 sm:h-18 glass-header flex items-center justify-between px-4 sm:px-6 shadow-2xs shrink-0 z-30">
-          <div className="flex items-center gap-2.5 lg:hidden">
+        <header className="h-16 sm:h-18 glass-header flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 shadow-2xs shrink-0 z-30 min-w-0">
+          <div className="flex items-center gap-2 lg:hidden min-w-0">
             <button 
               onClick={() => setIsMobileMenuOpen(true)} 
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center -ml-1.5 text-slate-700 hover:text-teal-600 hover:bg-white/90 rounded-xl transition-colors cursor-pointer"
+              className="min-w-[38px] min-h-[38px] flex items-center justify-center -ml-1 text-slate-700 hover:text-teal-600 hover:bg-white/90 rounded-xl transition-colors cursor-pointer shrink-0"
               title="Buka Menu Modul Lengkap"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-lg sm:text-xl font-black tracking-tight text-teal-700">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base sm:text-xl font-black tracking-tight text-teal-700 whitespace-nowrap shrink-0">
                 PIOBARI <span className="text-rose-600">v2</span>
               </span>
-              <span className="text-[10px] bg-teal-50 text-teal-800 font-bold px-2.5 py-0.5 rounded-lg border border-teal-200/70 truncate max-w-[140px]">
+              <span className="hidden sm:inline-block text-[10px] bg-teal-50 text-teal-800 font-bold px-2.5 py-0.5 rounded-lg border border-teal-200/70 truncate max-w-[140px]">
                 {activeTab === "iv" ? "Kompatibilitas IV" : 
                  activeTab === "desc" ? "Informasi Obat" : 
                  activeTab === "ddi" ? "Skrining DDI" : 
@@ -2564,16 +2564,16 @@ export default function App() {
             </div>
           </div>
           
-          <div className="hidden lg:flex items-center gap-4">
-            <div className="flex flex-col">
-              <span className="text-base font-extrabold text-slate-900 tracking-tight">
+          <div className="hidden lg:flex items-center gap-4 min-w-0">
+            <div className="flex flex-col min-w-0">
+              <span className="text-base font-extrabold text-slate-900 tracking-tight truncate">
                 {activeTab === "ddi" ? "Skrining Multi-Obat Aktif" : 
                  activeTab === "desc" ? "Informasi & Keamanan Obat" : 
                  activeTab === "diseases" ? "Penyakit & Kondisi Klinis" : 
                  activeTab === "medcalc" ? "Kalkulator Medis & Klirens Ginjal" : 
                  activeTab === "video" ? "Panduan Alat & Cara Pakai" : 
                  activeTab === "soap" ? "Catatan Farmasi Klinis (SOAP)" : 
-                 activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan Palembang" : 
+                 activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan Sumsel" : 
                  activeTab === "iv" ? "Kompatibilitas Obat Intravena (Y-Site)" : 
                  activeTab === "pharmacist" ? "Konsultasi Apoteker Siaga" : 
                  activeTab === "fornas" ? "Daftar Obat Fornas Kemenkes" : 
@@ -2581,14 +2581,14 @@ export default function App() {
                  activeTab === "analytics" ? "Web Analytics & Real-Time Insights" :
                  "Menu Kalkulator"}
               </span>
-              <span className="text-[11px] text-teal-700 font-semibold">
-                RSUD Palembang BARI • Instalasi Farmasi Rumah Sakit
+              <span className="text-[11px] text-teal-700 font-semibold truncate">
+                RSUD Palembang BARI · Instalasi Farmasi Rumah Sakit
               </span>
             </div>
           </div>
 
-          {/* Desktop Quick Switcher Pills */}
-          <div className="hidden xl:flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 mx-4">
+          {/* Desktop Quick Switcher (shown on wide 2xl screens where header has ample horizontal clearance) */}
+          <div className="hidden 2xl:flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 mx-2 shrink-0">
             {[
               { id: "desc", label: "Katalog Obat", icon: BookOpen },
               { id: "ddi", label: "Skrining DDI", icon: ShieldAlert },
@@ -2604,24 +2604,24 @@ export default function App() {
                   key={tabItem.id}
                   type="button"
                   onClick={() => setActiveTab(tabItem.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                     isTabActive
                       ? "bg-white text-teal-700 shadow-2xs border border-slate-200/70"
                       : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
                   }`}
                 >
-                  <TabIcon className={`w-3.5 h-3.5 ${isTabActive ? "text-teal-600" : tabItem.id === "reviews" ? "fill-amber-400 text-amber-500" : "text-slate-400"}`} />
+                  <TabIcon className={`w-3.5 h-3.5 shrink-0 ${isTabActive ? "text-teal-600" : tabItem.id === "reviews" ? "fill-amber-400 text-amber-500" : "text-slate-400"}`} />
                   <span>{tabItem.label}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab("reviews")}
-              className={`min-h-[38px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-2xs active:scale-95 cursor-pointer ${
+              className={`min-w-[38px] min-h-[38px] px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border shadow-2xs active:scale-95 cursor-pointer shrink-0 ${
                 activeTab === "reviews"
                   ? "bg-amber-500 text-white border-amber-600"
                   : "bg-amber-50/90 hover:bg-amber-100 text-amber-800 border-amber-200/90"
@@ -2629,21 +2629,21 @@ export default function App() {
               title="Beri Bintang & Komentar tentang Situs Ini"
             >
               <Star className={`w-3.5 h-3.5 shrink-0 ${activeTab === "reviews" ? "fill-white text-white" : "fill-amber-400 text-amber-500"}`} />
-              <span className="whitespace-nowrap">Nilai Situs</span>
+              <span className="hidden sm:inline whitespace-nowrap">Nilai Situs</span>
             </button>
 
             {isAdmin && (
               <button
                 type="button"
                 onClick={() => setActiveTab("analytics")}
-                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 ${
                   activeTab === "analytics"
                     ? "bg-teal-800 text-white border-teal-900 shadow-sm"
                     : "bg-teal-50 text-teal-800 border-teal-200 hover:bg-teal-100"
                 }`}
               >
-                <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
-                <span>Analytics</span>
+                <BarChart3 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                <span className="whitespace-nowrap">Analytics</span>
               </button>
             )}
 
@@ -2652,7 +2652,7 @@ export default function App() {
               id="btn-open-glass-settings"
               type="button"
               onClick={() => setIsGlassSettingsOpen(true)}
-              className="min-h-[38px] px-3 py-2 glass-card hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200/80 shadow-2xs active:scale-95 group cursor-pointer"
+              className="min-w-[38px] min-h-[38px] px-2.5 sm:px-3 py-2 glass-card hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 shadow-2xs active:scale-95 group cursor-pointer shrink-0"
               title="Atur Transparansi Kaca (Glassmorphism)"
             >
               <Sliders className="w-3.5 h-3.5 text-teal-600 group-hover:rotate-45 transition-transform shrink-0" />
@@ -2679,11 +2679,11 @@ export default function App() {
                   liquidConcentrationVolume: "",
                 });
               }}
-              className="min-h-[38px] px-3 py-2 glass-card hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200/80 shadow-2xs active:scale-95 cursor-pointer"
+              className="min-w-[38px] min-h-[38px] px-2.5 sm:px-3 py-2 glass-card hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-200/80 shadow-2xs active:scale-95 cursor-pointer shrink-0"
               title="Reset Form Input"
             >
               <RefreshCw className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-              <span className="hidden sm:inline">Reset</span>
+              <span className="hidden md:inline">Reset</span>
             </button>
 
             <UpdateNotificationBell onNavigateTab={(tab) => setActiveTab(tab as any)} />
