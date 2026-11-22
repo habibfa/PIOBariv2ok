@@ -1,7 +1,7 @@
 {
   "version": 2,
   "createdAt": 1790126691286,
-  "lastUpdated": 1795377957928,
+  "lastUpdated": 1795381922414,
   "sessions": {
     "sess_1790126028581_r37svu": {
       "sessionId": "sess_1790126028581_r37svu",
@@ -409,13 +409,13 @@
     "sess_1795350952010_i749qf": {
       "sessionId": "sess_1795350952010_i749qf",
       "ip": "2404:c0:d403::0",
-      "rawIp": "2404:c0:d403:4b75:3092:d1d3:f19d:93a5",
+      "rawIp": "2404:c0:d403::1",
       "city": "Kota Palembang, Sumatera Selatan",
       "device": "Desktop",
       "browser": "Chrome",
       "currentModule": "desc",
       "startTime": 1795351018104,
-      "lastHeartbeat": 1795358636359,
+      "lastHeartbeat": 1795381917047,
       "pageViewsCount": 1
     },
     "sess_1795353210367_w1t32b": {
@@ -465,9 +465,78 @@
       "startTime": 1795377956006,
       "lastHeartbeat": 1795377957487,
       "pageViewsCount": 2
+    },
+    "sess_1795381917652_c2lqvx": {
+      "sessionId": "sess_1795381917652_c2lqvx",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "analytics",
+      "startTime": 1795381917693,
+      "lastHeartbeat": 1795381922303,
+      "pageViewsCount": 2
     }
   },
   "events": [
+    {
+      "id": "evt_1795381922299_dlo0",
+      "sessionId": "sess_1795381917652_c2lqvx",
+      "timestamp": 1795381922299,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul ANALYTICS",
+      "metadata": {
+        "tab": "analytics",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 415,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795381921913_xdyv",
+      "sessionId": "sess_1795381917652_c2lqvx",
+      "timestamp": 1795381921913,
+      "eventName": "admin_login",
+      "category": "conversion",
+      "label": "Login Admin Berhasil (Terverifikasi)",
+      "metadata": {
+        "role": "Administrator PIOBARI",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 227,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795381917695_s6gb",
+      "sessionId": "sess_1795381917652_c2lqvx",
+      "timestamp": 1795381917695,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 163,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
     {
       "id": "evt_1795377957486_fqe2",
       "sessionId": "sess_1795377956000_hbytu6",
@@ -3862,6 +3931,32 @@
     }
   ],
   "pageViews": [
+    {
+      "id": "pv_1795381922301_szu0",
+      "sessionId": "sess_1795381917652_c2lqvx",
+      "timestamp": 1795381922301,
+      "module": "analytics",
+      "path": "/analytics",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://localhost:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795381917693_ofva",
+      "sessionId": "sess_1795381917652_c2lqvx",
+      "timestamp": 1795381917693,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://localhost:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
     {
       "id": "pv_1795377957427_oinm",
       "sessionId": "sess_1795377956000_hbytu6",

@@ -589,7 +589,11 @@ FORMATTING:
   // 3. Real aggregated statistics
   app.get("/api/analytics/stats", generalRateLimiter, (req, res) => {
     try {
-      const timeRange = (req.query.timeRange as '24h' | '7d' | '30d') || '24h';
+      const rawRange = String(req.query.timeRange || "24h");
+      const allowedRanges = ["24h", "7d", "30d", "6m", "1y", "all"] as const;
+      const timeRange = (allowedRanges as readonly string[]).includes(rawRange)
+        ? (rawRange as '24h' | '7d' | '30d' | '6m' | '1y' | 'all')
+        : '24h';
       const timezone = (req.query.timezone as string) || 'Asia/Jakarta';
       const stats = getAggregatedAnalytics(timeRange, timezone, req);
       res.json(stats);

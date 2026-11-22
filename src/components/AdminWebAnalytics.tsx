@@ -36,7 +36,12 @@ import {
   Wifi,
   WifiOff,
   Check,
-  FileText
+  FileText,
+  FileSpreadsheet,
+  Trophy,
+  Calendar,
+  Award,
+  LayoutGrid
 } from "lucide-react";
 import {
   AreaChart,
@@ -52,18 +57,28 @@ import {
 } from "recharts";
 import {
   CustomEventRecord,
+  AnalyticsTimeRange,
+  VisitorPeriodResume,
+  TopMenuUsageItem,
+  ANALYTICS_TIME_RANGE_OPTIONS,
+  getTimeRangeLabel,
+  getTimeRangeShortLabel,
   getSavedCustomEvents,
   trackCustomEvent,
   subscribeToAnalyticsEvents,
   clearAllCustomEvents,
   exportEventsToCSV,
   exportEventsToJSON,
+  exportAnalyticsToExcel,
   getTrafficSources,
   getGeoDistribution,
   getDeviceBreakdown,
   getHourlyTrafficCurve,
   getDailyTrafficCurve,
   getMonthlyTrafficCurve,
+  getMonthsTrafficFallback,
+  buildLocalVisitorResume,
+  buildLocalTopMenus,
   getLiveModuleViews,
   getPalembangDistrictsTraffic,
   getSumselRegenciesTraffic,
@@ -86,8 +101,10 @@ import {
 } from "../services/analyticsService";
 
 export const AdminWebAnalytics: React.FC = () => {
-  // Time frame
-  const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d">("24h");
+  // Time frame: 24 Jam, 7 Hari, 1 Bulan, 6 Bulan, 1 Tahun, Seterusnya
+  const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>("24h");
+  const [menuRankingScope, setMenuRankingScope] = useState<"period" | "all">("period");
+  const [isExportingExcel, setIsExportingExcel] = useState<boolean>(false);
   const [events, setEvents] = useState<CustomEventRecord[]>([]);
   const [activeUsers, setActiveUsers] = useState<number>(1);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>("all");
@@ -300,16 +317,77 @@ export const AdminWebAnalytics: React.FC = () => {
         });
       }
       if (timeRange === "7d" && serverStats.dailyTraffic && serverStats.dailyTraffic.length > 0) {
-        return serverStats.dailyTraffic;
+        return serverStats.dailyTraffic.map((item: any) => ({ ...item, time: item.time || item.day }));
       }
       if (timeRange === "30d" && serverStats.monthlyTraffic && serverStats.monthlyTraffic.length > 0) {
-        return serverStats.monthlyTraffic;
+        return serverStats.monthlyTraffic.map((item: any) => ({ ...item, time: item.time || item.week }));
+      }
+      if (timeRange === "6m" && serverStats.sixMonthTraffic && serverStats.sixMonthTraffic.length > 0) {
+        return serverStats.sixMonthTraffic;
+      }
+      if (timeRange === "1y" && serverStats.yearlyTraffic && serverStats.yearlyTraffic.length > 0) {
+        return serverStats.yearlyTraffic;
+      }
+      if (timeRange === "all" && serverStats.allTimeTraffic && serverStats.allTimeTraffic.length > 0) {
+        return serverStats.allTimeTraffic;
       }
     }
     if (timeRange === "24h") return getHourlyTrafficCurve();
     if (timeRange === "7d") return getDailyTrafficCurve();
-    return getMonthlyTrafficCurve();
+    if (timeRange === "30d") return getMonthlyTrafficCurve();
+    if (timeRange === "6m") return getMonthsTrafficFallback(6);
+    if (timeRange === "1y") return getMonthsTrafficFallback(12);
+    return getMonthsTrafficFallback(12);
   }, [timeRange, serverStats]);
+
+  // Multi-period visitor resume (24 Jam, 7 Hari, 1 Bulan, 6 Bulan, 1 Tahun, Seterusnya)
+  const visitorResume: VisitorPeriodResume[] = useMemo(() => {
+    if (serverStats?.visitorResume && Array.isArray(serverStats.visitorResume) && serverStats.visitorResume.length > 0) {
+      return serverStats.visitorResume;
+    }
+    return buildLocalVisitorResume(events);
+  }, [serverStats, events]);
+
+  // Ranked Most Frequently Used Menus
+  const topMenus: TopMenuUsageItem[] = useMemo(() => {
+    const rawList: TopMenuUsageItem[] =
+      serverStats?.topMenus && Array.isArray(serverStats.topMenus) && serverStats.topMenus.length > 0
+        ? serverStats.topMenus
+        : buildLocalTopMenus(events, timeRange);
+
+    if (menuRankingScope === "all") {
+      return [...rawList]
+        .sort((a, b) => (b.totalAccess !== a.totalAccess ? b.totalAccess - a.totalAccess : b.activeNow - a.activeNow))
+        .map((item, idx) => ({ ...item, rank: idx + 1 }));
+    }
+    return rawList;
+  }, [serverStats, events, timeRange, menuRankingScope]);
+
+  // Download full Excel workbook (.xlsx)
+  const handleDownloadExcel = async () => {
+    if (isExportingExcel) return;
+    setIsExportingExcel(true);
+    try {
+      const fileName = await exportAnalyticsToExcel({
+        timeRange,
+        visitorResume,
+        topMenus,
+        chartData,
+        geoDistribution,
+        events,
+        activeUsersNow: stats.activeUsers,
+        avgDurationFormatted: serverStats?.avgDurationFormatted || "-"
+      });
+      setToastMessage(`Berhasil mengunduh laporan Excel: ${fileName}`);
+      setTimeout(() => setToastMessage(null), 4500);
+    } catch (err) {
+      console.error("Excel export failed:", err);
+      setToastMessage("Gagal mengekspor laporan Excel. Silakan coba lagi.");
+      setTimeout(() => setToastMessage(null), 4000);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
 
   // Event category counts for bar chart
   const categoryCounts = useMemo(() => {
@@ -470,41 +548,34 @@ export const AdminWebAnalytics: React.FC = () => {
 
         {/* Time range selector & Action buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="inline-flex p-1 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-            <button
-              type="button"
-              onClick={() => setTimeRange("24h")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                timeRange === "24h"
-                  ? "bg-teal-500 text-slate-950 shadow-sm"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              24 Jam
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeRange("7d")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                timeRange === "7d"
-                  ? "bg-teal-500 text-slate-950 shadow-sm"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              7 Hari
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimeRange("30d")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                timeRange === "30d"
-                  ? "bg-teal-500 text-slate-950 shadow-sm"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              30 Hari
-            </button>
+          <div className="inline-flex flex-wrap p-1 rounded-2xl bg-slate-800/80 border border-slate-700/60 gap-0.5">
+            {ANALYTICS_TIME_RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setTimeRange(opt.key)}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                  timeRange === opt.key
+                    ? "bg-teal-500 text-slate-950 shadow-sm"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                {opt.shortLabel}
+              </button>
+            ))}
           </div>
+
+          <button
+            type="button"
+            id="btn-download-analytics-excel"
+            onClick={handleDownloadExcel}
+            disabled={isExportingExcel}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-sm transition-all disabled:opacity-60"
+            title="Unduh Resume Pengunjung (24 Jam - Seterusnya), Menu Sering Digunakan, Tren, GeoIP & Log dalam Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {isExportingExcel ? "Menyiapkan Excel..." : "Unduh Excel (.xlsx)"}
+          </button>
 
           <button
             type="button"
@@ -523,20 +594,28 @@ export const AdminWebAnalytics: React.FC = () => {
               <Download className="w-3.5 h-3.5" />
               Ekspor
             </button>
-            <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 hidden group-hover:block z-30">
+            <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 hidden group-hover:block z-30">
+              <button
+                type="button"
+                onClick={handleDownloadExcel}
+                className="w-full text-left px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 font-bold flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                Unduh Laporan Excel (.xlsx)
+              </button>
               <button
                 type="button"
                 onClick={() => exportEventsToCSV(events)}
                 className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 font-medium"
               >
-                Unduh Format CSV
+                Unduh Log Event (CSV)
               </button>
               <button
                 type="button"
                 onClick={() => exportEventsToJSON(events)}
                 className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 font-medium"
               >
-                Unduh Format JSON
+                Unduh Log Event (JSON)
               </button>
             </div>
           </div>
@@ -973,7 +1052,7 @@ export const AdminWebAnalytics: React.FC = () => {
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Total Kunjungan ({timeRange === "24h" ? "24 Jam" : timeRange === "7d" ? "7 Hari" : "30 Hari"})
+              Total Kunjungan ({getTimeRangeShortLabel(timeRange)})
             </span>
             <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
               <Eye className="w-4 h-4" />
@@ -994,7 +1073,7 @@ export const AdminWebAnalytics: React.FC = () => {
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Custom Events ({timeRange === "24h" ? "24 Jam" : timeRange === "7d" ? "7 Hari" : "30 Hari"})
+              Custom Events ({getTimeRangeShortLabel(timeRange)})
             </span>
             <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
               <Zap className="w-4 h-4" />
@@ -1015,7 +1094,7 @@ export const AdminWebAnalytics: React.FC = () => {
         <div className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Peringatan Kritis DDI ({timeRange === "24h" ? "24 Jam" : timeRange === "7d" ? "7 Hari" : "30 Hari"})
+              Peringatan Kritis DDI ({getTimeRangeShortLabel(timeRange)})
             </span>
             <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
               <ShieldAlert className="w-4 h-4" />
@@ -1033,6 +1112,366 @@ export const AdminWebAnalytics: React.FC = () => {
         </div>
       </div>
 
+      {/* NEW SECTION A: Resume Pengunjung Multi-Periode (24 Jam, 7 Hari, 1 Bulan, 6 Bulan, 1 Tahun, Seterusnya) */}
+      <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-5" id="section-visitor-resume">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="space-y-1">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-teal-600" />
+              Resume Pengunjung Multi-Periode (24 Jam – Seterusnya)
+            </h2>
+            <p className="text-xs text-slate-500">
+              Ringkasan komparatif jumlah pengunjung unik, total kunjungan halaman, aktivitas klinis, dan menu terpopuler pada setiap rentang waktu. Klik baris periode untuk memfokuskan grafik.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadExcel}
+            disabled={isExportingExcel}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all shrink-0 disabled:opacity-60"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {isExportingExcel ? "Mengekspor..." : "Download Excel (.xlsx)"}
+          </button>
+        </div>
+
+        {/* 6-Period Quick Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {visitorResume.map((row) => {
+            const isActive = timeRange === row.key;
+            return (
+              <button
+                key={row.key}
+                type="button"
+                onClick={() => setTimeRange(row.key)}
+                className={`text-left p-3.5 rounded-2xl border transition-all ${
+                  isActive
+                    ? "bg-teal-50/90 border-teal-500 ring-2 ring-teal-500/20 shadow-xs"
+                    : "bg-slate-50/70 border-slate-200/80 hover:border-teal-300 hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isActive ? "text-teal-700" : "text-slate-500"}`}>
+                    {row.shortLabel}
+                  </span>
+                  {isActive && (
+                    <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+                  )}
+                </div>
+                <div className="mt-2 text-2xl font-black text-slate-900 tabular-nums">
+                  {row.uniqueVisitors.toLocaleString("id-ID")}
+                </div>
+                <div className="text-[10px] font-semibold text-slate-500">
+                  pengunjung unik
+                </div>
+                <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>{row.pageViews.toLocaleString("id-ID")} views</span>
+                  <span className="font-bold text-teal-700">{row.customEvents} aksi</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Detailed Comparative Table */}
+        <div className="overflow-x-auto rounded-2xl border border-slate-200/80">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="py-3 px-4">Periode Waktu</th>
+                <th className="py-3 px-3 text-right">Pengunjung Unik</th>
+                <th className="py-3 px-3 text-right">Total Kunjungan</th>
+                <th className="py-3 px-3 text-right">Aksi / Events</th>
+                <th className="py-3 px-3 text-right">Aksi Klinis</th>
+                <th className="py-3 px-3 text-right">Alert DDI</th>
+                <th className="py-3 px-3 text-right">Hal / Pengunjung</th>
+                <th className="py-3 px-4">Menu Paling Sering Digunakan</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {visitorResume.map((row) => {
+                const isActive = timeRange === row.key;
+                return (
+                  <tr
+                    key={row.key}
+                    onClick={() => setTimeRange(row.key)}
+                    className={`cursor-pointer transition-colors ${
+                      isActive ? "bg-teal-50/70 font-semibold" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            isActive ? "bg-teal-600" : "bg-slate-300"
+                          }`}
+                        />
+                        <span className="font-bold text-slate-800">{row.label}</span>
+                        {isActive && (
+                          <span className="px-1.5 py-0.5 rounded bg-teal-600 text-white text-[9px] font-extrabold uppercase">
+                            Aktif
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-right font-extrabold text-slate-900 tabular-nums">
+                      {row.uniqueVisitors.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 px-3 text-right font-bold text-sky-700 tabular-nums">
+                      {row.pageViews.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 px-3 text-right font-semibold text-purple-700 tabular-nums">
+                      {row.customEvents.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 px-3 text-right text-teal-700 font-semibold tabular-nums">
+                      {row.clinicalActions.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 px-3 text-right text-rose-600 font-semibold tabular-nums">
+                      {row.criticalAlerts.toLocaleString("id-ID")}
+                    </td>
+                    <td className="py-3 px-3 text-right text-slate-600 font-mono">
+                      {row.avgViewsPerVisitor.toFixed(1)}x
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-700 font-semibold truncate max-w-[200px]">
+                          {row.topMenu}
+                        </span>
+                        {row.topMenuHits > 0 && (
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
+                            {row.topMenuHits}x
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* NEW SECTION B: Menu yang Sering Digunakan (Peringkat & Visualisasi Semua Menu Website) */}
+      <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-5" id="section-top-menus">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div className="space-y-1">
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-800 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-500" />
+              Menu yang Sering Digunakan
+            </h2>
+            <p className="text-xs text-slate-500">
+              Peringkat frekuensi penggunaan seluruh menu layanan PIO RSUD Palembang BARI berdasarkan kunjungan halaman dan interaksi pengguna ({menuRankingScope === "all" ? "Sepanjang Waktu / Seterusnya" : getTimeRangeLabel(timeRange)}).
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200/80 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setMenuRankingScope("period")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  menuRankingScope === "period"
+                    ? "bg-teal-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Periode: {getTimeRangeShortLabel(timeRange)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuRankingScope("all")}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  menuRankingScope === "all"
+                    ? "bg-teal-600 text-white shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Sepanjang Waktu
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadExcel}
+              disabled={isExportingExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-colors"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Excel
+            </button>
+          </div>
+        </div>
+
+        {/* Top 3 Menu Spotlight Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {topMenus.slice(0, 3).map((menu, idx) => {
+            const countVal = menuRankingScope === "all" ? menu.totalAccess : menu.periodAccess;
+            const shareVal = menuRankingScope === "all" ? menu.sharePercentAllTime : menu.sharePercent;
+            const sessVal = menuRankingScope === "all" ? menu.uniqueSessionsAllTime : menu.uniqueSessions;
+            const badgeColors = [
+              "bg-amber-100 text-amber-800 border-amber-300",
+              "bg-slate-200 text-slate-700 border-slate-300",
+              "bg-orange-100 text-orange-800 border-orange-300"
+            ];
+            return (
+              <div
+                key={menu.key}
+                className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-col justify-between gap-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-xl text-xs font-black border shrink-0 ${badgeColors[idx]}`}>
+                      #{idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-slate-800 truncate">{menu.module}</p>
+                      <p className="text-[11px] text-slate-500">{menu.category}</p>
+                    </div>
+                  </div>
+                  {menu.activeNow > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {menu.activeNow} online
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-2xl font-black text-slate-900 tabular-nums">
+                      {countVal.toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-xs text-slate-500 ml-1.5 font-semibold">akses</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-extrabold text-teal-700">{shareVal}%</span>
+                    <p className="text-[10px] text-slate-500">{sessVal} sesi unik</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Full Ranked Leaderboard + Horizontal Bar Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Left: Complete 12-Menu Leaderboard */}
+          <div className="lg:col-span-7 overflow-x-auto rounded-2xl border border-slate-200/80">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3 w-10 text-center">#</th>
+                  <th className="py-2.5 px-3">Menu / Layanan</th>
+                  <th className="py-2.5 px-3 text-right">Akses</th>
+                  <th className="py-2.5 px-3 text-right">Sesi Unik</th>
+                  <th className="py-2.5 px-3 w-36">Pangsa (%)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {(() => {
+                  const maxVal = Math.max(
+                    ...topMenus.map((m) => (menuRankingScope === "all" ? m.totalAccess : m.periodAccess)),
+                    1
+                  );
+                  return topMenus.map((menu) => {
+                    const countVal = menuRankingScope === "all" ? menu.totalAccess : menu.periodAccess;
+                    const shareVal = menuRankingScope === "all" ? menu.sharePercentAllTime : menu.sharePercent;
+                    const sessVal = menuRankingScope === "all" ? menu.uniqueSessionsAllTime : menu.uniqueSessions;
+                    const barPct = countVal > 0 ? Math.max(Math.round((countVal / maxVal) * 100), 6) : 0;
+                    return (
+                      <tr key={menu.key} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-2.5 px-3 text-center font-black text-slate-500">
+                          {menu.rank}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${menu.color}`} />
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 truncate">{menu.module}</p>
+                              <p className="text-[10px] text-slate-400">{menu.category}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-extrabold text-slate-900 tabular-nums">
+                          {countVal.toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-600 font-semibold tabular-nums">
+                          {sessVal.toLocaleString("id-ID")}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${menu.color} transition-all duration-500`}
+                                style={{ width: `${barPct}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-700 w-10 text-right tabular-nums">
+                              {shareVal}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Right: Visual Bar Chart for Top 8 Menus */}
+          <div className="lg:col-span-5 p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <LayoutGrid className="w-4 h-4 text-teal-600" />
+                  Grafik 8 Menu Terpopuler
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Perbandingan volume akses ({menuRankingScope === "all" ? "Sepanjang Waktu" : getTimeRangeShortLabel(timeRange)})
+                </p>
+              </div>
+              <Award className="w-4 h-4 text-amber-500 shrink-0" />
+            </div>
+
+            <div className="h-80 w-full min-w-0">
+              <ResponsiveContainer width="100%" height={320} minWidth={0} debounce={50}>
+                <BarChart
+                  data={topMenus.slice(0, 8).map((m) => ({
+                    name: m.module.length > 20 ? `${m.module.slice(0, 19)}…` : m.module,
+                    fullName: m.module,
+                    akses: menuRankingScope === "all" ? m.totalAccess : m.periodAccess
+                  }))}
+                  layout="vertical"
+                  margin={{ top: 5, right: 18, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                  <XAxis type="number" stroke="#64748b" fontSize={11} allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={130}
+                    stroke="#334155"
+                    fontSize={10.5}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [`${Number(value).toLocaleString("id-ID")} akses`, "Frekuensi"]}
+                    labelFormatter={(_label: any, payload: any) => payload?.[0]?.payload?.fullName || _label}
+                    contentStyle={{
+                      backgroundColor: "#0f172a",
+                      borderColor: "#334155",
+                      borderRadius: "12px",
+                      color: "#f8fafc",
+                      fontSize: "12px"
+                    }}
+                  />
+                  <Bar dataKey="akses" name="Total Akses" fill="#0d9488" radius={[0, 6, 6, 0]} barSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Section 1: Real-Time Traffic & Trends Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Traffic Curve Chart */}
@@ -1044,7 +1483,7 @@ export const AdminWebAnalytics: React.FC = () => {
                 Tren Lalu Lintas Pengunjung & Interaksi
               </h2>
               <p className="text-xs text-slate-500">
-                Visualisasi dinamika pengunjung aktif, tampilan halaman, dan *custom events* ({timeRange === "24h" ? "24 Jam Terakhir" : timeRange === "7d" ? "7 Hari Terakhir" : "30 Hari Terakhir"}).
+                Visualisasi dinamika pengunjung aktif, tampilan halaman, dan *custom events* ({getTimeRangeLabel(timeRange)}).
               </p>
             </div>
             <span className="text-[11px] font-bold text-slate-400 self-start sm:self-auto bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60">
@@ -1067,12 +1506,12 @@ export const AdminWebAnalytics: React.FC = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis
-                  dataKey={timeRange === "24h" ? "time" : timeRange === "7d" ? "day" : "week"}
+                  dataKey="time"
                   stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
                 />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#0f172a",
@@ -1111,17 +1550,17 @@ export const AdminWebAnalytics: React.FC = () => {
           <div className="border-b border-slate-100 pb-3">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <Globe className="w-5 h-5 text-teal-600" />
-              Modul Terpopuler (Real-Time)
+              Modul Aktif ({getTimeRangeShortLabel(timeRange)})
             </h2>
             <p className="text-xs text-slate-500">
               Distribusi pengguna yang sedang mengakses modul saat ini
             </p>
           </div>
 
-          <div className="space-y-3.5 flex-1 justify-center flex flex-col">
-            {liveModules.map((item) => {
-              const maxUsage = Math.max(...liveModules.map((m) => m.totalToday), 1);
-              const pct = Math.max(Math.round((item.totalToday / maxUsage) * 100), item.totalToday > 0 ? 5 : 2);
+          <div className="space-y-3 flex-1 justify-center flex flex-col">
+            {liveModules.slice(0, 8).map((item: any) => {
+              const maxUsage = Math.max(...liveModules.map((m: any) => m.totalToday || 0), 1);
+              const pct = Math.max(Math.round(((item.totalToday || 0) / maxUsage) * 100), (item.totalToday || 0) > 0 ? 5 : 2);
               return (
                 <div key={item.key} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
@@ -1133,7 +1572,7 @@ export const AdminWebAnalytics: React.FC = () => {
                       </span>
                     ) : (
                       <span className="font-bold text-slate-800 shrink-0">
-                        {item.totalToday.toLocaleString("id-ID")} <span className="text-[10px] text-slate-400 font-normal">akses</span>
+                        {(item.totalToday || 0).toLocaleString("id-ID")} <span className="text-[10px] text-slate-400 font-normal">akses</span>
                       </span>
                     )}
                   </div>

@@ -12,7 +12,9 @@ export default async function handler(req: any, res: any) {
 
   try {
     initAnalyticsEngine();
-    const timeRange = (req.query?.timeRange as '24h' | '7d' | '30d') || '24h';
+    const rawRange = String(req.query?.timeRange || "24h");
+    const allowedRanges = ["24h", "7d", "30d", "6m", "1y", "all"];
+    const timeRange = (allowedRanges.includes(rawRange) ? rawRange : "24h") as '24h' | '7d' | '30d' | '6m' | '1y' | 'all';
     const timezone = (req.query?.timezone as string) || 'Asia/Jakarta';
     const stats = getAggregatedAnalytics(timeRange, timezone, req);
     return res.status(200).json(stats);

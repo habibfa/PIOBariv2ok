@@ -13,6 +13,60 @@ export interface CustomEventRecord {
   isRealLive?: boolean;
 }
 
+export type AnalyticsTimeRange = '24h' | '7d' | '30d' | '6m' | '1y' | 'all';
+
+export interface VisitorPeriodResume {
+  key: AnalyticsTimeRange;
+  label: string;
+  shortLabel: string;
+  uniqueVisitors: number;
+  pageViews: number;
+  customEvents: number;
+  clinicalActions: number;
+  criticalAlerts: number;
+  avgViewsPerVisitor: number;
+  topMenu: string;
+  topMenuHits: number;
+}
+
+export interface TopMenuUsageItem {
+  rank: number;
+  key: string;
+  module: string;
+  category: string;
+  periodAccess: number;
+  totalAccess: number;
+  totalToday: number;
+  uniqueSessions: number;
+  uniqueSessionsAllTime: number;
+  sharePercent: number;
+  sharePercentAllTime: number;
+  activeNow: number;
+  color: string;
+  hex: string;
+}
+
+export const ANALYTICS_TIME_RANGE_OPTIONS: Array<{
+  key: AnalyticsTimeRange;
+  shortLabel: string;
+  label: string;
+}> = [
+  { key: '24h', shortLabel: '24 Jam', label: '24 Jam Terakhir' },
+  { key: '7d', shortLabel: '7 Hari', label: '7 Hari Terakhir' },
+  { key: '30d', shortLabel: '1 Bulan', label: '1 Bulan (30 Hari)' },
+  { key: '6m', shortLabel: '6 Bulan', label: '6 Bulan Terakhir' },
+  { key: '1y', shortLabel: '1 Tahun', label: '1 Tahun Terakhir' },
+  { key: 'all', shortLabel: 'Seterusnya', label: 'Sepanjang Waktu (Seterusnya)' }
+];
+
+export function getTimeRangeLabel(range: AnalyticsTimeRange): string {
+  return ANALYTICS_TIME_RANGE_OPTIONS.find((r) => r.key === range)?.label || '24 Jam Terakhir';
+}
+
+export function getTimeRangeShortLabel(range: AnalyticsTimeRange): string {
+  return ANALYTICS_TIME_RANGE_OPTIONS.find((r) => r.key === range)?.shortLabel || '24 Jam';
+}
+
 export interface RealtimeMetricSummary {
   activeUsersNow: number;
   pageViewsToday: number;
@@ -718,7 +772,7 @@ export function trackCustomEvent(
 }
 
 // Fetch real aggregated analytics directly from server database
-export async function fetchRealAnalyticsStats(timeRange: '24h' | '7d' | '30d' = '24h') {
+export async function fetchRealAnalyticsStats(timeRange: AnalyticsTimeRange = '24h') {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jakarta';
     const res = await fetch(`/api/analytics/stats?timeRange=${timeRange}&timezone=${encodeURIComponent(tz)}`);
@@ -848,6 +902,186 @@ export function exportEventsToJSON(events: CustomEventRecord[]): void {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// Export comprehensive Web Analytics Report (Multi-Sheet Excel .xlsx, lazy-loaded)
+export async function exportAnalyticsToExcel(params: {
+  timeRange: AnalyticsTimeRange;
+  visitorResume: VisitorPeriodResume[];
+  topMenus: TopMenuUsageItem[];
+  chartData: Array<{ time?: string; day?: string; week?: string; month?: string; visitors: number; pageViews: number; customEvents: number }>;
+  geoDistribution: GeoLocationTraffic[];
+  events: CustomEventRecord[];
+  activeUsersNow?: number;
+  avgDurationFormatted?: string;
+}): Promise<string> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+  const nowStr = new Date().toLocaleString("id-ID", {
+    dateStyle: "full",
+    timeStyle: "medium"
+  });
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  const activePeriodLabel = getTimeRangeLabel(params.timeRange);
+
+  // Sheet 1: Resume Pengunjung Multi-Periode (24 Jam, 7 Hari, 1 Bulan, 6 Bulan, 1 Tahun, Seterusnya)
+  const resumeHeaderRows: any[][] = [
+    ["LAPORAN WEB ANALYTICS & RESUME PENGUNJUNG — PIO RSUD PALEMBANG BARI"],
+    ["Tanggal Ekspor", nowStr, "Periode Aktif Dipilih", activePeriodLabel],
+    ["Pengguna Online Saat Ini", params.activeUsersNow ?? 1, "Rata-rata Durasi Sesi", params.avgDurationFormatted || "-"],
+    [],
+    [
+      "Periode Waktu",
+      "Kode",
+      "Pengunjung Unik (Sesi)",
+      "Total Kunjungan (Pageviews)",
+      "Total Aksi / Custom Events",
+      "Aksi Klinis",
+      "Peringatan Kritis DDI",
+      "Rata-rata Halaman / Pengunjung",
+      "Menu Paling Sering Digunakan",
+      "Jumlah Akses Menu Terpopuler"
+    ]
+  ];
+
+  const resumeDataRows = params.visitorResume.map((r) => [
+    r.label,
+    r.shortLabel,
+    r.uniqueVisitors,
+    r.pageViews,
+    r.customEvents,
+    r.clinicalActions,
+    r.criticalAlerts,
+    r.avgViewsPerVisitor,
+    r.topMenu,
+    r.topMenuHits
+  ]);
+
+  const wsResume = XLSX.utils.aoa_to_sheet([...resumeHeaderRows, ...resumeDataRows]);
+  wsResume["!cols"] = [
+    { wch: 30 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 26 },
+    { wch: 24 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 28 },
+    { wch: 30 },
+    { wch: 26 }
+  ];
+  XLSX.utils.book_append_sheet(wb, wsResume, "Resume_Pengunjung");
+
+  // Sheet 2: Menu yang Sering Digunakan
+  const menuHeaderRows: any[][] = [
+    ["PERINGKAT MENU YANG SERING DIGUNAKAN"],
+    ["Periode Filter Aktif", activePeriodLabel, "Diekspor", nowStr],
+    [],
+    [
+      "Peringkat",
+      "Nama Menu / Modul",
+      "Kategori",
+      `Total Akses (${getTimeRangeShortLabel(params.timeRange)})`,
+      `Pangsa Periode (%)`,
+      "Total Akses (Sepanjang Waktu)",
+      "Pangsa Sepanjang Waktu (%)",
+      "Sesi Unik (Periode)",
+      "Sesi Unik (Total)",
+      "Pengguna Online Saat Ini"
+    ]
+  ];
+
+  const menuDataRows = params.topMenus.map((m, i) => [
+    m.rank || i + 1,
+    m.module,
+    m.category || "-",
+    m.periodAccess,
+    m.sharePercent,
+    m.totalAccess,
+    m.sharePercentAllTime,
+    m.uniqueSessions,
+    m.uniqueSessionsAllTime,
+    m.activeNow
+  ]);
+
+  const wsMenus = XLSX.utils.aoa_to_sheet([...menuHeaderRows, ...menuDataRows]);
+  wsMenus["!cols"] = [
+    { wch: 12 },
+    { wch: 34 },
+    { wch: 18 },
+    { wch: 22 },
+    { wch: 18 },
+    { wch: 26 },
+    { wch: 24 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 22 }
+  ];
+  XLSX.utils.book_append_sheet(wb, wsMenus, "Menu_Sering_Digunakan");
+
+  // Sheet 3: Tren Kunjungan (Sesuai Periode Aktif)
+  const trendRows = [
+    ["TREN KUNJUNGAN PENGUNJUNG", activePeriodLabel],
+    [],
+    ["Label Waktu", "Pengunjung Unik (Visitors)", "Tampilan Halaman (Pageviews)", "Custom Events"],
+    ...params.chartData.map((pt) => [
+      pt.time || pt.day || pt.week || pt.month || "-",
+      pt.visitors ?? 0,
+      pt.pageViews ?? 0,
+      pt.customEvents ?? 0
+    ])
+  ];
+  const wsTrend = XLSX.utils.aoa_to_sheet(trendRows);
+  wsTrend["!cols"] = [{ wch: 22 }, { wch: 24 }, { wch: 28 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, wsTrend, "Tren_Kunjungan");
+
+  // Sheet 4: Sebaran Geografis
+  const geoRows = [
+    ["SEBARAN GEOGRAFIS PENGUNJUNG (GEOIP)"],
+    [],
+    ["No", "Kota / Kabupaten", "Provinsi", "Total Akses", "Persentase (%)"],
+    ...params.geoDistribution.map((g, idx) => [
+      idx + 1,
+      g.city,
+      g.province,
+      g.users,
+      g.percentage
+    ])
+  ];
+  const wsGeo = XLSX.utils.aoa_to_sheet(geoRows);
+  wsGeo["!cols"] = [{ wch: 6 }, { wch: 32 }, { wch: 26 }, { wch: 14 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, wsGeo, "Sebaran_Geografis");
+
+  // Sheet 5: Log Aktivitas Event
+  const eventRows = [
+    ["LOG AKTIVITAS & CUSTOM EVENTS REAL-TIME"],
+    [],
+    ["Waktu", "Nama Event", "Kategori", "Deskripsi / Label", "Lokasi (Kota/Provinsi)", "Perangkat", "Browser"],
+    ...params.events.slice(0, 500).map((e) => [
+      new Date(e.timestamp).toLocaleString("id-ID"),
+      e.eventName,
+      e.category,
+      e.label || "-",
+      e.city || "-",
+      e.device || "-",
+      e.browser || "-"
+    ])
+  ];
+  const wsEvents = XLSX.utils.aoa_to_sheet(eventRows);
+  wsEvents["!cols"] = [
+    { wch: 22 },
+    { wch: 24 },
+    { wch: 14 },
+    { wch: 48 },
+    { wch: 30 },
+    { wch: 12 },
+    { wch: 12 }
+  ];
+  XLSX.utils.book_append_sheet(wb, wsEvents, "Log_Aktivitas_Event");
+
+  const fileName = `Laporan_Web_Analytics_PIOBARI_${params.timeRange}_${dateStamp}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  return fileName;
 }
 
 // Traffic Sources Baseline
@@ -1116,22 +1350,180 @@ export function getDailyTrafficCurve(): TrafficCurvePoint[] {
 // Monthly 30 Days trend
 export function getMonthlyTrafficCurve(): TrafficCurvePoint[] {
   return [
-    { time: "Minggu 1", week: "Minggu 1", visitors: 21400, pageViews: 64500, customEvents: 34100 },
-    { time: "Minggu 2", week: "Minggu 2", visitors: 23800, pageViews: 71200, customEvents: 38900 },
-    { time: "Minggu 3", week: "Minggu 3", visitors: 25900, pageViews: 78400, customEvents: 42600 },
-    { time: "Minggu 4", week: "Minggu 4", visitors: 28100, pageViews: 84900, customEvents: 46200 }
+    { time: "Minggu 1", week: "Minggu 1", visitors: 0, pageViews: 0, customEvents: 0 },
+    { time: "Minggu 2", week: "Minggu 2", visitors: 0, pageViews: 0, customEvents: 0 },
+    { time: "Minggu 3", week: "Minggu 3", visitors: 0, pageViews: 0, customEvents: 0 },
+    { time: "Minggu 4", week: "Minggu 4", visitors: 0, pageViews: 0, customEvents: 0 }
   ];
+}
+
+// Local fallback curve for 6 Months / 1 Year / All Time
+export function getMonthsTrafficFallback(monthsCount: number): Array<{ time: string; month: string; visitors: number; pageViews: number; customEvents: number }> {
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  const now = new Date();
+  const res: Array<{ time: string; month: string; visitors: number; pageViews: number; customEvents: number }> = [];
+  for (let m = monthsCount - 1; m >= 0; m--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+    res.push({ time: label, month: label, visitors: 0, pageViews: 0, customEvents: 0 });
+  }
+  return res;
+}
+
+const LOCAL_MENU_DEFS = [
+  { key: "desc", name: "Informasi Obat & Katalog", category: "Katalog Obat", color: "bg-emerald-500", hex: "#10b981" },
+  { key: "ddi", name: "Cek Interaksi Obat (DDI)", category: "Keamanan Terapi", color: "bg-rose-500", hex: "#f43f5e" },
+  { key: "fornas", name: "Formularium Nasional (Fornas)", category: "Regulasi BPJS", color: "bg-teal-500", hex: "#14b8a6" },
+  { key: "medcalc", name: "Kalkulator Medis", category: "Klinis & Skor", color: "bg-blue-500", hex: "#3b82f6" },
+  { key: "iv", name: "Kompatibilitas Injeksi IV", category: "Parenteral", color: "bg-cyan-500", hex: "#06b6d4" },
+  { key: "soap", name: "Catatan Klinis SOAP", category: "Dokumentasi", color: "bg-indigo-500", hex: "#6366f1" },
+  { key: "pharmacist", name: "Konsultasi Apoteker", category: "Layanan PIO", color: "bg-purple-500", hex: "#a855f7" },
+  { key: "video", name: "Panduan Penggunaan Alat", category: "Edukasi Pasien", color: "bg-fuchsia-500", hex: "#d946ef" },
+  { key: "diseases", name: "Penyakit & Kondisi", category: "Referensi Klinis", color: "bg-orange-500", hex: "#f97316" },
+  { key: "map", name: "Peta Faskes & Apotek", category: "Geolokasi", color: "bg-amber-500", hex: "#f59e0b" },
+  { key: "single", name: "Kalkulator Dosis Obat", category: "Dosis Klinis", color: "bg-sky-500", hex: "#0ea5e9" },
+  { key: "reviews", name: "Penilaian & Ulasan", category: "Feedback", color: "bg-pink-500", hex: "#ec4899" }
+];
+
+function inferLocalEventMenuKey(ev: CustomEventRecord): string | null {
+  const tab = String(ev.metadata?.tab || "").toLowerCase();
+  const name = String(ev.eventName || "").toLowerCase();
+  if (tab) {
+    const found = LOCAL_MENU_DEFS.find((d) => d.key === tab);
+    if (found) return found.key;
+  }
+  if (name.includes("interaction") || name.includes("ddi")) return "ddi";
+  if (name.includes("fornas")) return "fornas";
+  if (name.includes("medcalc") || name.includes("calc")) return "medcalc";
+  if (name.includes("iv")) return "iv";
+  if (name.includes("soap")) return "soap";
+  if (name.includes("pharmacist") || name.includes("consult")) return "pharmacist";
+  if (name.includes("video")) return "video";
+  if (name.includes("disease")) return "diseases";
+  if (name.includes("map")) return "map";
+  if (name.includes("dose")) return "single";
+  if (name.includes("review")) return "reviews";
+  if (name.includes("drug") || name.includes("search")) return "desc";
+  return null;
+}
+
+export function buildLocalVisitorResume(events: CustomEventRecord[]): VisitorPeriodResume[] {
+  const now = Date.now();
+  const DAY_MS = 24 * 3600 * 1000;
+  const defs: Array<{ key: AnalyticsTimeRange; label: string; shortLabel: string; ms: number | null }> = [
+    { key: "24h", label: "24 Jam Terakhir", shortLabel: "24 Jam", ms: DAY_MS },
+    { key: "7d", label: "7 Hari Terakhir", shortLabel: "7 Hari", ms: 7 * DAY_MS },
+    { key: "30d", label: "1 Bulan (30 Hari)", shortLabel: "1 Bulan", ms: 30 * DAY_MS },
+    { key: "6m", label: "6 Bulan Terakhir", shortLabel: "6 Bulan", ms: 180 * DAY_MS },
+    { key: "1y", label: "1 Tahun Terakhir", shortLabel: "1 Tahun", ms: 365 * DAY_MS },
+    { key: "all", label: "Sepanjang Waktu (Seterusnya)", shortLabel: "Seterusnya", ms: null }
+  ];
+
+  return defs.map((d) => {
+    const cutoff = d.ms !== null ? now - d.ms : 0;
+    const list = cutoff > 0 ? events.filter((e) => e.timestamp >= cutoff) : events;
+    const uniqueVisitors = new Set(list.map((e) => e.sessionId || "local_sess")).size;
+    const clinicalActions = list.filter((e) => e.category === "clinical").length;
+    const criticalAlerts = list.filter((e) => e.category === "safety" || e.eventName.includes("interaction")).length;
+    const menuCounts: Record<string, number> = {};
+    list.forEach((e) => {
+      const k = inferLocalEventMenuKey(e);
+      if (k) menuCounts[k] = (menuCounts[k] || 0) + 1;
+    });
+    let topMenu = "Belum ada akses";
+    let topMenuHits = 0;
+    LOCAL_MENU_DEFS.forEach((m) => {
+      const c = menuCounts[m.key] || 0;
+      if (c > topMenuHits) {
+        topMenuHits = c;
+        topMenu = m.name;
+      }
+    });
+    return {
+      key: d.key,
+      label: d.label,
+      shortLabel: d.shortLabel,
+      uniqueVisitors,
+      pageViews: list.length,
+      customEvents: list.length,
+      clinicalActions,
+      criticalAlerts,
+      avgViewsPerVisitor: uniqueVisitors > 0 ? Math.round((list.length / uniqueVisitors) * 10) / 10 : 0,
+      topMenu,
+      topMenuHits
+    };
+  });
+}
+
+export function buildLocalTopMenus(events: CustomEventRecord[], timeRange: AnalyticsTimeRange): TopMenuUsageItem[] {
+  const now = Date.now();
+  const DAY_MS = 24 * 3600 * 1000;
+  let cutoff = 0;
+  if (timeRange === "24h") cutoff = now - DAY_MS;
+  else if (timeRange === "7d") cutoff = now - 7 * DAY_MS;
+  else if (timeRange === "30d") cutoff = now - 30 * DAY_MS;
+  else if (timeRange === "6m") cutoff = now - 180 * DAY_MS;
+  else if (timeRange === "1y") cutoff = now - 365 * DAY_MS;
+
+  const periodEvents = cutoff > 0 ? events.filter((e) => e.timestamp >= cutoff) : events;
+  const pCounts: Record<string, number> = {};
+  const tCounts: Record<string, number> = {};
+  const pSess: Record<string, Set<string>> = {};
+  const tSess: Record<string, Set<string>> = {};
+
+  LOCAL_MENU_DEFS.forEach((m) => {
+    pCounts[m.key] = 0;
+    tCounts[m.key] = 0;
+    pSess[m.key] = new Set();
+    tSess[m.key] = new Set();
+  });
+
+  periodEvents.forEach((e) => {
+    const k = inferLocalEventMenuKey(e);
+    if (k) {
+      pCounts[k]++;
+      pSess[k].add(e.sessionId || "local");
+    }
+  });
+  events.forEach((e) => {
+    const k = inferLocalEventMenuKey(e);
+    if (k) {
+      tCounts[k]++;
+      tSess[k].add(e.sessionId || "local");
+    }
+  });
+
+  const sumP = Object.values(pCounts).reduce((a, b) => a + b, 0);
+  const sumT = Object.values(tCounts).reduce((a, b) => a + b, 0);
+
+  return LOCAL_MENU_DEFS
+    .map((m) => ({
+      rank: 0,
+      key: m.key,
+      module: m.name,
+      category: m.category,
+      periodAccess: pCounts[m.key] || 0,
+      totalAccess: tCounts[m.key] || 0,
+      totalToday: pCounts[m.key] || 0,
+      uniqueSessions: pSess[m.key].size,
+      uniqueSessionsAllTime: tSess[m.key].size,
+      sharePercent: sumP > 0 ? Math.round(((pCounts[m.key] || 0) / sumP) * 1000) / 10 : 0,
+      sharePercentAllTime: sumT > 0 ? Math.round(((tCounts[m.key] || 0) / sumT) * 1000) / 10 : 0,
+      activeNow: 0,
+      color: m.color,
+      hex: m.hex
+    }))
+    .sort((a, b) => (b.periodAccess !== a.periodAccess ? b.periodAccess - a.periodAccess : b.totalAccess - a.totalAccess))
+    .map((item, idx) => ({ ...item, rank: idx + 1 }));
 }
 
 // Live module breakdown in real-time
 export function getLiveModuleViews(): Array<{ module: string; key: string; activeNow: number; totalToday: number; color: string }> {
-  return [
-    { module: "Informasi Obat & Katalog", key: "desc", activeNow: 16, totalToday: 5410, color: "bg-emerald-500" },
-    { module: "Skrining Interaksi Obat (DDI)", key: "ddi", activeNow: 12, totalToday: 3890, color: "bg-rose-500" },
-    { module: "Kalkulator Dosis Klinis", key: "single", activeNow: 9, totalToday: 3120, color: "bg-sky-500" },
-    { module: "Kompatibilitas Injeksi IV", key: "iv", activeNow: 5, totalToday: 1740, color: "bg-cyan-500" },
-    { module: "Peta Faskes & Apotek", key: "map", activeNow: 4, totalToday: 1480, color: "bg-amber-500" },
-    { module: "Konsultasi Apoteker Siaga", key: "pharmacist", activeNow: 3, totalToday: 1120, color: "bg-purple-500" },
-    { module: "Fornas & Rekam SOAP", key: "soap", activeNow: 2, totalToday: 950, color: "bg-indigo-500" }
-  ];
+  return LOCAL_MENU_DEFS.slice(0, 7).map((m) => ({
+    module: m.name,
+    key: m.key,
+    activeNow: 0,
+    totalToday: 0,
+    color: m.color
+  }));
 }
