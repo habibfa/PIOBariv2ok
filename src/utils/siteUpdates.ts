@@ -21,6 +21,15 @@ export const SITE_UPDATE_EVENT_NAME = "piobari:site-update";
  */
 export const RELEASE_SITE_UPDATES: SiteUpdateItem[] = [
   {
+    id: "rel-2026-11-23-medscape-health-calc",
+    title: "Menu Baru: Kalkulator Kesehatan (Referensi Medscape — Bahasa Indonesia)",
+    description:
+      "Tersedia 37 kalkulator klinis lintas 11 spesialisasi (Kardiologi, Nefrologi, IGD/ICU, Hepatologi, Pulmonologi, Neurologi, Hematologi, Endokrinologi, Obgyn, Pediatri & Farmakologi) lengkap dengan pencarian, favorit, rumus, dan interpretasi klinis.",
+    category: "fitur",
+    timestamp: "2026-11-23T09:05:00.000Z",
+    targetTab: "health_calc",
+  },
+  {
     id: "rel-2026-11-23-health-status-charts",
     title: "Visualisasi Grafik Tren Epidemiologi (Recharts)",
     description:

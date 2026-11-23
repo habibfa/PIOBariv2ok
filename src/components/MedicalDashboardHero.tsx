@@ -291,12 +291,13 @@ function MedicalDashboardHero({
           <span className="text-[11px] text-slate-400 font-medium">Sentuh untuk beralih modul</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-11 gap-2.5 sm:gap-3">
           {[
             { id: "desc", label: "Katalog Obat", icon: Pill, bg: "bg-teal-50 text-teal-700 border-teal-200/70" },
             { id: "ddi", label: "Skrining DDI", icon: ShieldAlert, bg: "bg-rose-50 text-rose-700 border-rose-200/70" },
             { id: "medcalc", label: "Kalkulator", icon: Calculator, bg: "bg-sky-50 text-sky-700 border-sky-200/70" },
             { id: "health_status", label: "Status Kes.", icon: Activity, bg: "bg-teal-50 text-teal-700 border-teal-200/70" },
+            { id: "health_calc", label: "Kalk. Kes.", icon: Heart, bg: "bg-emerald-50 text-emerald-700 border-emerald-200/70" },
             { id: "iv", label: "Injeksi IV", icon: Droplets, bg: "bg-cyan-50 text-cyan-700 border-cyan-200/70" },
             { id: "soap", label: "Form SOAP", icon: FileText, bg: "bg-indigo-50 text-indigo-700 border-indigo-200/70" },
             { id: "fornas", label: "Fornas 2025", icon: BookOpen, bg: "bg-emerald-50 text-emerald-700 border-emerald-200/70" },

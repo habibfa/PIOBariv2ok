@@ -1,7 +1,7 @@
 {
   "version": 2,
   "createdAt": 1790126691286,
-  "lastUpdated": 1795423303549,
+  "lastUpdated": 1795425141263,
   "sessions": {
     "sess_1790126028581_r37svu": {
       "sessionId": "sess_1790126028581_r37svu",
@@ -571,7 +571,7 @@
       "browser": "Chrome",
       "currentModule": "health_status",
       "startTime": 1795422602018,
-      "lastHeartbeat": 1795423255268,
+      "lastHeartbeat": 1795425120072,
       "pageViewsCount": 1
     },
     "sess_1795423301602_5kgiig": {
@@ -585,9 +585,109 @@
       "startTime": 1795423301621,
       "lastHeartbeat": 1795423302862,
       "pageViewsCount": 3
+    },
+    "sess_1795425041347_r1h8ll": {
+      "sessionId": "sess_1795425041347_r1h8ll",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "health_calc",
+      "startTime": 1795425041354,
+      "lastHeartbeat": 1795425043068,
+      "pageViewsCount": 2
+    },
+    "sess_1795425139462_65avwy": {
+      "sessionId": "sess_1795425139462_65avwy",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "health_calc",
+      "startTime": 1795425139467,
+      "lastHeartbeat": 1795425140819,
+      "pageViewsCount": 2
     }
   },
   "events": [
+    {
+      "id": "evt_1795425140763_rwfv",
+      "sessionId": "sess_1795425139462_65avwy",
+      "timestamp": 1795425140763,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul HEALTH_CALC",
+      "metadata": {
+        "tab": "health_calc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 422,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795425139469_b0w8",
+      "sessionId": "sess_1795425139462_65avwy",
+      "timestamp": 1795425139469,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 497,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795425043066_5ot5",
+      "sessionId": "sess_1795425041347_r1h8ll",
+      "timestamp": 1795425043066,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul HEALTH_CALC",
+      "metadata": {
+        "tab": "health_calc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 122,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795425041365_jf9l",
+      "sessionId": "sess_1795425041347_r1h8ll",
+      "timestamp": 1795425041365,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 263,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
     {
       "id": "evt_1795423302858_iprn",
       "sessionId": "sess_1795423301602_5kgiig",
@@ -4287,6 +4387,58 @@
     }
   ],
   "pageViews": [
+    {
+      "id": "pv_1795425140761_d6ee",
+      "sessionId": "sess_1795425139462_65avwy",
+      "timestamp": 1795425140761,
+      "module": "health_calc",
+      "path": "/health_calc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795425139467_hpjk",
+      "sessionId": "sess_1795425139462_65avwy",
+      "timestamp": 1795425139467,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795425043019_byin",
+      "sessionId": "sess_1795425041347_r1h8ll",
+      "timestamp": 1795425043019,
+      "module": "health_calc",
+      "path": "/health_calc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795425041354_kkoo",
+      "sessionId": "sess_1795425041347_r1h8ll",
+      "timestamp": 1795425041354,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
     {
       "id": "pv_1795423302853_ze6v",
       "sessionId": "sess_1795423301602_5kgiig",
