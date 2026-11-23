@@ -36,7 +36,9 @@ import {
   ClipboardList,
   LineChart,
   ArrowLeft,
-  ChevronRight
+  ChevronRight,
+  Ruler,
+  ClipboardCheck
 } from "lucide-react";
 import { CHEMO_REGIMENS_DATA, ChemoRegimen, ChemoDrugComponent } from "./data/chemoRegimensData";
 import {
@@ -58,6 +60,11 @@ import {
   HplCalculator,
   WhoZScoreCalculator,
 } from "./components/calculators/NutritionPregnancyCalcs";
+import {
+  FertilityCalculator,
+  PhysicalGrowthAnthropometryCalculator,
+  DevelopmentalScreeningCalculator,
+} from "./components/calculators/FertilityGrowthDevCalcs";
 import {
   IvInfusionCalculator,
   UnitDilutionCalculator,
@@ -81,8 +88,11 @@ type CalculatorType =
   | "bmr_tdee"
   | "bsa"
   | "hpl"
+  | "fertility"
   | "apgar"
   | "zscore_who"
+  | "physical_growth"
+  | "dev_screening"
   | "chemo"
   | "regimen"
   | "pediatric"
@@ -360,6 +370,14 @@ export function MedicalCalculators() {
           accentClass: "bg-pink-50 text-pink-700",
         },
         {
+          id: "fertility",
+          title: "Kalkulator Masa Subur Wanita",
+          description: "Memperkirakan jendela masa subur (fertile window), puncak ovulasi, fase siklus, dan proyeksi 3 siklus untuk siklus teratur maupun tidak teratur (Ogino-Knaus).",
+          meta: "Ovulasi · Ogino-Knaus · 3 Siklus",
+          icon: Heart,
+          accentClass: "bg-rose-50 text-rose-700",
+        },
+        {
           id: "apgar",
           title: "APGAR Score",
           description: "Penilaian klinis cepat kondisi bayi baru lahir berdasarkan 5 parameter vital.",
@@ -374,6 +392,22 @@ export function MedicalCalculators() {
           meta: "WHO 2006 · Permenkes RI",
           icon: TrendingUp,
           accentClass: "bg-emerald-50 text-emerald-700",
+        },
+        {
+          id: "physical_growth",
+          title: "Kalkulator Pertumbuhan Fisik (Antropometri/Gizi)",
+          description: "Evaluasi antropometri & gizi lengkap: IMT/U, Lingkar Kepala/U, LILA (MUAC/KEK), Potensi Tinggi Genetik (MPH), anak/remaja 5–18 th, serta WHR/WHtR dewasa.",
+          meta: "LK · LILA/KEK · MPH · WHO 2007",
+          icon: Ruler,
+          accentClass: "bg-teal-50 text-teal-700",
+        },
+        {
+          id: "dev_screening",
+          title: "Alat Skrining Perkembangan (Motorik, Bahasa, Sosial)",
+          description: "Skrining tumbuh kembang anak 3–60 bulan (Motorik Kasar, Motorik Halus, Bicara & Bahasa, Sosialisasi) beserta skor KPSP, tanda bahaya, dan saran stimulasi.",
+          meta: "KPSP / SDIDTK · 4 Domain",
+          icon: ClipboardCheck,
+          accentClass: "bg-indigo-50 text-indigo-700",
         },
       ],
     },
@@ -3231,8 +3265,11 @@ export function MedicalCalculators() {
               {activeCalc === "bmr_tdee" && <CalorieBmrTdeeCalculator />}
               {activeCalc === "bsa" && renderBSACalculator()}
               {activeCalc === "hpl" && <HplCalculator />}
+              {activeCalc === "fertility" && <FertilityCalculator />}
               {activeCalc === "apgar" && renderApgarCalculator()}
               {activeCalc === "zscore_who" && <WhoZScoreCalculator />}
+              {activeCalc === "physical_growth" && <PhysicalGrowthAnthropometryCalculator />}
+              {activeCalc === "dev_screening" && <DevelopmentalScreeningCalculator />}
 
               {/* 05. Kemoterapi */}
               {activeCalc === "chemo" && renderChemoCalculator()}
