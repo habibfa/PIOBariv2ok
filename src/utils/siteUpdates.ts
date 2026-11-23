@@ -21,6 +21,24 @@ export const SITE_UPDATE_EVENT_NAME = "piobari:site-update";
  */
 export const RELEASE_SITE_UPDATES: SiteUpdateItem[] = [
   {
+    id: "rel-2026-11-23-health-status-charts",
+    title: "Visualisasi Grafik Tren Epidemiologi (Recharts)",
+    description:
+      "Kalkulator Ukuran Status Kesehatan kini dilengkapi 6 grafik interaktif (tren multi-periode DBD/TB/Vital/KIA dengan penyimpanan snapshot periode, perbandingan indikator utama, kurva fertilitas ASFR, struktur demografi WUS/umur, morbiditas KLB, dan performa uji diagnostik 2×2).",
+    category: "fitur",
+    timestamp: "2026-11-23T08:30:00.000Z",
+    targetTab: "health_status",
+  },
+  {
+    id: "rel-2026-11-23-health-status-epi",
+    title: "Menu Baru: Kalkulator Ukuran Status Kesehatan & Epidemiologi",
+    description:
+      "Tersedia menu baru 10 Indikator Dasar (CBR, IMR, MMR, CDR, IR DBD, CFR DBD, IR TB Paru, Proporsi WUS & GFR) lengkap beserta seluruh ukuran mortalitas, fertilitas, morbiditas, asosiasi RR/OR, uji diagnostik 2×2, dan ekspor Excel.",
+    category: "fitur",
+    timestamp: "2026-11-23T04:00:00.000Z",
+    targetTab: "health_status",
+  },
+  {
     id: "rel-2026-11-21-pharmacist-align",
     title: "Kerapian Tata Letak Konsultasi Apoteker",
     description:

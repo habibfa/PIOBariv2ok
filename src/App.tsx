@@ -30,6 +30,7 @@ const loadMapFacilities = () => import("./MapFacilities");
 const loadIvCompatibilityChecker = () => import("./IvCompatibilityChecker");
 const loadDiseasesConditions = () => import("./DiseasesConditions");
 const loadMedicalCalculators = () => import("./MedicalCalculators");
+const loadHealthStatusCalculator = () => import("./components/HealthStatusCalculator");
 const loadGlassSettingsModal = () => import("./components/GlassSettingsModal");
 const loadAdminWebAnalytics = () => import("./components/AdminWebAnalytics");
 const loadSiteRatingReviews = () => import("./components/SiteRatingReviews");
@@ -44,6 +45,7 @@ const TAB_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   iv: loadIvCompatibilityChecker,
   diseases: loadDiseasesConditions,
   medcalc: loadMedicalCalculators,
+  health_status: loadHealthStatusCalculator,
   analytics: loadAdminWebAnalytics,
   reviews: loadSiteRatingReviews,
   video: loadDeviceGuideAnimated,
@@ -69,6 +71,7 @@ const MapFacilities = lazy(() => loadMapFacilities().then(m => ({ default: m.Map
 const IvCompatibilityChecker = lazy(() => loadIvCompatibilityChecker().then(m => ({ default: m.IvCompatibilityChecker })));
 const DiseasesConditions = lazy(() => loadDiseasesConditions().then(m => ({ default: m.DiseasesConditions })));
 const MedicalCalculators = lazy(() => loadMedicalCalculators().then(m => ({ default: m.MedicalCalculators })));
+const HealthStatusCalculator = lazy(loadHealthStatusCalculator);
 const GlassSettingsModal = lazy(loadGlassSettingsModal);
 const AdminWebAnalytics = lazy(loadAdminWebAnalytics);
 const SiteRatingReviews = lazy(loadSiteRatingReviews);
@@ -1602,11 +1605,11 @@ export default function App() {
   const [isFemale, setIsFemale] = useState<boolean>(false);
 
   // Tab Selection
-  const [activeTab, setActiveTabState] = useState<"single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics" | "reviews">("desc");
+  const [activeTab, setActiveTabState] = useState<"single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "health_status" | "pharmacist" | "fornas" | "soap" | "analytics" | "reviews">("desc");
   const [showDeferredWidgets, setShowDeferredWidgets] = useState(false);
 
   const setActiveTab = useCallback(
-    (nextTab: "single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "pharmacist" | "fornas" | "soap" | "analytics" | "reviews") => {
+    (nextTab: "single" | "ddi" | "desc" | "video" | "map" | "iv" | "diseases" | "medcalc" | "health_status" | "pharmacist" | "fornas" | "soap" | "analytics" | "reviews") => {
       prefetchTab(nextTab);
       startTransition(() => {
         setActiveTabState(nextTab);
@@ -2450,6 +2453,22 @@ export default function App() {
           </button>
 
           <button
+            onMouseEnter={() => prefetchTab("health_status")}
+            onFocus={() => prefetchTab("health_status")}
+            onClick={() => { setIsMobileMenuOpen(false); setActiveTab("health_status"); }}
+            className={`w-full text-left px-4 py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-between group ${
+              activeTab === "health_status"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-teal-600/25"
+                : "text-slate-600 hover:bg-white/90 hover:text-teal-700 hover:shadow-2xs"
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <BarChart3 className={`w-4 h-4 shrink-0 ${activeTab === "health_status" ? "text-white" : "text-teal-600"}`} />
+              <span className="truncate">Ukuran Status Kesehatan</span>
+            </div>
+          </button>
+
+          <button
             onMouseEnter={() => prefetchTab("iv")}
             onFocus={() => prefetchTab("iv")}
             onClick={() => { setIsMobileMenuOpen(false); setActiveTab("iv"); }}
@@ -2674,6 +2693,7 @@ export default function App() {
                  activeTab === "ddi" ? "Skrining DDI" : 
                  activeTab === "fornas" ? "Fornas 2025" : 
                  activeTab === "medcalc" ? "Kalkulator Medis" : 
+                 activeTab === "health_status" ? "Status Kesehatan" : 
                  activeTab === "soap" ? "Clinical SOAP" : 
                  activeTab === "pharmacist" ? "Apoteker Siaga" : 
                  activeTab === "video" ? "Panduan Alat" : 
@@ -2691,6 +2711,7 @@ export default function App() {
                  activeTab === "desc" ? "Informasi & Keamanan Obat" : 
                  activeTab === "diseases" ? "Penyakit & Kondisi Klinis" : 
                  activeTab === "medcalc" ? "Kalkulator Medis & Klirens Ginjal" : 
+                 activeTab === "health_status" ? "Kalkulator Ukuran Status Kesehatan & Epidemiologi" : 
                  activeTab === "video" ? "Panduan Alat & Cara Pakai" : 
                  activeTab === "soap" ? "Catatan Farmasi Klinis (SOAP)" : 
                  activeTab === "map" ? "Peta Sebaran Fasilitas Kesehatan Sumsel" : 
@@ -4559,6 +4580,15 @@ export default function App() {
         <section className="lg:col-span-12 w-full">
           <Suspense fallback={<TabLoadingFallback />}>
             <MedicalCalculators />
+          </Suspense>
+        </section>
+      </>
+    ) : activeTab === "health_status" ? (
+      <>
+        {/* HEALTH STATUS & EPIDEMIOLOGY CALCULATOR TAB */}
+        <section className="lg:col-span-12 w-full">
+          <Suspense fallback={<TabLoadingFallback />}>
+            <HealthStatusCalculator />
           </Suspense>
         </section>
       </>

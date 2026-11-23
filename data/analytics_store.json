@@ -1,7 +1,7 @@
 {
   "version": 2,
   "createdAt": 1790126691286,
-  "lastUpdated": 1795408531251,
+  "lastUpdated": 1795423303549,
   "sessions": {
     "sess_1790126028581_r37svu": {
       "sessionId": "sess_1790126028581_r37svu",
@@ -485,10 +485,10 @@
       "city": "Jakarta, DKI Jakarta",
       "device": "Desktop",
       "browser": "Chrome",
-      "currentModule": "medcalc",
+      "currentModule": "reviews",
       "startTime": 1795405740923,
-      "lastHeartbeat": 1795408495929,
-      "pageViewsCount": 1
+      "lastHeartbeat": 1795417916012,
+      "pageViewsCount": 2
     },
     "sess_1795407956650_7ze6yk": {
       "sessionId": "sess_1795407956650_7ze6yk",
@@ -513,9 +513,253 @@
       "startTime": 1795408529461,
       "lastHeartbeat": 1795408530753,
       "pageViewsCount": 2
+    },
+    "sess_1795418241468_3fx73d": {
+      "sessionId": "sess_1795418241468_3fx73d",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "desc",
+      "startTime": 1795418241540,
+      "lastHeartbeat": 1795418266010,
+      "pageViewsCount": 1
+    },
+    "sess_1795418333851_syrzwc": {
+      "sessionId": "sess_1795418333851_syrzwc",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "desc",
+      "startTime": 1795418333858,
+      "lastHeartbeat": 1795418333863,
+      "pageViewsCount": 1
+    },
+    "sess_1795418378675_bigtvl": {
+      "sessionId": "sess_1795418378675_bigtvl",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "health_status",
+      "startTime": 1795418378683,
+      "lastHeartbeat": 1795418405044,
+      "pageViewsCount": 2
+    },
+    "sess_1795418445386_0hfmr7": {
+      "sessionId": "sess_1795418445386_0hfmr7",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "health_status",
+      "startTime": 1795418445390,
+      "lastHeartbeat": 1795418447017,
+      "pageViewsCount": 2
+    },
+    "sess_1795422204519_lhaqcr": {
+      "sessionId": "sess_1795422204519_lhaqcr",
+      "ip": "2404:c0:d403::0",
+      "rawIp": "2404:c0:d403::1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "health_status",
+      "startTime": 1795422602018,
+      "lastHeartbeat": 1795423255268,
+      "pageViewsCount": 1
+    },
+    "sess_1795423301602_5kgiig": {
+      "sessionId": "sess_1795423301602_5kgiig",
+      "ip": "127.0.0.0",
+      "rawIp": "127.0.0.1",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "currentModule": "health_status",
+      "startTime": 1795423301621,
+      "lastHeartbeat": 1795423302862,
+      "pageViewsCount": 3
     }
   },
   "events": [
+    {
+      "id": "evt_1795423302858_iprn",
+      "sessionId": "sess_1795423301602_5kgiig",
+      "timestamp": 1795423302858,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul HEALTH_STATUS",
+      "metadata": {
+        "tab": "health_status",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 429,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795423301621_thc6",
+      "sessionId": "sess_1795423301602_5kgiig",
+      "timestamp": 1795423301621,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 370,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795418446975_16hg",
+      "sessionId": "sess_1795418445386_0hfmr7",
+      "timestamp": 1795418446975,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul HEALTH_STATUS",
+      "metadata": {
+        "tab": "health_status",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 178,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795418445393_yunk",
+      "sessionId": "sess_1795418445386_0hfmr7",
+      "timestamp": 1795418445393,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 416,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795418380628_nb1m",
+      "sessionId": "sess_1795418378675_bigtvl",
+      "timestamp": 1795418380628,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul HEALTH_STATUS",
+      "metadata": {
+        "tab": "health_status",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 149,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795418378685_nosw",
+      "sessionId": "sess_1795418378675_bigtvl",
+      "timestamp": 1795418378685,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 181,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795418333861_1xn5",
+      "sessionId": "sess_1795418333851_syrzwc",
+      "timestamp": 1795418333861,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 156,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795418241542_ig9s",
+      "sessionId": "sess_1795418241468_3fx73d",
+      "timestamp": 1795418241542,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul DESC",
+      "metadata": {
+        "tab": "desc",
+        "detectedCity": "Kota Palembang, Sumatera Selatan",
+        "clientIp": "127.0.0.0"
+      },
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 445,
+      "ip": "127.0.0.0",
+      "isRealLive": true
+    },
+    {
+      "id": "evt_1795415356316_3z9q",
+      "sessionId": "sess_1795405361968_zblzi5",
+      "timestamp": 1795415356316,
+      "eventName": "page_view",
+      "category": "navigation",
+      "label": "Navigasi ke modul REVIEWS",
+      "metadata": {
+        "tab": "reviews",
+        "clientIp": "103.183.12.0",
+        "isp": "PT iForte Global Internet",
+        "detectedCity": "Jakarta, DKI Jakarta"
+      },
+      "city": "Jakarta, DKI Jakarta",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "durationMs": 210,
+      "ip": "103.183.12.0",
+      "isRealLive": true
+    },
     {
       "id": "evt_1795408530753_2hx2",
       "sessionId": "sess_1795408529453_xw0oco",
@@ -4043,6 +4287,123 @@
     }
   ],
   "pageViews": [
+    {
+      "id": "pv_1795423302853_ze6v",
+      "sessionId": "sess_1795423301602_5kgiig",
+      "timestamp": 1795423302853,
+      "module": "health_status",
+      "path": "/health_status",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795423301622_pfg7",
+      "sessionId": "sess_1795423301602_5kgiig",
+      "timestamp": 1795423301622,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795418446972_bgdt",
+      "sessionId": "sess_1795418445386_0hfmr7",
+      "timestamp": 1795418446972,
+      "module": "health_status",
+      "path": "/health_status",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795418445390_lf2z",
+      "sessionId": "sess_1795418445386_0hfmr7",
+      "timestamp": 1795418445390,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795418380630_9dqc",
+      "sessionId": "sess_1795418378675_bigtvl",
+      "timestamp": 1795418380630,
+      "module": "health_status",
+      "path": "/health_status",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795418378683_w9j2",
+      "sessionId": "sess_1795418378675_bigtvl",
+      "timestamp": 1795418378683,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795418333858_i0zf",
+      "sessionId": "sess_1795418333851_syrzwc",
+      "timestamp": 1795418333858,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795418241540_rkrr",
+      "sessionId": "sess_1795418241468_3fx73d",
+      "timestamp": 1795418241540,
+      "module": "desc",
+      "path": "/desc",
+      "city": "Kota Palembang, Sumatera Selatan",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "http://127.0.0.1:3000/",
+      "durationSec": 15,
+      "ip": "127.0.0.0"
+    },
+    {
+      "id": "pv_1795415356313_43b6",
+      "sessionId": "sess_1795405361968_zblzi5",
+      "timestamp": 1795415356313,
+      "module": "reviews",
+      "path": "/reviews",
+      "city": "Jakarta, DKI Jakarta",
+      "device": "Desktop",
+      "browser": "Chrome",
+      "referrer": "https://aistudio.google.com/",
+      "durationSec": 15,
+      "ip": "103.183.12.0"
+    },
     {
       "id": "pv_1795408530750_wjnh",
       "sessionId": "sess_1795408529453_xw0oco",

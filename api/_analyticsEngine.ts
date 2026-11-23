@@ -1303,6 +1303,7 @@ export function getAggregatedAnalytics(rawTimeRange: AnalyticsTimeRange = '24h',
     { key: "ddi", aliases: ["ddi"], name: "Cek Interaksi Obat (DDI)", category: "Keamanan Terapi", color: "bg-rose-500", hex: "#f43f5e" },
     { key: "fornas", aliases: ["fornas"], name: "Formularium Nasional (Fornas)", category: "Regulasi BPJS", color: "bg-teal-500", hex: "#14b8a6" },
     { key: "medcalc", aliases: ["medcalc"], name: "Kalkulator Medis", category: "Klinis & Skor", color: "bg-blue-500", hex: "#3b82f6" },
+    { key: "health_status", aliases: ["health_status", "epidemiology"], name: "Ukuran Status Kesehatan", category: "Epidemiologi", color: "bg-teal-600", hex: "#0d9488" },
     { key: "iv", aliases: ["iv"], name: "Kompatibilitas Injeksi IV", category: "Parenteral", color: "bg-cyan-500", hex: "#06b6d4" },
     { key: "soap", aliases: ["soap"], name: "Catatan Klinis SOAP", category: "Dokumentasi", color: "bg-indigo-500", hex: "#6366f1" },
     { key: "pharmacist", aliases: ["pharmacist", "ai"], name: "Konsultasi Apoteker", category: "Layanan PIO", color: "bg-purple-500", hex: "#a855f7" },
@@ -1332,6 +1333,7 @@ export function getAggregatedAnalytics(rawTimeRange: AnalyticsTimeRange = '24h',
     }
     if (name.includes("interaction") || name.includes("ddi")) return "ddi";
     if (name.includes("fornas")) return "fornas";
+    if (name.includes("health_status") || name.includes("epidemi")) return "health_status";
     if (name.includes("medcalc") || name.includes("egfr") || name.includes("bmi") || name.includes("calc")) return "medcalc";
     if (name.includes("iv_compat") || name.includes("iv_check") || name.startsWith("iv_")) return "iv";
     if (name.includes("soap")) return "soap";

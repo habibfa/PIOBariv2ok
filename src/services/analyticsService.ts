@@ -1375,6 +1375,7 @@ const LOCAL_MENU_DEFS = [
   { key: "ddi", name: "Cek Interaksi Obat (DDI)", category: "Keamanan Terapi", color: "bg-rose-500", hex: "#f43f5e" },
   { key: "fornas", name: "Formularium Nasional (Fornas)", category: "Regulasi BPJS", color: "bg-teal-500", hex: "#14b8a6" },
   { key: "medcalc", name: "Kalkulator Medis", category: "Klinis & Skor", color: "bg-blue-500", hex: "#3b82f6" },
+  { key: "health_status", name: "Ukuran Status Kesehatan", category: "Epidemiologi", color: "bg-teal-600", hex: "#0d9488" },
   { key: "iv", name: "Kompatibilitas Injeksi IV", category: "Parenteral", color: "bg-cyan-500", hex: "#06b6d4" },
   { key: "soap", name: "Catatan Klinis SOAP", category: "Dokumentasi", color: "bg-indigo-500", hex: "#6366f1" },
   { key: "pharmacist", name: "Konsultasi Apoteker", category: "Layanan PIO", color: "bg-purple-500", hex: "#a855f7" },
@@ -1394,6 +1395,7 @@ function inferLocalEventMenuKey(ev: CustomEventRecord): string | null {
   }
   if (name.includes("interaction") || name.includes("ddi")) return "ddi";
   if (name.includes("fornas")) return "fornas";
+  if (name.includes("health_status") || name.includes("epidemi")) return "health_status";
   if (name.includes("medcalc") || name.includes("calc")) return "medcalc";
   if (name.includes("iv")) return "iv";
   if (name.includes("soap")) return "soap";
